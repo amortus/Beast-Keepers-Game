@@ -26,6 +26,7 @@ import { trackAction, trackSpending, unlockQuests, getCompletedQuests } from './
 import { startExploration, advanceExploration, defeatEnemy, collectMaterials, endExploration } from './systems/exploration';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item } from './types';
+import { ImageLoader } from './assets/image-loader';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -144,6 +145,13 @@ async function init() {
 
     // Start render loop early so modal can be drawn
     startRenderLoop();
+
+    // Load beast images
+    loadingEl.textContent = 'Carregando imagens das criaturas...';
+    const imageLoader = ImageLoader.getInstance();
+    await imageLoader.loadBeastImages(() => {
+      console.log('[Images] Beast images loaded successfully');
+    });
 
     // Load or create game
     gameState = await loadGame();
