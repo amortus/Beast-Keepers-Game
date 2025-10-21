@@ -115,22 +115,10 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Importar o ImageLoader
-    const { ImageLoader } = require('../assets/image-loader');
-    const imageLoader = ImageLoader.getInstance();
-    
-    // Tentar obter a imagem de batalha da criatura
-    const battlePose = imageLoader.getBeastBattlePose(this.battle.player.beast.name);
-    
-    if (battlePose && battlePose.complete) {
-      // Desenhar a imagem real da criatura
-      this.ctx.drawImage(battlePose, x, y, size, size);
-    } else {
-      // Fallback: colored rectangle
-      const color = this.getLineColor(this.battle.player.beast.line);
-      this.ctx.fillStyle = color;
-      this.ctx.fillRect(x, y, size, size);
-    }
+    // Beast sprite (placeholder)
+    const color = this.getLineColor(this.battle.player.beast.line);
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, size, size);
     
     // Border
     this.ctx.strokeStyle = COLORS.ui.text;
@@ -157,22 +145,10 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Importar o ImageLoader
-    const { ImageLoader } = require('../assets/image-loader');
-    const imageLoader = ImageLoader.getInstance();
-    
-    // Tentar obter a imagem de batalha da criatura
-    const battlePose = imageLoader.getBeastBattlePose(this.battle.enemy.beast.name);
-    
-    if (battlePose && battlePose.complete) {
-      // Desenhar a imagem real da criatura
-      this.ctx.drawImage(battlePose, x, y, size, size);
-    } else {
-      // Fallback: colored rectangle
-      const color = this.getLineColor(this.battle.enemy.beast.line);
-      this.ctx.fillStyle = color;
-      this.ctx.fillRect(x, y, size, size);
-    }
+    // Beast sprite (placeholder)
+    const color = this.getLineColor(this.battle.enemy.beast.line);
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, size, size);
     
     // Border
     this.ctx.strokeStyle = COLORS.ui.error;

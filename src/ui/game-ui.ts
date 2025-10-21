@@ -252,47 +252,35 @@ export class GameUI {
   }
 
   private drawBeastSprite(x: number, y: number, width: number, height: number, beast: Beast) {
-    // Importar o ImageLoader
-    const { ImageLoader } = require('../assets/image-loader');
-    const imageLoader = ImageLoader.getInstance();
-    
-    // Tentar obter a imagem da criatura
-    const beastSprite = imageLoader.getBeastSprite(beast.name);
-    
-    if (beastSprite && beastSprite.complete) {
-      // Desenhar a imagem real da criatura
-      this.ctx.drawImage(beastSprite, x, y, width, height);
-    } else {
-      // Fallback: colored rectangle representing the beast
-      const lineColors: Record<string, string> = {
-        olgrim: '#9f7aea',
-        terravox: '#8b7355',
-        feralis: '#48bb78',
-        brontis: '#38a169',
-        zephyra: '#63b3ed',
-        ignar: '#fc8181',
-        mirella: '#4299e1',
-        umbrix: '#2d3748',
-        sylphid: '#fbbf24',
-        raukor: '#a0aec0',
-      };
+    // Placeholder: colored rectangle representing the beast
+    const lineColors: Record<string, string> = {
+      olgrim: '#9f7aea',
+      terravox: '#8b7355',
+      feralis: '#48bb78',
+      brontis: '#38a169',
+      zephyra: '#63b3ed',
+      ignar: '#fc8181',
+      mirella: '#4299e1',
+      umbrix: '#2d3748',
+      sylphid: '#fbbf24',
+      raukor: '#a0aec0',
+    };
 
-      const color = lineColors[beast.line] || COLORS.primary.green;
+    const color = lineColors[beast.line] || COLORS.primary.green;
 
-      // Body
-      this.ctx.fillStyle = color;
-      this.ctx.fillRect(x, y, width, height);
+    // Body
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, width, height);
 
-      // Border
-      this.ctx.strokeStyle = COLORS.ui.text;
-      this.ctx.lineWidth = 3;
-      this.ctx.strokeRect(x, y, width, height);
+    // Border
+    this.ctx.strokeStyle = COLORS.ui.text;
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(x, y, width, height);
 
-      // "Eyes" to indicate it's alive
-      this.ctx.fillStyle = '#000';
-      this.ctx.fillRect(x + 30, y + 30, 15, 15);
-      this.ctx.fillRect(x + width - 45, y + 30, 15, 15);
-    }
+    // "Eyes" to indicate it's alive
+    this.ctx.fillStyle = '#000';
+    this.ctx.fillRect(x + 30, y + 30, 15, 15);
+    this.ctx.fillRect(x + width - 45, y + 30, 15, 15);
   }
 
   private drawStatusPanel() {
