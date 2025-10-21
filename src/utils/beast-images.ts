@@ -1,72 +1,85 @@
 /**
  * Sistema simples de imagens das criaturas
- * Carregamento seguro e compatível
+ * Carregamento direto e síncrono
  */
 
 // Cache de imagens carregadas
 const imageCache = new Map<string, HTMLImageElement>();
 
-// Lista das criaturas disponíveis
-const BEAST_NAMES = [
-  'Brontis', 'Feralis', 'Ignar', 'Mirella', 'Olgrim',
-  'Raukor', 'Sylphid', 'Terravox', 'Umbrix', 'Zephyra'
-];
-
 /**
- * Carrega uma imagem de forma segura
+ * Obtém o sprite de uma criatura (síncrono)
  */
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    // Verificar se já está no cache
-    if (imageCache.has(src)) {
-      resolve(imageCache.get(src)!);
-      return;
-    }
-
+export function getBeastSprite(beastName: string): HTMLImageElement | null {
+  const src = `/assets/beasts/sprites/${beastName}.png`;
+  
+  // Verificar cache primeiro
+  if (imageCache.has(src)) {
+    return imageCache.get(src)!;
+  }
+  
+  // Tentar carregar a imagem
+  try {
     const img = new Image();
-    img.onload = () => {
-      imageCache.set(src, img);
-      resolve(img);
-    };
-    img.onerror = () => {
-      console.warn(`Failed to load image: ${src}`);
-      reject(new Error(`Failed to load image: ${src}`));
-    };
     img.src = src;
-  });
-}
-
-/**
- * Obtém o sprite de uma criatura
- */
-export async function getBeastSprite(beastName: string): Promise<HTMLImageElement | null> {
-  try {
-    const src = `/assets/beasts/sprites/${beastName}.png`;
-    return await loadImage(src);
+    
+    // Se já está carregada, adicionar ao cache
+    if (img.complete && img.naturalWidth > 0) {
+      imageCache.set(src, img);
+      return img;
+    }
+    
+    // Se não está carregada, retornar null
+    return null;
   } catch {
     return null;
   }
 }
 
 /**
- * Obtém o retrato de uma criatura
+ * Obtém o retrato de uma criatura (síncrono)
  */
-export async function getBeastPortrait(beastName: string): Promise<HTMLImageElement | null> {
+export function getBeastPortrait(beastName: string): HTMLImageElement | null {
+  const src = `/assets/beasts/portraits/${beastName}.png`;
+  
+  if (imageCache.has(src)) {
+    return imageCache.get(src)!;
+  }
+  
   try {
-    const src = `/assets/beasts/portraits/${beastName}.png`;
-    return await loadImage(src);
+    const img = new Image();
+    img.src = src;
+    
+    if (img.complete && img.naturalWidth > 0) {
+      imageCache.set(src, img);
+      return img;
+    }
+    
+    return null;
   } catch {
     return null;
   }
 }
 
 /**
- * Obtém a pose de batalha de uma criatura
+ * Obtém a pose de batalha de uma criatura (síncrono)
  */
-export async function getBeastBattlePose(beastName: string): Promise<HTMLImageElement | null> {
+export function getBeastBattlePose(beastName: string): HTMLImageElement | null {
+  const src = `/assets/beasts/battle-poses/${beastName}.png`;
+  
+  if (imageCache.has(src)) {
+    return imageCache.get(src)!;
+  }
+  
   try {
-    const src = `/assets/beasts/battle-poses/${beastName}.png`;
-    return await loadImage(src);
+    const img = new Image();
+    img.src = src;
+    
+    if (img.complete && img.naturalWidth > 0) {
+      imageCache.set(src, img);
+      return img;
+    }
+    
+    return null;
   } catch {
     return null;
   }
@@ -76,12 +89,25 @@ export async function getBeastBattlePose(beastName: string): Promise<HTMLImageEl
  * Carrega todas as imagens das criaturas em background
  */
 export function preloadBeastImages(): void {
+  const BEAST_NAMES = [
+    'Brontis', 'Feralis', 'Ignar', 'Mirella', 'Olgrim',
+    'Raukor', 'Sylphid', 'Terravox', 'Umbrix', 'Zephyra'
+  ];
+
   BEAST_NAMES.forEach(beastName => {
     // Carregar sprites
-    getBeastSprite(beastName).catch(() => {});
+    const sprite = new Image();
+    sprite.src = `/assets/beasts/sprites/${beastName}.png`;
+    sprite.onload = () => imageCache.set(sprite.src, sprite);
+    
     // Carregar retratos
-    getBeastPortrait(beastName).catch(() => {});
+    const portrait = new Image();
+    portrait.src = `/assets/beasts/portraits/${beastName}.png`;
+    portrait.onload = () => imageCache.set(portrait.src, portrait);
+    
     // Carregar poses de batalha
-    getBeastBattlePose(beastName).catch(() => {});
+    const battlePose = new Image();
+    battlePose.src = `/assets/beasts/battle-poses/${beastName}.png`;
+    battlePose.onload = () => imageCache.set(battlePose.src, battlePose);
   });
 }

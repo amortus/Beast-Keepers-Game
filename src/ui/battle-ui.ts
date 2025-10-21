@@ -116,17 +116,16 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Tentar carregar a imagem de batalha da criatura
-    getBeastBattlePose(this.battle.player.beast.name).then(img => {
-      if (img && img.complete) {
-        // Desenhar a imagem real da criatura
-        this.ctx.drawImage(img, x, y, size, size);
-      } else {
-        this.drawPlayerBeastFallback(x, y, size);
-      }
-    }).catch(() => {
+    // Tentar obter a imagem de batalha da criatura
+    const img = getBeastBattlePose(this.battle.player.beast.name);
+    
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Desenhar a imagem real da criatura
+      this.ctx.drawImage(img, x, y, size, size);
+    } else {
+      // Usar fallback se a imagem não estiver disponível
       this.drawPlayerBeastFallback(x, y, size);
-    });
+    }
     
     // Name below
     drawText(this.ctx, this.battle.player.beast.name, x + size / 2, y + size + 20, {
@@ -160,17 +159,16 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Tentar carregar a imagem de batalha da criatura
-    getBeastBattlePose(this.battle.enemy.beast.name).then(img => {
-      if (img && img.complete) {
-        // Desenhar a imagem real da criatura
-        this.ctx.drawImage(img, x, y, size, size);
-      } else {
-        this.drawEnemyBeastFallback(x, y, size);
-      }
-    }).catch(() => {
+    // Tentar obter a imagem de batalha da criatura
+    const img = getBeastBattlePose(this.battle.enemy.beast.name);
+    
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Desenhar a imagem real da criatura
+      this.ctx.drawImage(img, x, y, size, size);
+    } else {
+      // Usar fallback se a imagem não estiver disponível
       this.drawEnemyBeastFallback(x, y, size);
-    });
+    }
     
     // Name below
     drawText(this.ctx, this.battle.enemy.beast.name, x + size / 2, y + size + 20, {

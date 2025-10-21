@@ -253,17 +253,16 @@ export class GameUI {
   }
 
   private drawBeastSprite(x: number, y: number, width: number, height: number, beast: Beast) {
-    // Tentar carregar a imagem da criatura
-    getBeastSprite(beast.name).then(img => {
-      if (img && img.complete) {
-        // Desenhar a imagem real da criatura
-        this.ctx.drawImage(img, x, y, width, height);
-      } else {
-        this.drawBeastFallback(x, y, width, height, beast);
-      }
-    }).catch(() => {
+    // Tentar obter a imagem da criatura
+    const img = getBeastSprite(beast.name);
+    
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Desenhar a imagem real da criatura
+      this.ctx.drawImage(img, x, y, width, height);
+    } else {
+      // Usar fallback se a imagem não estiver disponível
       this.drawBeastFallback(x, y, width, height, beast);
-    });
+    }
   }
 
   private drawBeastFallback(x: number, y: number, width: number, height: number, beast: Beast) {
