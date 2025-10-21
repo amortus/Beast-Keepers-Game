@@ -26,6 +26,7 @@ import { trackAction, trackSpending, unlockQuests, getCompletedQuests } from './
 import { startExploration, advanceExploration, defeatEnemy, collectMaterials, endExploration } from './systems/exploration';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item } from './types';
+import { preloadBeastImages } from './utils/beast-images';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -144,6 +145,9 @@ async function init() {
 
     // Start render loop early so modal can be drawn
     startRenderLoop();
+
+    // Preload beast images in background
+    preloadBeastImages();
 
     // Load or create game
     gameState = await loadGame();

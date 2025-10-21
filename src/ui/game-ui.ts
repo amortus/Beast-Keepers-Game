@@ -7,6 +7,7 @@ import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { getLifePhase } from '../systems/beast';
 import { getBeastLineData } from '../data/beasts';
+import { getBeastSprite } from '../utils/beast-images';
 
 export class GameUI {
   private canvas: HTMLCanvasElement;
@@ -252,6 +253,20 @@ export class GameUI {
   }
 
   private drawBeastSprite(x: number, y: number, width: number, height: number, beast: Beast) {
+    // Tentar carregar a imagem da criatura
+    getBeastSprite(beast.name).then(img => {
+      if (img && img.complete) {
+        // Desenhar a imagem real da criatura
+        this.ctx.drawImage(img, x, y, width, height);
+      } else {
+        this.drawBeastFallback(x, y, width, height, beast);
+      }
+    }).catch(() => {
+      this.drawBeastFallback(x, y, width, height, beast);
+    });
+  }
+
+  private drawBeastFallback(x: number, y: number, width: number, height: number, beast: Beast) {
     // Placeholder: colored rectangle representing the beast
     const lineColors: Record<string, string> = {
       olgrim: '#9f7aea',

@@ -7,6 +7,7 @@ import type { BattleContext, CombatAction } from '../types';
 import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { canUseTechnique } from '../systems/combat';
+import { getBeastBattlePose } from '../utils/beast-images';
 
 export class BattleUI {
   private canvas: HTMLCanvasElement;
@@ -115,15 +116,17 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Beast sprite (placeholder)
-    const color = this.getLineColor(this.battle.player.beast.line);
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(x, y, size, size);
-    
-    // Border
-    this.ctx.strokeStyle = COLORS.ui.text;
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, size, size);
+    // Tentar carregar a imagem de batalha da criatura
+    getBeastBattlePose(this.battle.player.beast.name).then(img => {
+      if (img && img.complete) {
+        // Desenhar a imagem real da criatura
+        this.ctx.drawImage(img, x, y, size, size);
+      } else {
+        this.drawPlayerBeastFallback(x, y, size);
+      }
+    }).catch(() => {
+      this.drawPlayerBeastFallback(x, y, size);
+    });
     
     // Name below
     drawText(this.ctx, this.battle.player.beast.name, x + size / 2, y + size + 20, {
@@ -140,20 +143,34 @@ export class BattleUI {
     this.ctx.globalAlpha = 1;
   }
 
+  private drawPlayerBeastFallback(x: number, y: number, size: number) {
+    // Beast sprite (placeholder)
+    const color = this.getLineColor(this.battle.player.beast.line);
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, size, size);
+    
+    // Border
+    this.ctx.strokeStyle = COLORS.ui.text;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, size, size);
+  }
+
   private drawEnemyBeast() {
     const x = this.canvas.width - 230;
     const y = 220;
     const size = 80;
     
-    // Beast sprite (placeholder)
-    const color = this.getLineColor(this.battle.enemy.beast.line);
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(x, y, size, size);
-    
-    // Border
-    this.ctx.strokeStyle = COLORS.ui.error;
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(x, y, size, size);
+    // Tentar carregar a imagem de batalha da criatura
+    getBeastBattlePose(this.battle.enemy.beast.name).then(img => {
+      if (img && img.complete) {
+        // Desenhar a imagem real da criatura
+        this.ctx.drawImage(img, x, y, size, size);
+      } else {
+        this.drawEnemyBeastFallback(x, y, size);
+      }
+    }).catch(() => {
+      this.drawEnemyBeastFallback(x, y, size);
+    });
     
     // Name below
     drawText(this.ctx, this.battle.enemy.beast.name, x + size / 2, y + size + 20, {
@@ -168,6 +185,18 @@ export class BattleUI {
     this.ctx.fillStyle = '#f00';
     this.ctx.fillRect(x - pulse, y - pulse, size + pulse * 2, size + pulse * 2);
     this.ctx.globalAlpha = 1;
+  }
+
+  private drawEnemyBeastFallback(x: number, y: number, size: number) {
+    // Beast sprite (placeholder)
+    const color = this.getLineColor(this.battle.enemy.beast.line);
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(x, y, size, size);
+    
+    // Border
+    this.ctx.strokeStyle = COLORS.ui.error;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(x, y, size, size);
   }
 
   private drawPlayerHUD() {
