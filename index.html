@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="description" content="Beast Keepers - Jogo 2D top-down em TypeScript puro">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/icon-192.png">
+  <title>Beast Keepers</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a1a2e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    }
+
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      /* Previne scroll em mobile */
+      touch-action: none;
+      /* Pixelated rendering para estética retro */
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    #error {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff4444;
+      font-size: 1rem;
+      text-align: center;
+      padding: 2rem;
+      background: rgba(0,0,0,0.8);
+      border-radius: 8px;
+      max-width: 80%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="800" height="700"></canvas>
+  <div id="loading">🎮 Carregando Beast Keepers...</div>
+  <div id="error"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+  
+  <noscript>
+    <div style="color: white; text-align: center; padding: 50px;">
+      Este jogo requer JavaScript habilitado para funcionar.
+    </div>
+  </noscript>
+</body>
+</html>
+
