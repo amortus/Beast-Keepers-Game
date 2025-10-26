@@ -1,32 +1,21 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "builds": [
+  "buildCommand": "cd client && npm install && npm run build && cd ../server && npm install && npm run build",
+  "outputDirectory": "client/dist",
+  "framework": null,
+  "rewrites": [
     {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "client/dist"
-      }
-    },
-    {
-      "src": "server/src/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["server/src/**"]
-      }
+      "source": "/api/:path*",
+      "destination": "/api/serverless"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server/src/index.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "client/dist/$1"
+  "functions": {
+    "api/serverless.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ],
+  },
   "env": {
     "NODE_ENV": "production"
   }
