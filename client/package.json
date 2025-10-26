@@ -1,0 +1,29 @@
+{
+  "name": "beast-keepers",
+  "version": "1.0.0",
+  "description": "Beast Keepers - 2D top-down game using vanilla TypeScript and Web APIs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\" \"public/**/*.js\"",
+    "generate-assets": "node scripts/generate-assets.mjs",
+    "generate-assets-simple": "node scripts/generate-assets-simple.mjs",
+    "create-placeholders": "node scripts/create-placeholder-assets.mjs"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
+
