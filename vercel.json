@@ -1,23 +1,23 @@
 {
   "version": 2,
-  "buildCommand": "cd client && npm install && npm run build && cd ../server && npm install && npm run build",
+  "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
   "framework": null,
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/serverless"
+      "src": "api/serverless.ts",
+      "use": "@vercel/node"
     }
   ],
-  "functions": {
-    "api/serverless.js": {
-      "runtime": "nodejs18.x",
-      "memory": 1024,
-      "maxDuration": 10
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/serverless.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/client/dist/$1"
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
 
