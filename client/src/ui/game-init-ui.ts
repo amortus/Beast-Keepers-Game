@@ -25,6 +25,13 @@ export class GameInitUI {
     this.setupEventListeners();
   }
 
+  public reset() {
+    this.playerName = '';
+    this.activeField = false;
+    this.errorMessage = '';
+    this.isLoading = false;
+  }
+
   private setupEventListeners() {
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
     window.addEventListener('keydown', (e) => this.handleKeyPress(e));

@@ -180,6 +180,10 @@ async function init() {
       isAuthenticated = true;
       inAuth = false;
       needsGameInit = true;
+      // Reset game init UI to clear any previous data
+      if (gameInitUI) {
+        gameInitUI.reset();
+      }
     };
 
     gameInitUI.onInitComplete = async (gameSave, initialBeast) => {

@@ -93,7 +93,11 @@ export function generateRandomBeast(playerName: string) {
   const beastLines = ['olgrim', 'terravox', 'feralis', 'brontis', 'zephyra', 'ignar', 'mirella', 'umbrix', 'sylphid', 'raukor'];
   
   // Pick random line
-  const randomLine = beastLines[Math.floor(Math.random() * beastLines.length)];
+  const randomIndex = Math.floor(Math.random() * beastLines.length);
+  const randomLine = beastLines[randomIndex];
+  
+  console.log(`[BeastGen] Random index: ${randomIndex}, Selected line: ${randomLine}`);
+  
   const lineData = getBeastLineData(randomLine);
   
   // Elemental affinities
@@ -142,7 +146,7 @@ export function generateRandomBeast(playerName: string) {
   // Generate unique name
   const beastName = `${lineData.name} de ${playerName}`;
   
-  return {
+  const beast = {
     id: `beast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     name: beastName,
     line: randomLine,
@@ -166,5 +170,11 @@ export function generateRandomBeast(playerName: string) {
     experience: 0,
     activeBuffs: []
   };
+  
+  console.log(`[BeastGen] Generated: ${beast.name} (${beast.line}, ${beast.blood}, ${beast.affinity})`);
+  console.log(`[BeastGen] Stats: might=${beast.attributes.might}, vitality=${beast.attributes.vitality}, loyalty=${beast.secondaryStats.loyalty}`);
+  console.log(`[BeastGen] Traits: ${beast.traits.join(', ')}`);
+  
+  return beast;
 }
 
