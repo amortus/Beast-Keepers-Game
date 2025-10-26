@@ -7,10 +7,18 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 
-// Import routes (these will be compiled from TypeScript)
-const authRoutes = require('../server/dist/routes/auth').default;
-const gameRoutes = require('../server/dist/routes/game').default;
-const passport = require('../server/dist/config/passport').default;
+// Register ts-node to handle TypeScript imports
+require('ts-node').register({
+  transpileOnly: true,
+  compilerOptions: {
+    module: 'commonjs'
+  }
+});
+
+// Import routes directly from TypeScript source
+const authRoutes = require('../server/src/routes/auth').default;
+const gameRoutes = require('../server/src/routes/game').default;
+const passport = require('../server/src/config/passport').default;
 
 const app = express();
 
