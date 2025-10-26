@@ -65,45 +65,45 @@ export class AuthUI {
   }
 
   private checkFieldClick(x: number, y: number) {
-    const panelWidth = 600;
-    const panelHeight = 600;
+    const panelWidth = this.currentScreen === 'register' ? 750 : 700;
+    const panelHeight = this.currentScreen === 'register' ? 750 : 600;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
-    const fieldWidth = 500;
-    const fieldHeight = 50; // Increased from 40
+    const fieldWidth = 600;
+    const fieldHeight = 60;
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
     
-    // Include label area in clickable zone (add 30px above for label)
-    const clickableHeight = fieldHeight + 30;
+    // Large clickable zone (include label area - 40px above)
+    const clickableHeight = fieldHeight + 40;
 
     if (this.currentScreen === 'login') {
-      // Email field (include label area)
-      if (isMouseOver(x, y, fieldX, panelY + 120, fieldWidth, clickableHeight)) {
+      // Email field (large clickable area)
+      if (isMouseOver(x, y, fieldX, panelY + 150, fieldWidth, clickableHeight)) {
         this.activeField = 'email';
       }
-      // Password field (include label area)
-      else if (isMouseOver(x, y, fieldX, panelY + 190, fieldWidth, clickableHeight)) {
+      // Password field (large clickable area)
+      else if (isMouseOver(x, y, fieldX, panelY + 260, fieldWidth, clickableHeight)) {
         this.activeField = 'password';
       }
       else {
         this.activeField = null;
       }
     } else if (this.currentScreen === 'register') {
-      // Email field (include label area)
-      if (isMouseOver(x, y, fieldX, panelY + 120, fieldWidth, clickableHeight)) {
+      // Email field
+      if (isMouseOver(x, y, fieldX, panelY + 150, fieldWidth, clickableHeight)) {
         this.activeField = 'email';
       }
-      // Display name field (include label area)
-      else if (isMouseOver(x, y, fieldX, panelY + 190, fieldWidth, clickableHeight)) {
+      // Display name field
+      else if (isMouseOver(x, y, fieldX, panelY + 260, fieldWidth, clickableHeight)) {
         this.activeField = 'displayName';
       }
-      // Password field (include label area)
-      else if (isMouseOver(x, y, fieldX, panelY + 260, fieldWidth, clickableHeight)) {
+      // Password field
+      else if (isMouseOver(x, y, fieldX, panelY + 370, fieldWidth, clickableHeight)) {
         this.activeField = 'password';
       }
-      // Confirm password field (include label area)
-      else if (isMouseOver(x, y, fieldX, panelY + 330, fieldWidth, clickableHeight)) {
+      // Confirm password field
+      else if (isMouseOver(x, y, fieldX, panelY + 480, fieldWidth, clickableHeight)) {
         this.activeField = 'confirmPassword';
       }
       else {
@@ -263,144 +263,179 @@ export class AuthUI {
   }
 
   private drawWelcomeScreen() {
-    const panelWidth = 600;
-    const panelHeight = 500;
+    const panelWidth = 700;
+    const panelHeight = 650;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
-    // Panel
+    // Panel with shadow
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.shadowBlur = 30;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: '#1a1a2e',
-      borderColor: COLORS.primary.purple
+      borderColor: COLORS.primary.gold
     });
+    this.ctx.shadowBlur = 0;
 
-    // Title
-    drawText(this.ctx, '🐉 BEAST KEEPERS', panelX + panelWidth / 2, panelY + 80, {
-      font: 'bold 36px monospace',
+    // Title (larger)
+    drawText(this.ctx, '🐉 BEAST KEEPERS', panelX + panelWidth / 2, panelY + 90, {
+      font: 'bold 48px monospace',
       color: COLORS.primary.gold,
       align: 'center'
     });
 
     // Subtitle
-    drawText(this.ctx, 'Bem-vindo ao mundo de Aurath', panelX + panelWidth / 2, panelY + 130, {
-      font: '18px monospace',
+    drawText(this.ctx, 'Bem-vindo ao mundo de Aurath', panelX + panelWidth / 2, panelY + 150, {
+      font: 'bold 22px monospace',
       color: COLORS.ui.text,
       align: 'center'
     });
 
-    // Description
-    const desc = 'Crie, treine e batalhe com criaturas místicas.';
-    drawText(this.ctx, desc, panelX + panelWidth / 2, panelY + 160, {
-      font: '14px monospace',
-      color: COLORS.ui.textDim,
-      align: 'center'
+    // Description (multiple lines)
+    const descriptions = [
+      'Crie, treine e batalhe com criaturas místicas.',
+      'Explore zonas perigosas, participe de torneios,',
+      'e prove seu valor como Guardião!'
+    ];
+    descriptions.forEach((desc, i) => {
+      drawText(this.ctx, desc, panelX + panelWidth / 2, panelY + 200 + i * 25, {
+        font: '16px monospace',
+        color: COLORS.ui.textDim,
+        align: 'center'
+      });
     });
 
-    // Login button
-    const loginBtnY = panelY + 240;
-    drawButton(this.ctx, panelX + 150, loginBtnY, 300, 50, 'Entrar', {
+    // Separator line
+    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(panelX + 150, panelY + 300);
+    this.ctx.lineTo(panelX + panelWidth - 150, panelY + 300);
+    this.ctx.stroke();
+
+    // Login button (larger)
+    const loginBtnY = panelY + 340;
+    drawButton(this.ctx, panelX + 125, loginBtnY, 450, 60, '🔐 Entrar', {
       bgColor: COLORS.primary.purple,
       hoverColor: COLORS.primary.purpleDark
     });
     this.buttons.set('login', {
-      x: panelX + 150,
+      x: panelX + 125,
       y: loginBtnY,
-      width: 300,
-      height: 50,
+      width: 450,
+      height: 60,
       action: () => this.currentScreen = 'login'
     });
 
-    // Register button
-    const registerBtnY = panelY + 310;
-    drawButton(this.ctx, panelX + 150, registerBtnY, 300, 50, 'Criar Conta', {
+    // Register button (larger)
+    const registerBtnY = panelY + 420;
+    drawButton(this.ctx, panelX + 125, registerBtnY, 450, 60, '✨ Criar Conta', {
       bgColor: COLORS.primary.green,
       hoverColor: '#2d8659'
     });
     this.buttons.set('register', {
-      x: panelX + 150,
+      x: panelX + 125,
       y: registerBtnY,
-      width: 300,
-      height: 50,
+      width: 450,
+      height: 60,
       action: () => this.currentScreen = 'register'
     });
 
-    // Google button
-    const googleBtnY = panelY + 400;
-    drawButton(this.ctx, panelX + 150, googleBtnY, 300, 50, '🔐 Entrar com Google', {
+    // Google button (larger, with note)
+    const googleBtnY = panelY + 520;
+    drawButton(this.ctx, panelX + 125, googleBtnY, 450, 60, '🔗 Entrar com Google', {
       bgColor: '#4285f4',
       hoverColor: '#357ae8'
     });
     this.buttons.set('google', {
-      x: panelX + 150,
+      x: panelX + 125,
       y: googleBtnY,
-      width: 300,
-      height: 50,
+      width: 450,
+      height: 60,
       action: () => authApi.googleLogin()
+    });
+
+    // Note
+    drawText(this.ctx, '(Google OAuth não configurado)', panelX + panelWidth / 2, panelY + 595, {
+      font: '12px monospace',
+      color: COLORS.ui.textDim,
+      align: 'center'
     });
   }
 
   private drawLoginScreen() {
-    const panelWidth = 600;
-    const panelHeight = 500;
+    const panelWidth = 700;
+    const panelHeight = 600;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
-    // Panel
+    // Panel with shadow
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    this.ctx.shadowBlur = 20;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: '#1a1a2e',
       borderColor: COLORS.primary.purple
     });
+    this.ctx.shadowBlur = 0;
 
-    // Title
-    drawText(this.ctx, 'LOGIN', panelX + panelWidth / 2, panelY + 60, {
-      font: 'bold 32px monospace',
+    // Title with icon
+    drawText(this.ctx, '🔐 LOGIN', panelX + panelWidth / 2, panelY + 70, {
+      font: 'bold 40px monospace',
       color: COLORS.primary.purple,
       align: 'center'
     });
 
+    // Subtitle
+    drawText(this.ctx, 'Entre com sua conta', panelX + panelWidth / 2, panelY + 110, {
+      font: '16px monospace',
+      color: COLORS.ui.textDim,
+      align: 'center'
+    });
+
     // Email field
-    this.drawInputField(panelX, panelY + 120, panelWidth, 'Email:', this.email, 'email');
+    this.drawInputField(panelX, panelY + 170, panelWidth, 'Email:', this.email, 'email');
 
     // Password field
-    this.drawInputField(panelX, panelY + 190, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
+    this.drawInputField(panelX, panelY + 280, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
 
     // Error message
     if (this.errorMessage) {
-      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 280, {
-        font: '14px monospace',
+      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 390, {
+        font: 'bold 16px monospace',
         color: COLORS.ui.error,
         align: 'center'
       });
     }
 
-    // Login button
-    const loginBtnY = panelY + 320;
-    const btnText = this.isLoading ? 'Entrando...' : 'Entrar';
-    drawButton(this.ctx, panelX + 100, loginBtnY, 400, 50, btnText, {
+    // Login button (larger)
+    const loginBtnY = panelY + 430;
+    const btnText = this.isLoading ? '⏳ Entrando...' : '▶ Entrar';
+    drawButton(this.ctx, panelX + 100, loginBtnY, 500, 60, btnText, {
       bgColor: COLORS.primary.purple,
+      hoverColor: COLORS.primary.purpleDark,
       isDisabled: this.isLoading
     });
     if (!this.isLoading) {
       this.buttons.set('submit', {
         x: panelX + 100,
         y: loginBtnY,
-        width: 400,
-        height: 50,
+        width: 500,
+        height: 60,
         action: () => this.handleLogin()
       });
     }
 
     // Back button
-    const backBtnY = panelY + 390;
-    drawButton(this.ctx, panelX + 200, backBtnY, 200, 40, 'Voltar', {
+    const backBtnY = panelY + 510;
+    drawButton(this.ctx, panelX + 200, backBtnY, 300, 45, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
     });
     this.buttons.set('back', {
       x: panelX + 200,
       y: backBtnY,
-      width: 200,
-      height: 40,
+      width: 300,
+      height: 45,
       action: () => {
         this.currentScreen = 'welcome';
         this.clearForm();
@@ -409,73 +444,84 @@ export class AuthUI {
   }
 
   private drawRegisterScreen() {
-    const panelWidth = 600;
-    const panelHeight = 600;
+    const panelWidth = 750;
+    const panelHeight = 750;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
-    // Panel
+    // Panel with shadow
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    this.ctx.shadowBlur = 20;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: '#1a1a2e',
       borderColor: COLORS.primary.green
     });
+    this.ctx.shadowBlur = 0;
 
-    // Title
-    drawText(this.ctx, 'CRIAR CONTA', panelX + panelWidth / 2, panelY + 60, {
-      font: 'bold 32px monospace',
+    // Title with icon
+    drawText(this.ctx, '✨ CRIAR CONTA', panelX + panelWidth / 2, panelY + 70, {
+      font: 'bold 40px monospace',
       color: COLORS.primary.green,
       align: 'center'
     });
 
-    // Email field
-    this.drawInputField(panelX, panelY + 120, panelWidth, 'Email:', this.email, 'email');
+    // Subtitle
+    drawText(this.ctx, 'Registre-se para começar sua jornada', panelX + panelWidth / 2, panelY + 110, {
+      font: '16px monospace',
+      color: COLORS.ui.textDim,
+      align: 'center'
+    });
+
+    // Email field (with more spacing)
+    this.drawInputField(panelX, panelY + 170, panelWidth, 'Email:', this.email, 'email');
 
     // Display name field
-    this.drawInputField(panelX, panelY + 190, panelWidth, 'Nome do Guardião:', this.displayName, 'displayName');
+    this.drawInputField(panelX, panelY + 280, panelWidth, 'Nome do Guardião:', this.displayName, 'displayName');
 
     // Password field
-    this.drawInputField(panelX, panelY + 260, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
+    this.drawInputField(panelX, panelY + 390, panelWidth, 'Senha (mín. 6 caracteres):', '*'.repeat(this.password.length), 'password');
 
     // Confirm password field
-    this.drawInputField(panelX, panelY + 330, panelWidth, 'Confirmar Senha:', '*'.repeat(this.confirmPassword.length), 'confirmPassword');
+    this.drawInputField(panelX, panelY + 500, panelWidth, 'Confirmar Senha:', '*'.repeat(this.confirmPassword.length), 'confirmPassword');
 
     // Error message
     if (this.errorMessage) {
-      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 400, {
-        font: '14px monospace',
+      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 610, {
+        font: 'bold 16px monospace',
         color: COLORS.ui.error,
         align: 'center'
       });
     }
 
-    // Register button
-    const registerBtnY = panelY + 440;
-    const btnText = this.isLoading ? 'Criando conta...' : 'Criar Conta';
-    drawButton(this.ctx, panelX + 100, registerBtnY, 400, 50, btnText, {
+    // Register button (larger)
+    const registerBtnY = panelY + 640;
+    const btnText = this.isLoading ? '⏳ Criando conta...' : '✓ Criar Conta';
+    drawButton(this.ctx, panelX + 125, registerBtnY, 500, 60, btnText, {
       bgColor: COLORS.primary.green,
+      hoverColor: '#2d8659',
       isDisabled: this.isLoading
     });
     if (!this.isLoading) {
       this.buttons.set('submit', {
-        x: panelX + 100,
+        x: panelX + 125,
         y: registerBtnY,
-        width: 400,
-        height: 50,
+        width: 500,
+        height: 60,
         action: () => this.handleRegister()
       });
     }
 
     // Back button
-    const backBtnY = panelY + 510;
-    drawButton(this.ctx, panelX + 200, backBtnY, 200, 40, 'Voltar', {
+    const backBtnY = panelY + 560;
+    drawButton(this.ctx, panelX + 225, backBtnY, 300, 45, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
     });
     this.buttons.set('back', {
-      x: panelX + 200,
+      x: panelX + 225,
       y: backBtnY,
-      width: 200,
-      height: 40,
+      width: 300,
+      height: 45,
       action: () => {
         this.currentScreen = 'welcome';
         this.clearForm();
@@ -491,52 +537,71 @@ export class AuthUI {
     value: string,
     fieldName: string
   ) {
-    const fieldWidth = 500;
-    const fieldHeight = 50; // Increased from 40
+    const fieldWidth = 600;
+    const fieldHeight = 60;
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
-    // Label
-    drawText(this.ctx, label, fieldX, fieldY - 15, {
-      font: 'bold 16px monospace',
+    // Label (bigger and bolder)
+    drawText(this.ctx, label, fieldX, fieldY - 20, {
+      font: 'bold 18px monospace',
       color: COLORS.ui.text
     });
 
-    // Field background
     const isActive = this.activeField === fieldName;
-    this.ctx.fillStyle = isActive ? '#2a2a3e' : '#1a1a2e';
-    this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
-
-    // Field border (thicker and more visible)
-    this.ctx.strokeStyle = isActive ? COLORS.primary.purple : COLORS.ui.textDim;
-    this.ctx.lineWidth = isActive ? 3 : 2;
-    this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
-
-    // Hover effect (visual feedback)
+    const borderColor = this.currentScreen === 'login' ? COLORS.primary.purple : COLORS.primary.green;
+    
+    // Field shadow when active
     if (isActive) {
-      this.ctx.strokeStyle = COLORS.primary.purple;
-      this.ctx.lineWidth = 3;
-      this.ctx.strokeRect(fieldX - 2, fieldY - 2, fieldWidth + 4, fieldHeight + 4);
+      this.ctx.shadowColor = this.currentScreen === 'login' ? 'rgba(159, 122, 234, 0.4)' : 'rgba(72, 187, 120, 0.4)';
+      this.ctx.shadowBlur = 15;
     }
 
-    // Field value
-    drawText(this.ctx, value || 'Clique aqui para digitar...', fieldX + 15, fieldY + 32, {
-      font: '18px monospace',
+    // Field background (gradient)
+    const gradient = this.ctx.createLinearGradient(fieldX, fieldY, fieldX, fieldY + fieldHeight);
+    gradient.addColorStop(0, isActive ? '#2a2a3e' : '#1a1a2e');
+    gradient.addColorStop(1, isActive ? '#1f1f2e' : '#0f0f1e');
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
+
+    // Field border (animated when active)
+    this.ctx.strokeStyle = isActive ? borderColor : COLORS.ui.textDim;
+    this.ctx.lineWidth = isActive ? 4 : 2;
+    this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
+
+    this.ctx.shadowBlur = 0;
+
+    // Inner glow when active
+    if (isActive) {
+      this.ctx.strokeStyle = borderColor;
+      this.ctx.lineWidth = 1;
+      this.ctx.globalAlpha = 0.3;
+      this.ctx.strokeRect(fieldX + 3, fieldY + 3, fieldWidth - 6, fieldHeight - 6);
+      this.ctx.globalAlpha = 1;
+    }
+
+    // Field value (larger text)
+    const displayText = value || 'Clique aqui para digitar...';
+    drawText(this.ctx, displayText, fieldX + 20, fieldY + 38, {
+      font: value ? 'bold 20px monospace' : '18px monospace',
       color: value ? COLORS.ui.text : COLORS.ui.textDim
     });
 
-    // Cursor (blinking, larger)
+    // Cursor (blinking, animated)
     if (isActive && Math.floor(Date.now() / 500) % 2 === 0) {
-      this.ctx.font = '18px monospace';
+      this.ctx.font = 'bold 20px monospace';
       const textWidth = this.ctx.measureText(value).width;
-      this.ctx.fillStyle = COLORS.primary.purple;
-      this.ctx.fillRect(fieldX + 15 + textWidth, fieldY + 15, 3, 25);
+      this.ctx.fillStyle = borderColor;
+      this.ctx.fillRect(fieldX + 20 + textWidth, fieldY + 18, 3, 30);
     }
 
     // Tab hint
     if (isActive) {
-      drawText(this.ctx, '(Tab para próximo campo)', fieldX + fieldWidth - 200, fieldY - 15, {
-        font: '12px monospace',
-        color: COLORS.ui.textDim
+      const isLastField = (this.currentScreen === 'login' && fieldName === 'password') ||
+                          (this.currentScreen === 'register' && fieldName === 'confirmPassword');
+      const hint = isLastField ? '(Enter para enviar)' : '(Tab/Enter p/ próximo)';
+      drawText(this.ctx, hint, fieldX + fieldWidth - 200, fieldY - 20, {
+        font: '13px monospace',
+        color: borderColor
       });
     }
   }
