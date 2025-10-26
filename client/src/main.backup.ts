@@ -1,6 +1,5 @@
 /**
  * Beast Keepers - Main Bootstrap
- * Online version with authentication
  */
 
 import { GameUI } from './ui/game-ui';
@@ -14,8 +13,6 @@ import { QuestsUI } from './ui/quests-ui';
 import { AchievementsUI } from './ui/achievements-ui';
 import { ModalUI } from './ui/modal-ui';
 import { ExplorationUI } from './ui/exploration-ui';
-import { AuthUI } from './ui/auth-ui';
-import { GameInitUI } from './ui/game-init-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive } from './systems/beast';
@@ -30,8 +27,6 @@ import { startExploration, advanceExploration, defeatEnemy, collectMaterials, en
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item } from './types';
 import { preloadBeastImages } from './utils/beast-images';
-import { authApi } from './api/authApi';
-import { gameApi } from './api/gameApi';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -46,13 +41,6 @@ const ctx = canvas.getContext('2d');
 if (!ctx) {
   throw new Error('Failed to get 2D context');
 }
-
-// Auth state
-let isAuthenticated = false;
-let authUI: AuthUI | null = null;
-let gameInitUI: GameInitUI | null = null;
-let inAuth = true; // Start with auth screen
-let needsGameInit = false; // After registration, needs game init
 
 // Game state
 let gameState: GameState | null = null;
@@ -86,16 +74,9 @@ const AUTO_SAVE_INTERVAL = 10000; // 10 segundos
 
 function startRenderLoop() {
   function render(time: number) {
-    // Clear canvas
-    ctx.fillStyle = '#0f0f1e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Render based on state
-    if (inAuth && authUI) {
-      authUI.draw();
-    } else if (needsGameInit && gameInitUI) {
-      gameInitUI.draw();
-    } else if (inBattle && battleUI) {
+    // Render sem logs excessivos para evitar loops
+    if (inBattle && battleUI) {
+      console.log('[Render] Drawing BattleUI');
       battleUI.draw();
     } else if (inTemple && templeUI && gameState) {
       templeUI.draw(gameState);
@@ -110,8 +91,10 @@ function startRenderLoop() {
     } else if (inAchievements && achievementsUI && gameState) {
       achievementsUI.draw(gameState);
     } else if (inExploration && explorationUI) {
+      console.log('[Render] Drawing ExplorationUI');
       explorationUI.draw(explorationState || undefined);
     } else if (gameUI && gameState) {
+      console.log('[Render] Drawing GameUI');
       gameUI.draw();
     }
 
@@ -125,8 +108,8 @@ function startRenderLoop() {
       modalUI.draw();
     }
 
-    // Auto-save periodically (only if authenticated and has game)
-    if (isAuthenticated && gameState && time - lastSaveTime > AUTO_SAVE_INTERVAL) {
+    // Auto-save periodically
+    if (gameState && time - lastSaveTime > AUTO_SAVE_INTERVAL) {
       saveGame(gameState).catch(err => {
         console.error('[Save] Auto-save failed:', err);
       });
@@ -160,111 +143,13 @@ async function init() {
     // Create Modal UI first
     modalUI = new ModalUI(canvas);
 
-    // Create Auth UI
-    authUI = new AuthUI(canvas);
-    gameInitUI = new GameInitUI(canvas);
-
-    // Check for OAuth callback
-    authUI.checkOAuthCallback();
-
-    // Setup auth callbacks
-    authUI.onLoginSuccess = async (token, user) => {
-      console.log('[Auth] Login success:', user.displayName);
-      isAuthenticated = true;
-      inAuth = false;
-      await loadGameFromServer();
-    };
-
-    authUI.onRegisterSuccess = async (token, user) => {
-      console.log('[Auth] Register success:', user.displayName);
-      isAuthenticated = true;
-      inAuth = false;
-      needsGameInit = true;
-    };
-
-    gameInitUI.onInitComplete = async (gameSave, initialBeast) => {
-      console.log('[GameInit] Game initialized:', gameSave.playerName, 'with', initialBeast.line);
-      needsGameInit = false;
-      await loadGameFromServer();
-    };
-
-    // Start render loop early
+    // Start render loop early so modal can be drawn
     startRenderLoop();
 
     // Preload beast images in background
     preloadBeastImages();
 
-    // Check if already authenticated
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      try {
-        const meResponse = await authApi.getMe();
-        if (meResponse.success) {
-          console.log('[Auth] Already logged in');
-          isAuthenticated = true;
-          inAuth = false;
-          await loadGameFromServer();
-        } else {
-          // Invalid token
-          localStorage.removeItem('auth_token');
-        }
-      } catch (error) {
-        // Invalid token
-        localStorage.removeItem('auth_token');
-      }
-    }
-
-    // Hide loading, show game
-    loadingEl.style.display = 'none';
-    canvas.style.display = 'block';
-
-  } catch (err) {
-    console.error('[Init] Failed to initialize:', err);
-    errorEl.textContent = 'Erro ao carregar o jogo. Recarregue a página.';
-    errorEl.style.display = 'block';
-    loadingEl.style.display = 'none';
-  }
-}
-
-async function loadGameFromServer() {
-  try {
-    loadingEl.textContent = 'Carregando seu jogo...';
-    loadingEl.style.display = 'block';
-
-    const response = await gameApi.getGameSave();
-    
-    if (response.success && response.data) {
-      // Convert server data to GameState
-      // TODO: This is a simplified conversion - needs full implementation
-      gameState = createNewGame(response.data.gameSave.playerName);
-      // Update with server data
-      gameState.week = response.data.gameSave.week;
-      gameState.coronas = response.data.gameSave.coronas;
-      gameState.victories = response.data.gameSave.victories;
-      gameState.currentTitle = response.data.gameSave.currentTitle;
-      
-      console.log('[Game] Loaded from server:', gameState.playerName);
-      
-      await setupGame();
-    } else {
-      // No game save found - should trigger game init
-      needsGameInit = true;
-    }
-  } catch (error: any) {
-    console.error('[Game] Failed to load from server:', error);
-    if (error.message.includes('No game save found')) {
-      needsGameInit = true;
-    } else {
-      errorEl.textContent = 'Erro ao carregar jogo do servidor';
-      errorEl.style.display = 'block';
-    }
-  } finally {
-    loadingEl.style.display = 'none';
-  }
-}
-
-async function setupGame() {
-  // Game already exists - original setup code
+    // Load or create game
     gameState = await loadGame();
     
     if (!gameState) {
