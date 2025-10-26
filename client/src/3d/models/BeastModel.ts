@@ -424,10 +424,213 @@ export class BeastModel {
     this.group.add(mesh);
   }
 
-  // Placeholder methods para outras bestas (implementar depois)
-  private createMirella() { this.createDefaultBeast(); }
-  private createUmbrix() { this.createDefaultBeast(); }
-  private createSylphid() { this.createDefaultBeast(); }
+  // Mirella - Criatura anfíbia
+  private createMirella() {
+    // Body (rounded, amphibian-like)
+    const bodyGeometry = new THREE.SphereGeometry(0.7, 8, 6);
+    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x4299e1,
+      flatShading: true,
+      shininess: 30
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.7;
+    body.scale.set(1, 0.8, 1.2);
+    this.group.add(body);
+
+    // Head (small sphere)
+    const headGeometry = new THREE.SphereGeometry(0.4, 6, 5);
+    const head = new THREE.Mesh(headGeometry, bodyMaterial);
+    head.position.set(0, 1.1, 0.7);
+    this.group.add(head);
+
+    // Eyes (large, frog-like)
+    const eyeGeometry = new THREE.SphereGeometry(0.15, 6, 4);
+    const eyeMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xffd700,
+      flatShading: true 
+    });
+    
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.2, 1.3, 0.9);
+    this.group.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.2, 1.3, 0.9);
+    this.group.add(rightEye);
+
+    // Legs (4, short and sturdy)
+    const legGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.5, 5);
+    const positions = [
+      [-0.4, 0.25, 0.3],
+      [0.4, 0.25, 0.3],
+      [-0.4, 0.25, -0.3],
+      [0.4, 0.25, -0.3]
+    ];
+
+    positions.forEach(pos => {
+      const leg = new THREE.Mesh(legGeometry, bodyMaterial);
+      leg.position.set(pos[0], pos[1], pos[2]);
+      this.group.add(leg);
+    });
+
+    // Fin on back
+    const finGeometry = new THREE.ConeGeometry(0.4, 0.8, 3);
+    const finMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x2b6cb0,
+      flatShading: true,
+      transparent: true,
+      opacity: 0.8
+    });
+    const fin = new THREE.Mesh(finGeometry, finMaterial);
+    fin.position.set(0, 1.2, 0);
+    fin.rotation.x = Math.PI / 2;
+    this.group.add(fin);
+  }
+
+  // Umbrix - Besta das sombras
+  private createUmbrix() {
+    // Body (elongated, serpentine)
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.6, 1.5);
+    const bodyMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x2d3748,
+      flatShading: true,
+      emissive: 0x1a202c,
+      emissiveIntensity: 0.5
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.6;
+    this.group.add(body);
+
+    // Head (angular, menacing)
+    const headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.6);
+    const head = new THREE.Mesh(headGeometry, bodyMaterial);
+    head.position.set(0, 0.8, 1);
+    this.group.add(head);
+
+    // Eyes (glowing purple)
+    const eyeGeometry = new THREE.SphereGeometry(0.1, 4, 3);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x9f7aea
+    });
+    
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.15, 0.9, 1.3);
+    this.group.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.15, 0.9, 1.3);
+    this.group.add(rightEye);
+
+    // Shadow tendrils (3)
+    for (let i = 0; i < 3; i++) {
+      const angle = (Math.PI * 2 * i) / 3;
+      const tendrilGeometry = new THREE.CylinderGeometry(0.08, 0.04, 1, 4);
+      const tendrilMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x1a202c,
+        flatShading: true,
+        transparent: true,
+        opacity: 0.7
+      });
+      const tendril = new THREE.Mesh(tendrilGeometry, tendrilMaterial);
+      tendril.position.set(
+        Math.cos(angle) * 0.4,
+        0.3,
+        -0.8 + Math.sin(angle) * 0.4
+      );
+      tendril.rotation.x = -Math.PI / 6;
+      this.group.add(tendril);
+    }
+
+    // Legs (4, low to ground)
+    const legGeometry = new THREE.CylinderGeometry(0.12, 0.1, 0.5, 4);
+    const positions = [
+      [-0.3, 0.25, 0.5],
+      [0.3, 0.25, 0.5],
+      [-0.3, 0.25, -0.3],
+      [0.3, 0.25, -0.3]
+    ];
+
+    positions.forEach(pos => {
+      const leg = new THREE.Mesh(legGeometry, bodyMaterial);
+      leg.position.set(pos[0], pos[1], pos[2]);
+      this.group.add(leg);
+    });
+  }
+
+  // Sylphid - Espírito etéreo
+  private createSylphid() {
+    // Core (glowing orb)
+    const coreGeometry = new THREE.SphereGeometry(0.5, 6, 5);
+    const coreMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xfbbf24,
+      flatShading: true,
+      emissive: 0xfbbf24,
+      emissiveIntensity: 0.8,
+      transparent: true,
+      opacity: 0.9
+    });
+    const core = new THREE.Mesh(coreGeometry, coreMaterial);
+    core.position.y = 1.5;
+    this.group.add(core);
+
+    // Ethereal rings (3 orbiting)
+    const ringGeometry = new THREE.TorusGeometry(0.7, 0.08, 4, 8);
+    const ringMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xf59e0b,
+      flatShading: true,
+      transparent: true,
+      opacity: 0.6
+    });
+
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.position.y = 1.5;
+      ring.rotation.x = (Math.PI / 3) * i;
+      ring.rotation.y = (Math.PI / 4) * i;
+      this.group.add(ring);
+    }
+
+    // Floating runes (small pyramids)
+    const runeGeometry = new THREE.TetrahedronGeometry(0.15, 0);
+    const runeMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xfcd34d,
+      flatShading: true,
+      emissive: 0xfcd34d,
+      emissiveIntensity: 0.5
+    });
+
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6;
+      const radius = 1.2;
+      const rune = new THREE.Mesh(runeGeometry, runeMaterial);
+      rune.position.set(
+        Math.cos(angle) * radius,
+        1.5 + Math.sin(i * 0.5) * 0.3,
+        Math.sin(angle) * radius
+      );
+      this.group.add(rune);
+    }
+
+    // Energy wisps (particles)
+    const wispGeometry = new THREE.SphereGeometry(0.1, 4, 3);
+    const wispMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xfef3c7,
+      transparent: true,
+      opacity: 0.5
+    });
+
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 * i) / 8;
+      const wisp = new THREE.Mesh(wispGeometry, wispMaterial);
+      wisp.position.set(
+        Math.cos(angle) * 0.6,
+        1.5 + (i % 2) * 0.3,
+        Math.sin(angle) * 0.6
+      );
+      this.group.add(wisp);
+    }
+  }
 
   // Simple idle animation
   public playIdleAnimation() {
