@@ -226,6 +226,41 @@ async function init() {
   }
 }
 
+function handleLogout() {
+  if (!modalUI) return;
+
+  // Confirm logout
+  modalUI.show({
+    type: 'choice',
+    title: '🚪 Sair',
+    message: 'Deseja realmente sair?\n\nSeu progresso está salvo na nuvem.',
+    choices: ['Sim, sair', 'Cancelar'],
+    onConfirm: (choice) => {
+      if (choice === 'Sim, sair') {
+        // Clear token
+        localStorage.removeItem('auth_token');
+        
+        // Clear game state
+        gameState = null;
+        gameUI = null;
+        
+        // Show auth screen
+        isAuthenticated = false;
+        inAuth = true;
+        needsGameInit = false;
+        
+        console.log('[Auth] Logged out');
+        
+        // Reload page to reset everything
+        window.location.reload();
+      }
+    },
+    onCancel: () => {
+      // Do nothing
+    }
+  });
+}
+
 async function loadGameFromServer() {
   try {
     loadingEl.textContent = 'Carregando seu jogo...';
@@ -339,6 +374,11 @@ async function setupGame() {
       console.log('[Game] Navigate to:', screen);
       // Ranch é a tela padrão, apenas fecha outras UIs
       closeAllOverlays();
+    };
+
+    // Setup logout callback
+    gameUI.onLogout = () => {
+      handleLogout();
     };
     
     // Setup week advance callback

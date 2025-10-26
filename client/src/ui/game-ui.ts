@@ -106,6 +106,27 @@ export class GameUI {
       align: 'right',
     });
 
+    // Logout button (top right, below coronas)
+    const logoutBtnX = this.canvas.width - 110;
+    const logoutBtnY = 52;
+    const logoutBtnWidth = 100;
+    const logoutBtnHeight = 26;
+    const isLogoutHovered = isMouseOver(this.mouseX, this.mouseY, logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight);
+    
+    drawButton(this.ctx, logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight, '🚪 Sair', {
+      bgColor: '#e53e3e',
+      hoverColor: '#c53030',
+      isHovered: isLogoutHovered,
+    });
+
+    this.buttons.set('logout', {
+      x: logoutBtnX,
+      y: logoutBtnY,
+      width: logoutBtnWidth,
+      height: logoutBtnHeight,
+      action: () => this.onLogout(),
+    });
+
     // Menu de navegação global
     this.drawGlobalMenu();
   }
@@ -580,6 +601,7 @@ export class GameUI {
   public onOpenAchievements: () => void = () => {};
   public onOpenExploration: () => void = () => {};
   public onNavigate: (screen: string) => void = () => {};
+  public onLogout: () => void = () => {};
 
   public updateGameState(gameState: GameState) {
     this.gameState = gameState;
