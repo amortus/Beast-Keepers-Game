@@ -210,3 +210,47 @@ export async function getMe(req: any, res: Response) {
   }
 }
 
+/**
+ * Google OAuth callback
+ */
+export async function googleCallback(req: any, res: Response) {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/login?error=auth_failed`
+      );
+    }
+
+    const userObj: User = {
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      googleId: user.google_id,
+      createdAt: user.created_at || new Date(),
+      updatedAt: user.updated_at || new Date()
+    };
+
+    // Generate JWT token
+    const token = generateToken({
+      id: userObj.id,
+      email: userObj.email,
+      displayName: userObj.displayName
+    });
+
+    console.log(`[Auth] Google OAuth success: ${userObj.email}`);
+
+    // Redirect to frontend with token
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/auth/callback?token=${token}`
+    );
+
+  } catch (error) {
+    console.error('[Auth] Google callback error:', error);
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/login?error=server_error`
+    );
+  }
+}
+

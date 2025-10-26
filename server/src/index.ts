@@ -7,7 +7,9 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import passport from './config/passport';
 import authRoutes from './routes/auth';
+import gameRoutes from './routes/game';
 import { pool } from './db/connection';
 
 // Load environment variables
@@ -32,6 +34,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Initialize Passport
+app.use(passport.initialize());
+
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -51,6 +56,9 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Game routes
+app.use('/api/game', gameRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
