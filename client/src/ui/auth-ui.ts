@@ -37,6 +37,13 @@ export class AuthUI {
   private setupEventListeners() {
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
     window.addEventListener('keydown', (e) => this.handleKeyPress(e));
+    
+    // Prevent default tab behavior
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' && this.activeField) {
+        e.preventDefault();
+      }
+    });
   }
 
   private handleClick(e: MouseEvent) {
@@ -64,36 +71,39 @@ export class AuthUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     const fieldWidth = 500;
-    const fieldHeight = 40;
+    const fieldHeight = 50; // Increased from 40
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
+    
+    // Include label area in clickable zone (add 30px above for label)
+    const clickableHeight = fieldHeight + 30;
 
     if (this.currentScreen === 'login') {
-      // Email field
-      if (isMouseOver(x, y, fieldX, panelY + 150, fieldWidth, fieldHeight)) {
+      // Email field (include label area)
+      if (isMouseOver(x, y, fieldX, panelY + 120, fieldWidth, clickableHeight)) {
         this.activeField = 'email';
       }
-      // Password field
-      else if (isMouseOver(x, y, fieldX, panelY + 220, fieldWidth, fieldHeight)) {
+      // Password field (include label area)
+      else if (isMouseOver(x, y, fieldX, panelY + 190, fieldWidth, clickableHeight)) {
         this.activeField = 'password';
       }
       else {
         this.activeField = null;
       }
     } else if (this.currentScreen === 'register') {
-      // Email field
-      if (isMouseOver(x, y, fieldX, panelY + 150, fieldWidth, fieldHeight)) {
+      // Email field (include label area)
+      if (isMouseOver(x, y, fieldX, panelY + 120, fieldWidth, clickableHeight)) {
         this.activeField = 'email';
       }
-      // Display name field
-      else if (isMouseOver(x, y, fieldX, panelY + 220, fieldWidth, fieldHeight)) {
+      // Display name field (include label area)
+      else if (isMouseOver(x, y, fieldX, panelY + 190, fieldWidth, clickableHeight)) {
         this.activeField = 'displayName';
       }
-      // Password field
-      else if (isMouseOver(x, y, fieldX, panelY + 290, fieldWidth, fieldHeight)) {
+      // Password field (include label area)
+      else if (isMouseOver(x, y, fieldX, panelY + 260, fieldWidth, clickableHeight)) {
         this.activeField = 'password';
       }
-      // Confirm password field
-      else if (isMouseOver(x, y, fieldX, panelY + 360, fieldWidth, fieldHeight)) {
+      // Confirm password field (include label area)
+      else if (isMouseOver(x, y, fieldX, panelY + 330, fieldWidth, clickableHeight)) {
         this.activeField = 'confirmPassword';
       }
       else {
@@ -103,6 +113,12 @@ export class AuthUI {
   }
 
   private handleKeyPress(e: KeyboardEvent) {
+    if (e.key === 'Tab' && this.activeField) {
+      e.preventDefault();
+      this.nextField();
+      return;
+    }
+
     if (!this.activeField) return;
 
     if (e.key === 'Escape') {
@@ -111,10 +127,13 @@ export class AuthUI {
     }
 
     if (e.key === 'Enter') {
-      if (this.currentScreen === 'login') {
+      // Try next field, or submit if on last field
+      if (this.currentScreen === 'login' && this.activeField === 'password') {
         this.handleLogin();
-      } else if (this.currentScreen === 'register') {
+      } else if (this.currentScreen === 'register' && this.activeField === 'confirmPassword') {
         this.handleRegister();
+      } else {
+        this.nextField();
       }
       return;
     }
@@ -141,6 +160,26 @@ export class AuthUI {
         this.displayName += e.key;
       } else if (this.activeField === 'confirmPassword') {
         this.confirmPassword += e.key;
+      }
+    }
+  }
+
+  private nextField() {
+    if (this.currentScreen === 'login') {
+      if (this.activeField === 'email') {
+        this.activeField = 'password';
+      } else if (this.activeField === 'password') {
+        this.activeField = 'email';
+      }
+    } else if (this.currentScreen === 'register') {
+      if (this.activeField === 'email') {
+        this.activeField = 'displayName';
+      } else if (this.activeField === 'displayName') {
+        this.activeField = 'password';
+      } else if (this.activeField === 'password') {
+        this.activeField = 'confirmPassword';
+      } else if (this.activeField === 'confirmPassword') {
+        this.activeField = 'email';
       }
     }
   }
@@ -453,12 +492,12 @@ export class AuthUI {
     fieldName: string
   ) {
     const fieldWidth = 500;
-    const fieldHeight = 40;
+    const fieldHeight = 50; // Increased from 40
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
     // Label
-    drawText(this.ctx, label, fieldX, fieldY - 10, {
-      font: '14px monospace',
+    drawText(this.ctx, label, fieldX, fieldY - 15, {
+      font: 'bold 16px monospace',
       color: COLORS.ui.text
     });
 
@@ -467,22 +506,38 @@ export class AuthUI {
     this.ctx.fillStyle = isActive ? '#2a2a3e' : '#1a1a2e';
     this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
-    // Field border
+    // Field border (thicker and more visible)
     this.ctx.strokeStyle = isActive ? COLORS.primary.purple : COLORS.ui.textDim;
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = isActive ? 3 : 2;
     this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
+    // Hover effect (visual feedback)
+    if (isActive) {
+      this.ctx.strokeStyle = COLORS.primary.purple;
+      this.ctx.lineWidth = 3;
+      this.ctx.strokeRect(fieldX - 2, fieldY - 2, fieldWidth + 4, fieldHeight + 4);
+    }
+
     // Field value
-    drawText(this.ctx, value || 'Clique para digitar...', fieldX + 10, fieldY + 25, {
-      font: '16px monospace',
+    drawText(this.ctx, value || 'Clique aqui para digitar...', fieldX + 15, fieldY + 32, {
+      font: '18px monospace',
       color: value ? COLORS.ui.text : COLORS.ui.textDim
     });
 
-    // Cursor (blinking)
+    // Cursor (blinking, larger)
     if (isActive && Math.floor(Date.now() / 500) % 2 === 0) {
+      this.ctx.font = '18px monospace';
       const textWidth = this.ctx.measureText(value).width;
       this.ctx.fillStyle = COLORS.primary.purple;
-      this.ctx.fillRect(fieldX + 10 + textWidth, fieldY + 10, 2, 20);
+      this.ctx.fillRect(fieldX + 15 + textWidth, fieldY + 15, 3, 25);
+    }
+
+    // Tab hint
+    if (isActive) {
+      drawText(this.ctx, '(Tab para próximo campo)', fieldX + fieldWidth - 200, fieldY - 15, {
+        font: '12px monospace',
+        color: COLORS.ui.textDim
+      });
     }
   }
 

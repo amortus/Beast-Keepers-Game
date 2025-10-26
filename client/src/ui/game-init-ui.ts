@@ -60,6 +60,13 @@ export class GameInitUI {
   }
 
   private handleKeyPress(e: KeyboardEvent) {
+    if (!this.activeField) {
+      // Auto-focus field on any key press
+      if (e.key.length === 1 || e.key === 'Backspace') {
+        this.activeField = true;
+      }
+    }
+
     if (!this.activeField) return;
 
     if (e.key === 'Escape') {
@@ -67,7 +74,8 @@ export class GameInitUI {
       return;
     }
 
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
       this.handleInitialize();
       return;
     }
@@ -162,28 +170,49 @@ export class GameInitUI {
 
     // Input field
     const fieldWidth = 600;
-    const fieldHeight = 50;
+    const fieldHeight = 60; // Increased from 50
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
     const fieldY = 300;
 
+    // Background
     this.ctx.fillStyle = this.activeField ? '#2a2a3e' : '#1a1a2e';
     this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
+    // Border (thicker when active)
     this.ctx.strokeStyle = this.activeField ? COLORS.primary.gold : COLORS.ui.textDim;
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = this.activeField ? 4 : 2;
     this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
+    // Glow effect when active
+    if (this.activeField) {
+      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.lineWidth = 2;
+      this.ctx.globalAlpha = 0.3;
+      this.ctx.strokeRect(fieldX - 3, fieldY - 3, fieldWidth + 6, fieldHeight + 6);
+      this.ctx.globalAlpha = 1;
+    }
+
     // Input text
-    drawText(this.ctx, this.playerName || 'Clique para digitar...', fieldX + 15, fieldY + 30, {
-      font: 'bold 18px monospace',
+    this.ctx.font = 'bold 20px monospace';
+    drawText(this.ctx, this.playerName || 'Clique aqui ou comece a digitar...', fieldX + 20, fieldY + 38, {
+      font: 'bold 20px monospace',
       color: this.playerName ? COLORS.ui.text : COLORS.ui.textDim
     });
 
-    // Cursor
+    // Cursor (blinking, larger)
     if (this.activeField && Math.floor(Date.now() / 500) % 2 === 0) {
+      this.ctx.font = 'bold 20px monospace';
       const textWidth = this.ctx.measureText(this.playerName).width;
       this.ctx.fillStyle = COLORS.primary.gold;
-      this.ctx.fillRect(fieldX + 15 + textWidth, fieldY + 15, 3, 25);
+      this.ctx.fillRect(fieldX + 20 + textWidth, fieldY + 18, 4, 28);
+    }
+
+    // Tab/Enter hint
+    if (this.activeField) {
+      drawText(this.ctx, '(Enter para continuar)', fieldX + fieldWidth - 180, fieldY + fieldHeight + 20, {
+        font: '12px monospace',
+        color: COLORS.ui.textDim
+      });
     }
 
     // Error message
