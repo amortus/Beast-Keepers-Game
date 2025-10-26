@@ -56,50 +56,50 @@ export const EXPLORATION_ZONES: Record<ExplorationZone, {
   name: string;
   description: string;
   difficulty: number; // 1-5
-  commonEnemies: string[];
-  rareEnemies: string[];
+  commonBeasts: string[]; // Linhas das Bestas comuns
+  rareBeasts: string[];   // Linhas das Bestas raras
 }> = {
   forest: {
     name: 'Floresta Selvagem',
     description: 'Floresta densa com criaturas comuns. Bom para iniciantes.',
     difficulty: 1,
-    commonEnemies: ['forest_wolf', 'wild_boar', 'tree_spirit'],
-    rareEnemies: ['ancient_treant'],
+    commonBeasts: ['raukor', 'feralis', 'zephyra'],
+    rareBeasts: ['terravox', 'sylphid'],
   },
   mountains: {
     name: 'Montanhas Geladas',
     description: 'Montanhas traiçoeiras com criaturas resistentes.',
     difficulty: 2,
-    commonEnemies: ['mountain_goat', 'ice_elemental', 'rock_golem'],
-    rareEnemies: ['frost_dragon'],
+    commonBeasts: ['terravox', 'brontis', 'raukor'],
+    rareBeasts: ['ignar', 'umbrix'],
   },
   caves: {
     name: 'Cavernas Profundas',
     description: 'Cavernas escuras cheias de perigos. Recompensas valiosas.',
     difficulty: 3,
-    commonEnemies: ['cave_bat', 'giant_spider', 'slime'],
-    rareEnemies: ['cave_wyvern'],
+    commonBeasts: ['umbrix', 'olgrim', 'feralis'],
+    rareBeasts: ['sylphid', 'mirella'],
   },
   desert: {
     name: 'Deserto Árido',
     description: 'Deserto escaldante com criaturas adaptadas ao calor.',
     difficulty: 3,
-    commonEnemies: ['sand_serpent', 'scorpion', 'desert_nomad'],
-    rareEnemies: ['sand_titan'],
+    commonBeasts: ['ignar', 'brontis', 'zephyra'],
+    rareBeasts: ['raukor', 'terravox'],
   },
   swamp: {
     name: 'Pântano Venenoso',
     description: 'Pântano tóxico. Criaturas venenosas e drops raros.',
     difficulty: 4,
-    commonEnemies: ['swamp_beast', 'poison_frog', 'bog_wraith'],
-    rareEnemies: ['swamp_hydra'],
+    commonBeasts: ['mirella', 'umbrix', 'feralis'],
+    rareBeasts: ['olgrim', 'sylphid'],
   },
   ruins: {
     name: 'Ruínas Antigas',
     description: 'Ruínas de civilização perdida. Criaturas poderosas.',
     difficulty: 5,
-    commonEnemies: ['guardian_statue', 'cursed_knight', 'shadow_beast'],
-    rareEnemies: ['ancient_lich'],
+    commonBeasts: ['olgrim', 'sylphid', 'umbrix'],
+    rareBeasts: ['ignar', 'terravox'],
   },
 };
 
@@ -152,7 +152,7 @@ export function generateEncounter(
 }
 
 /**
- * Gera inimigo selvagem
+ * Gera inimigo selvagem usando as Bestas do jogo
  */
 function generateWildEnemy(zone: ExplorationZone, distance: number): WildEnemy {
   const zoneData = EXPLORATION_ZONES[zone];
@@ -161,73 +161,78 @@ function generateWildEnemy(zone: ExplorationZone, distance: number): WildEnemy {
   const rareChance = Math.min(0.1 + (distance / 1000) * 0.05, 0.25); // Máx 25%
   const isRare = Math.random() < rareChance;
   
-  const enemyPool = isRare ? zoneData.rareEnemies : zoneData.commonEnemies;
-  const enemyType = enemyPool[Math.floor(Math.random() * enemyPool.length)];
+  const beastPool = isRare ? zoneData.rareBeasts : zoneData.commonBeasts;
+  const beastLine = beastPool[Math.floor(Math.random() * beastPool.length)];
   
-  return createEnemyByType(enemyType, zone, distance);
+  return createWildBeastEnemy(beastLine, zone, distance, isRare);
 }
 
 /**
- * Cria inimigo baseado no tipo
+ * Cria inimigo selvagem baseado em uma Besta real do jogo
  */
-function createEnemyByType(type: string, zone: ExplorationZone, distance: number): WildEnemy {
+function createWildBeastEnemy(
+  beastLine: string, 
+  zone: ExplorationZone, 
+  distance: number,
+  isRare: boolean
+): WildEnemy {
   const baseLevel = Math.floor(distance / 100) + 1;
   const difficulty = EXPLORATION_ZONES[zone].difficulty;
   const level = baseLevel + difficulty;
+  const rarity = isRare ? (Math.random() > 0.7 ? 'epic' : 'rare') : (Math.random() > 0.6 ? 'uncommon' : 'common');
 
-  // Mapeia tipos de inimigos (simplificado)
-  const enemyData: Record<string, Partial<WildEnemy>> = {
-    forest_wolf: {
-      name: 'Lobo Selvagem',
-      line: 'raukor',
-      description: 'Lobo agressivo da floresta',
-      rarity: 'common',
-      aiPersonality: 'berserker',
-    },
-    wild_boar: {
-      name: 'Javali Furioso',
-      line: 'feralis',
-      description: 'Javali territorial',
-      rarity: 'common',
-      aiPersonality: 'berserker',
-    },
-    ancient_treant: {
-      name: 'Treant Ancestral',
-      line: 'terravox',
-      description: 'Árvore antiga com vida',
-      rarity: 'rare',
-      aiPersonality: 'tank',
-    },
-    // Adicione mais conforme necessário...
+  // Nomes selvagens para cada linha de Besta
+  const wildNames: Record<string, string[]> = {
+    olgrim: ['Olgrim Selvagem', 'Olho Flutuante', 'Olgrim Anciã'],
+    terravox: ['Terravox Selvagem', 'Golem de Pedra', 'Terravox Ancestral'],
+    feralis: ['Feralis Selvagem', 'Felino Caçador', 'Feralis Alfa'],
+    brontis: ['Brontis Selvagem', 'Réptil Territorial', 'Brontis Veterano'],
+    zephyra: ['Zephyra Selvagem', 'Ave de Rapina', 'Zephyra Veloz'],
+    ignar: ['Ignar Selvagem', 'Fera Flamejante', 'Ignar Infernal'],
+    mirella: ['Mirella Selvagem', 'Anfíbio Místico', 'Mirella das Águas'],
+    umbrix: ['Umbrix Selvagem', 'Sombra Viva', 'Umbrix das Trevas'],
+    sylphid: ['Sylphid Selvagem', 'Espírito Etéreo', 'Sylphid Anciã'],
+    raukor: ['Raukor Selvagem', 'Lobo Alfa', 'Raukor Lendário'],
   };
 
-  const data = enemyData[type] || {
-    name: 'Criatura Selvagem',
-    line: 'feralis',
-    description: 'Criatura misteriosa',
-    rarity: 'common',
+  const nameOptions = wildNames[beastLine] || ['Criatura Selvagem'];
+  const name = nameOptions[isRare ? 2 : Math.floor(Math.random() * 2)];
+
+  // Personalidades de IA baseadas na linha
+  const aiPersonalities: Record<string, string> = {
+    olgrim: 'tactical',
+    terravox: 'tank',
+    feralis: 'balanced',
+    brontis: 'balanced',
+    zephyra: 'aggressive',
+    ignar: 'berserker',
+    mirella: 'tactical',
+    umbrix: 'trickster',
+    sylphid: 'sniper',
+    raukor: 'aggressive',
   };
 
-  // Calcula stats baseados no level e dificuldade
+  // Calcula stats baseados no level, dificuldade e raridade
   const statBase = 20 + level * 3 + difficulty * 5;
+  const rarityMultiplier = rarity === 'epic' ? 1.5 : rarity === 'rare' ? 1.3 : rarity === 'uncommon' ? 1.1 : 1.0;
   
   return {
-    id: `wild_${type}_${Date.now()}`,
-    name: data.name || 'Criatura',
-    line: data.line || 'feralis',
+    id: `wild_${beastLine}_${Date.now()}`,
+    name,
+    line: beastLine,
     level,
-    rarity: data.rarity || 'common',
-    description: data.description || '',
+    rarity,
+    description: `${name} habita ${EXPLORATION_ZONES[zone].name}`,
     stats: {
-      might: statBase + Math.floor(Math.random() * 10),
-      wit: statBase + Math.floor(Math.random() * 10),
-      focus: statBase + Math.floor(Math.random() * 10),
-      agility: statBase + Math.floor(Math.random() * 10),
-      ward: statBase + Math.floor(Math.random() * 10),
-      vitality: statBase + Math.floor(Math.random() * 10),
+      might: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
+      wit: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
+      focus: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
+      agility: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
+      ward: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
+      vitality: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
     },
-    aiPersonality: data.aiPersonality,
-    drops: generateEnemyDrops(data.rarity || 'common'),
+    aiPersonality: aiPersonalities[beastLine],
+    drops: generateEnemyDrops(rarity),
   };
 }
 
