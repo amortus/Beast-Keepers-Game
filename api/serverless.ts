@@ -82,6 +82,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Export for Vercel
+// Export handler for Vercel serverless
 export default app;
 

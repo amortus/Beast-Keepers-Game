@@ -1,22 +1,10 @@
 {
-  "version": 2,
-  "buildCommand": "cd client && npm install && npm run build",
+  "buildCommand": "npm install && cd client && npm run build && cd ../server && npm run build",
   "outputDirectory": "client/dist",
-  "framework": null,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/serverless.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/serverless.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/client/dist/$1"
+      "source": "/api/:path*",
+      "destination": "/api/index"
     }
   ]
 }
