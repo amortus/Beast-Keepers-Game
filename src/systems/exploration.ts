@@ -181,22 +181,31 @@ function createWildBeastEnemy(
   const level = baseLevel + difficulty;
   const rarity = isRare ? (Math.random() > 0.7 ? 'epic' : 'rare') : (Math.random() > 0.6 ? 'uncommon' : 'common');
 
-  // Nomes selvagens para cada linha de Besta
-  const wildNames: Record<string, string[]> = {
-    olgrim: ['Olgrim Selvagem', 'Olho Flutuante', 'Olgrim Anciã'],
-    terravox: ['Terravox Selvagem', 'Golem de Pedra', 'Terravox Ancestral'],
-    feralis: ['Feralis Selvagem', 'Felino Caçador', 'Feralis Alfa'],
-    brontis: ['Brontis Selvagem', 'Réptil Territorial', 'Brontis Veterano'],
-    zephyra: ['Zephyra Selvagem', 'Ave de Rapina', 'Zephyra Veloz'],
-    ignar: ['Ignar Selvagem', 'Fera Flamejante', 'Ignar Infernal'],
-    mirella: ['Mirella Selvagem', 'Anfíbio Místico', 'Mirella das Águas'],
-    umbrix: ['Umbrix Selvagem', 'Sombra Viva', 'Umbrix das Trevas'],
-    sylphid: ['Sylphid Selvagem', 'Espírito Etéreo', 'Sylphid Anciã'],
-    raukor: ['Raukor Selvagem', 'Lobo Alfa', 'Raukor Lendário'],
+  // Nomes baseados no GDD - SEMPRE mostra o nome da linha da Besta
+  const beastLineNames: Record<string, string> = {
+    olgrim: 'Olgrim',     // olho flutuante com tentáculos
+    terravox: 'Terravox', // golem de pedra
+    feralis: 'Feralis',   // felino ágil
+    brontis: 'Brontis',   // réptil bípede robusto
+    zephyra: 'Zephyra',   // ave veloz
+    ignar: 'Ignar',       // fera elemental de fogo
+    mirella: 'Mirella',   // criatura anfíbia
+    umbrix: 'Umbrix',     // besta das sombras
+    sylphid: 'Sylphid',   // espírito etéreo
+    raukor: 'Raukor',     // fera lupina
   };
 
-  const nameOptions = wildNames[beastLine] || ['Criatura Selvagem'];
-  const name = nameOptions[isRare ? 2 : Math.floor(Math.random() * 2)];
+  // Títulos selvagens baseados na raridade
+  const wildTitles = {
+    common: 'Selvagem',
+    uncommon: 'Feroz',
+    rare: 'Ancestral',
+    epic: 'Lendário',
+  };
+
+  const beastName = beastLineNames[beastLine] || 'Criatura';
+  const title = wildTitles[rarity];
+  const name = `${beastName} ${title}`;
 
   // Personalidades de IA baseadas na linha
   const aiPersonalities: Record<string, string> = {
