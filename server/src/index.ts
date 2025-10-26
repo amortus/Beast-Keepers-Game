@@ -62,8 +62,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // ===== ROUTES =====
 
-// Health check
+// Health check (both paths for compatibility)
 app.get('/health', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Beast Keepers Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'Beast Keepers Server is running',
@@ -102,12 +110,12 @@ async function startServer() {
     await pool.query('SELECT NOW()');
     console.log('[DB] Database connection established');
 
-    // Start listening
-    app.listen(PORT, () => {
+    // Start listening on all interfaces (required for Railway/Docker)
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('='.repeat(50));
       console.log('🎮 Beast Keepers Server');
       console.log('='.repeat(50));
-      console.log(`📍 Server: http://localhost:${PORT}`);
+      console.log(`📍 Server: http://0.0.0.0:${PORT}`);
       console.log(`🔗 Frontend: ${FRONTEND_URL}`);
       console.log(`🗄️  Database: Connected`);
       console.log(`⚙️  Environment: ${process.env.NODE_ENV || 'development'}`);

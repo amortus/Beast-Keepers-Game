@@ -1,0 +1,13 @@
+# Environment Variables para Railway
+# Copie e cole cada uma no Railway
+
+DATABASE_URL=postgresql://neondb_owner:npg_KqVlhnJF5vY9@ep-holy-queen-acfaysb1-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require
+
+JWT_SECRET=f02feee094c5b36edfc0a478e9771d930a4850c6fefad3935d54725ed632d78288c9c7dd859501a85a213e1fa1a9be36d6e680c880aa95fdbb3cd153a170d8a0
+
+NODE_ENV=production
+
+FRONTEND_URL=https://vanilla-game-9qwyn0f2c-amortus-projects.vercel.app
+
+PORT=3000
+
