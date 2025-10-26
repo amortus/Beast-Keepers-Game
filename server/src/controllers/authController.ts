@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db/connection';
 import { generateToken } from '../middleware/auth';
-import { User, AuthResponse, ApiResponse } from '../../../shared/types';
+import { User, AuthResponse, ApiResponse } from '../types';
 
 /**
  * Register new user with email/password

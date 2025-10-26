@@ -6,7 +6,7 @@
 import { Response } from 'express';
 import { query, getClient } from '../db/connection';
 import { AuthRequest } from '../middleware/auth';
-import { ApiResponse, GameSaveDTO, BeastDTO } from '../../../shared/types';
+import { ApiResponse, GameSaveDTO, BeastDTO } from '../types';
 import { generateRandomBeast } from '../utils/beastData';
 
 /**
