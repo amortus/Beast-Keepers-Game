@@ -7,7 +7,7 @@ import { Response } from 'express';
 import { query, getClient } from '../db/connection';
 import { AuthRequest } from '../middleware/auth';
 import { ApiResponse, GameSaveDTO, BeastDTO } from '../../../shared/types';
-import { getBeastLineData } from '../utils/beastData';
+import { generateRandomBeast } from '../utils/beastData';
 
 /**
  * Initialize new game for user
@@ -53,45 +53,48 @@ export async function initializeGame(req: AuthRequest, res: Response) {
 
     const gameSave = gameSaveResult.rows[0];
 
-    // Randomize initial beast line
-    const beastLines = ['olgrim', 'terravox', 'feralis', 'brontis', 'zephyra', 'ignar', 'mirella', 'umbrix', 'sylphid', 'raukor'];
-    const randomLine = beastLines[Math.floor(Math.random() * beastLines.length)];
-    const beastData = getBeastLineData(randomLine);
+    // Generate completely random and unique beast
+    const randomBeast = generateRandomBeast(playerName.trim());
 
-    // Create initial beast
+    // Create initial beast with randomized stats
     const beastResult = await client.query(
       `INSERT INTO beasts (
-        game_save_id, name, line, is_active,
+        game_save_id, name, line, blood, affinity, is_active,
         current_hp, max_hp, essence, max_essence,
         might, wit, focus, agility, ward, vitality,
-        loyalty, stress, fatigue, techniques
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        loyalty, stress, fatigue, techniques, traits, level, experience
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *`,
       [
         gameSave.id,
-        beastData.name,
-        randomLine,
+        randomBeast.name,
+        randomBeast.line,
+        randomBeast.blood,
+        randomBeast.affinity,
         true, // is_active
-        beastData.maxHp,
-        beastData.maxHp,
-        50, // essence
-        99, // max_essence
-        beastData.attributes.might,
-        beastData.attributes.wit,
-        beastData.attributes.focus,
-        beastData.attributes.agility,
-        beastData.attributes.ward,
-        beastData.attributes.vitality,
-        50, // loyalty
-        0, // stress
-        0, // fatigue
-        JSON.stringify(beastData.techniques)
+        randomBeast.currentHp,
+        randomBeast.maxHp,
+        randomBeast.essence,
+        randomBeast.maxEssence,
+        randomBeast.attributes.might,
+        randomBeast.attributes.wit,
+        randomBeast.attributes.focus,
+        randomBeast.attributes.agility,
+        randomBeast.attributes.ward,
+        randomBeast.attributes.vitality,
+        randomBeast.secondaryStats.loyalty,
+        randomBeast.secondaryStats.stress,
+        randomBeast.secondaryStats.fatigue,
+        JSON.stringify(randomBeast.techniques),
+        JSON.stringify(randomBeast.traits),
+        randomBeast.level,
+        randomBeast.experience
       ]
     );
 
     await client.query('COMMIT');
 
-    console.log(`[Game] Initialized game for user ${userId}: ${playerName} with ${randomLine}`);
+    console.log(`[Game] Initialized game for user ${userId}: ${playerName} with ${randomBeast.line} (${randomBeast.blood})`);
 
     return res.status(201).json({
       success: true,

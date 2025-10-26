@@ -84,3 +84,87 @@ export function getBeastLineData(line: string): BeastLineData {
   return baseData[line] || baseData.feralis; // Default to feralis if unknown
 }
 
+/**
+ * Generate a completely random and unique Beast for a new player
+ * Each Beast will have randomized stats and traits
+ */
+export function generateRandomBeast(playerName: string) {
+  // All 10 Beast lines
+  const beastLines = ['olgrim', 'terravox', 'feralis', 'brontis', 'zephyra', 'ignar', 'mirella', 'umbrix', 'sylphid', 'raukor'];
+  
+  // Pick random line
+  const randomLine = beastLines[Math.floor(Math.random() * beastLines.length)];
+  const lineData = getBeastLineData(randomLine);
+  
+  // Elemental affinities
+  const affinities = ['earth', 'fire', 'water', 'air', 'shadow', 'ether', 'light', 'moon', 'blood'];
+  const randomAffinity = affinities[Math.floor(Math.random() * affinities.length)];
+  
+  // Personality traits
+  const traits = ['loyal', 'brave', 'patient', 'disciplined', 'curious', 'lazy', 'proud', 'anxious', 'stubborn', 'aggressive'];
+  
+  // Pick 2-3 random traits
+  const numTraits = 2 + Math.floor(Math.random() * 2); // 2 or 3 traits
+  const selectedTraits: string[] = [];
+  while (selectedTraits.length < numTraits) {
+    const trait = traits[Math.floor(Math.random() * traits.length)];
+    if (!selectedTraits.includes(trait)) {
+      selectedTraits.push(trait);
+    }
+  }
+  
+  // Blood rarity (weighted: 60% common, 30% uncommon, 9% rare, 1% legendary)
+  const bloodRoll = Math.random();
+  let blood: string;
+  if (bloodRoll < 0.60) blood = 'common';
+  else if (bloodRoll < 0.90) blood = 'uncommon';
+  else if (bloodRoll < 0.99) blood = 'rare';
+  else blood = 'legendary';
+  
+  // Random stat variation: ±20% from base stats
+  const varyAttribute = (base: number) => {
+    const variation = Math.random() * 0.4 - 0.2; // -20% to +20%
+    return Math.max(5, Math.floor(base * (1 + variation)));
+  };
+  
+  const randomizedAttributes = {
+    might: varyAttribute(lineData.attributes.might),
+    wit: varyAttribute(lineData.attributes.wit),
+    focus: varyAttribute(lineData.attributes.focus),
+    agility: varyAttribute(lineData.attributes.agility),
+    ward: varyAttribute(lineData.attributes.ward),
+    vitality: varyAttribute(lineData.attributes.vitality),
+  };
+  
+  // Calculate HP based on vitality
+  const maxHp = randomizedAttributes.vitality * 5;
+  
+  // Generate unique name
+  const beastName = `${lineData.name} de ${playerName}`;
+  
+  return {
+    id: `beast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: beastName,
+    line: randomLine,
+    blood: blood,
+    affinity: randomAffinity,
+    attributes: randomizedAttributes,
+    secondaryStats: {
+      fatigue: 0,
+      stress: 0,
+      loyalty: 50 + Math.floor(Math.random() * 30), // 50-80 initial loyalty
+      age: 0,
+      maxAge: 100
+    },
+    traits: selectedTraits,
+    techniques: lineData.techniques,
+    currentHp: maxHp,
+    maxHp: maxHp,
+    essence: 50,
+    maxEssence: 99,
+    level: 1,
+    experience: 0,
+    activeBuffs: []
+  };
+}
+
