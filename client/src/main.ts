@@ -264,7 +264,8 @@ async function loadGameFromServer() {
 }
 
 async function setupGame() {
-  // Game already exists - original setup code
+  try {
+    // Game already exists - original setup code
     gameState = await loadGame();
     
     if (!gameState) {
