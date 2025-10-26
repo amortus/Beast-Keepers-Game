@@ -300,9 +300,13 @@ export class ModalUI {
 
     this.currentModal.choices.forEach((choice, index) => {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x + 30, btnY, btnWidth, btnHeight);
+      
+      // Define cor do botão (vermelho para cancelar, azul para ações)
+      const isCancel = choice.toLowerCase().includes('cancelar');
+      const btnColor = isCancel ? COLORS.ui.error : COLORS.primary.purple;
 
       drawButton(this.ctx, x + 30, btnY, btnWidth, btnHeight, `${index + 1}. ${choice}`, {
-        bgColor: COLORS.primary.purple,
+        bgColor: btnColor,
         isHovered,
       });
 
@@ -313,30 +317,14 @@ export class ModalUI {
         height: btnHeight,
         action: () => {
           if (this.currentModal?.onConfirm) {
-            this.currentModal.onConfirm(String(index));
+            // Passa o texto da escolha, não o índice
+            this.currentModal.onConfirm(choice);
           }
           this.hide();
         },
       });
 
       btnY += btnHeight + 10;
-    });
-
-    // Botão cancelar
-    const cancelY = btnY + 10;
-    const cancelIsHovered = isMouseOver(this.mouseX, this.mouseY, x + 30, cancelY, btnWidth, btnHeight);
-
-    drawButton(this.ctx, x + 30, cancelY, btnWidth, btnHeight, '✖ Cancelar', {
-      bgColor: COLORS.ui.error,
-      isHovered: cancelIsHovered,
-    });
-
-    this.buttons.set('cancel', {
-      x: x + 30,
-      y: cancelY,
-      width: btnWidth,
-      height: btnHeight,
-      action: () => this.cancel(),
     });
   }
 
