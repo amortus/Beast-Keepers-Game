@@ -348,36 +348,15 @@ async function loadGameFromServer() {
 
 async function setupGame() {
   try {
-    // Game already exists - original setup code
-    gameState = await loadGame();
+    // gameState already loaded from server in loadGameFromServer()
+    // Don't overwrite it with localStorage!
     
     if (!gameState) {
-      console.log('[Game] Creating new game');
-      
-      // Usa modal em vez de prompt
-      const playerName = await new Promise<string>((resolve) => {
-        modalUI!.show({
-          type: 'input',
-          title: '🎮 Bem-vindo ao Beast Keepers!',
-          message: 'Qual é o seu nome, Guardião?',
-          placeholder: 'Digite seu nome',
-          defaultValue: 'Guardião',
-          onConfirm: (name) => {
-            resolve(name || 'Guardião');
-          },
-          onCancel: () => {
-            resolve('Guardião');
-          },
-        });
-      });
-      
-      console.log('[Game] Player name:', playerName);
-      gameState = createNewGame(playerName);
-      await saveGame(gameState);
-      console.log('[Game] Game created and saved');
-    } else {
-      console.log('[Game] Game loaded');
+      console.error('[Game] ERROR: gameState is null in setupGame - this should not happen!');
+      return;
     }
+    
+    console.log('[Game] Setting up game with:', gameState.guardian.name, 'and Beast:', gameState.activeBeast?.name);
 
     // Create UI
     gameUI = new GameUI(canvas, gameState!);
