@@ -14,13 +14,15 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/auth/google/callback';
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: GOOGLE_CALLBACK_URL,
-    },
+// Only configure Google OAuth if credentials are provided
+if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: GOOGLE_CLIENT_ID,
+        clientSecret: GOOGLE_CLIENT_SECRET,
+        callbackURL: GOOGLE_CALLBACK_URL,
+      },
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0]?.value;
@@ -67,11 +69,14 @@ passport.use(
 
         return done(null, createResult.rows[0]);
       } catch (error) {
-        return done(error as Error);
-      }
+      return done(error as Error);
     }
+  }
   )
 );
+} else {
+  console.log('[OAuth] Google OAuth disabled - GOOGLE_CLIENT_ID not configured');
+}
 
 // Serialize user for session (not used with JWT, but required by Passport)
 passport.serializeUser((user: any, done) => {
