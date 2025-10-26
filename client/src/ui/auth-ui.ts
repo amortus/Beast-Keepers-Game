@@ -365,42 +365,42 @@ export class AuthUI {
 
   private drawLoginScreen() {
     const panelWidth = 700;
-    const panelHeight = 600;
+    const panelHeight = 650;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     // Panel with shadow
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    this.ctx.shadowBlur = 20;
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.shadowBlur = 30;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: '#1a1a2e',
       borderColor: COLORS.primary.purple
     });
     this.ctx.shadowBlur = 0;
 
-    // Title with icon
-    drawText(this.ctx, '🔐 LOGIN', panelX + panelWidth / 2, panelY + 70, {
-      font: 'bold 40px monospace',
+    // Title with icon (larger)
+    drawText(this.ctx, '🔐 LOGIN', panelX + panelWidth / 2, panelY + 80, {
+      font: 'bold 48px monospace',
       color: COLORS.primary.purple,
       align: 'center'
     });
 
     // Subtitle
-    drawText(this.ctx, 'Entre com sua conta', panelX + panelWidth / 2, panelY + 110, {
-      font: '16px monospace',
+    drawText(this.ctx, 'Entre com sua conta', panelX + panelWidth / 2, panelY + 140, {
+      font: '18px monospace',
       color: COLORS.ui.textDim,
       align: 'center'
     });
 
-    // Email field
-    this.drawInputField(panelX, panelY + 170, panelWidth, 'Email:', this.email, 'email');
+    // Email field (more spacing)
+    this.drawInputField(panelX, panelY + 210, panelWidth, 'Email:', this.email, 'email');
 
-    // Password field
-    this.drawInputField(panelX, panelY + 280, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
+    // Password field (more spacing)
+    this.drawInputField(panelX, panelY + 330, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
 
     // Error message
     if (this.errorMessage) {
-      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 390, {
+      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 440, {
         font: 'bold 16px monospace',
         color: COLORS.ui.error,
         align: 'center'
@@ -408,7 +408,7 @@ export class AuthUI {
     }
 
     // Login button (larger)
-    const loginBtnY = panelY + 430;
+    const loginBtnY = panelY + 480;
     const btnText = this.isLoading ? '⏳ Entrando...' : '▶ Entrar';
     drawButton(this.ctx, panelX + 100, loginBtnY, 500, 60, btnText, {
       bgColor: COLORS.primary.purple,
@@ -426,8 +426,8 @@ export class AuthUI {
     }
 
     // Back button
-    const backBtnY = panelY + 510;
-    drawButton(this.ctx, panelX + 200, backBtnY, 300, 45, '← Voltar', {
+    const backBtnY = panelY + 565;
+    drawButton(this.ctx, panelX + 200, backBtnY, 300, 50, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
     });
@@ -435,7 +435,7 @@ export class AuthUI {
       x: panelX + 200,
       y: backBtnY,
       width: 300,
-      height: 45,
+      height: 50,
       action: () => {
         this.currentScreen = 'welcome';
         this.clearForm();
