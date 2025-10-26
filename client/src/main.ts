@@ -273,16 +273,60 @@ async function loadGameFromServer() {
     const response = await gameApi.getGameSave();
     
     if (response.success && response.data) {
-      // Convert server data to GameState
-      // TODO: This is a simplified conversion - needs full implementation
-      gameState = createNewGame(response.data.gameSave.playerName);
-      // Update with server data
-      gameState.week = response.data.gameSave.week;
-      gameState.coronas = response.data.gameSave.coronas;
-      gameState.victories = response.data.gameSave.victories;
-      gameState.currentTitle = response.data.gameSave.currentTitle;
+      const serverData = response.data;
       
-      console.log('[Game] Loaded from server:', gameState.playerName);
+      // Convert server data to GameState
+      gameState = createNewGame(serverData.gameSave.player_name);
+      
+      // Update with server game save data
+      gameState.week = serverData.gameSave.week || 1;
+      gameState.economy.coronas = serverData.gameSave.coronas || 500;
+      gameState.guardian.victories = serverData.gameSave.victories || 0;
+      gameState.guardian.title = serverData.gameSave.current_title || 'Guardião Iniciante';
+      
+      // Load the active Beast from server
+      if (serverData.beasts && serverData.beasts.length > 0) {
+        const serverBeast = serverData.beasts.find((b: any) => b.is_active) || serverData.beasts[0];
+        
+        // Map server beast to client Beast format
+        gameState.activeBeast = {
+          id: serverBeast.id,
+          name: serverBeast.name,
+          line: serverBeast.line,
+          blood: serverBeast.blood || 'common',
+          affinity: serverBeast.affinity || 'earth',
+          attributes: {
+            might: serverBeast.might,
+            wit: serverBeast.wit,
+            focus: serverBeast.focus,
+            agility: serverBeast.agility,
+            ward: serverBeast.ward,
+            vitality: serverBeast.vitality
+          },
+          secondaryStats: {
+            fatigue: serverBeast.fatigue || 0,
+            stress: serverBeast.stress || 0,
+            loyalty: serverBeast.loyalty || 50,
+            age: serverBeast.age || 0,
+            maxAge: serverBeast.max_age || 100
+          },
+          traits: Array.isArray(serverBeast.traits) ? serverBeast.traits : 
+                 (typeof serverBeast.traits === 'string' ? JSON.parse(serverBeast.traits) : []),
+          techniques: Array.isArray(serverBeast.techniques) ? serverBeast.techniques :
+                     (typeof serverBeast.techniques === 'string' ? JSON.parse(serverBeast.techniques) : []),
+          currentHp: serverBeast.current_hp,
+          maxHp: serverBeast.max_hp,
+          essence: serverBeast.essence,
+          maxEssence: serverBeast.max_essence,
+          level: serverBeast.level || 1,
+          experience: serverBeast.experience || 0,
+          activeBuffs: []
+        };
+        
+        console.log('[Game] Loaded Beast from server:', gameState.activeBeast.name, `(${gameState.activeBeast.line})`);
+      }
+      
+      console.log('[Game] Loaded from server:', gameState.guardian.name);
       
       await setupGame();
     } else {
