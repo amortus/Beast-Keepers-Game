@@ -114,20 +114,18 @@ function startRenderLoop() {
       achievementsUI.draw(gameState);
     } else if (inExploration && explorationUI) {
       explorationUI.draw(explorationState || undefined);
+    } else if (inDialogue && dialogueUI) {
+      // Draw dialogue UI (Vila) - NO gameUI underneath!
+      dialogueUI.draw();
     } else if (inRanch3D && ranch3DUI) {
       ranch3DUI.render();
       // Clean up mini viewer when in full 3D mode
       if (gameUI) {
         gameUI.dispose();
       }
-    } else if (gameUI && gameState && !inDialogue) {
-      // Only draw GameUI when NOT in dialogue (Vila)
+    } else if (gameUI && gameState) {
+      // Only draw GameUI when NO other menu is active
       gameUI.draw();
-    }
-
-    // Draw dialogue UI on top if active
-    if (inDialogue && dialogueUI) {
-      dialogueUI.draw();
     }
 
     // Draw modal UI on top of everything
@@ -594,10 +592,14 @@ function openDialogueWith(npcId: string) {
     return;
   }
 
+  console.log('[Main] Opening dialogue with', npcId, '- Hiding 3D viewer');
+  
   // Hide 3D viewer when opening dialogue (Vila)
   if (gameUI) {
     gameUI.hide3DViewer();
   }
+  
+  console.log('[Main] inDialogue will be set to TRUE');
 
   // Create dialogue UI if not exists
   if (!dialogueUI) {
@@ -686,6 +688,7 @@ function openDialogueWith(npcId: string) {
 }
 
 function closeDialogue() {
+  console.log('[Main] Closing dialogue - Showing 3D viewer');
   inDialogue = false;
   if (dialogueUI) {
     dialogueUI.close();
@@ -695,6 +698,7 @@ function closeDialogue() {
   if (gameUI) {
     gameUI.show3DViewer();
   }
+  console.log('[Main] inDialogue set to FALSE');
 }
 
 // ===== SHOP SYSTEM =====
