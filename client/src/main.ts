@@ -193,6 +193,10 @@ async function init() {
       if (gameUI) {
         gameUI.update3DViewerPosition();
       }
+      // Update battle 3D viewers position on resize
+      if (battleUI && inBattle) {
+        battleUI.update3DViewersPosition();
+      }
     });
 
     // Register Service Worker

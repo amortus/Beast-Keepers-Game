@@ -126,32 +126,8 @@ export class BattleUI {
     // Create 3D viewer if it doesn't exist
     if (!this.playerViewer3D) {
       this.createPlayerViewer3D();
-    }
-    
-    // Update 3D viewer position
-    if (this.playerViewer3DContainer) {
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const scaleX = canvasRect.width / this.canvas.width;
-      const scaleY = canvasRect.height / this.canvas.height;
-      
-      const leftPos = canvasRect.left + (x * scaleX);
-      const topPos = canvasRect.top + (y * scaleY);
-      const containerWidth = size * scaleX;
-      const containerHeight = size * scaleY;
-      
-      this.playerViewer3DContainer.style.left = `${leftPos}px`;
-      this.playerViewer3DContainer.style.top = `${topPos}px`;
-      this.playerViewer3DContainer.style.width = `${containerWidth}px`;
-      this.playerViewer3DContainer.style.height = `${containerHeight}px`;
-      
-      // Update Three.js renderer when size changes
-      const currentWidth = parseFloat(this.playerViewer3DContainer.style.width || '0');
-      const currentHeight = parseFloat(this.playerViewer3DContainer.style.height || '0');
-      const sizeChanged = Math.abs(currentWidth - containerWidth) > 1 || Math.abs(currentHeight - containerHeight) > 1;
-      
-      if (sizeChanged && this.playerViewer3D) {
-        this.playerViewer3D.onResize(containerWidth, containerHeight);
-      }
+      // Initial position setup
+      this.update3DViewersPosition();
     }
     
     // Name below
@@ -182,32 +158,8 @@ export class BattleUI {
     // Create 3D viewer if it doesn't exist
     if (!this.enemyViewer3D) {
       this.createEnemyViewer3D();
-    }
-    
-    // Update 3D viewer position
-    if (this.enemyViewer3DContainer) {
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const scaleX = canvasRect.width / this.canvas.width;
-      const scaleY = canvasRect.height / this.canvas.height;
-      
-      const leftPos = canvasRect.left + (x * scaleX);
-      const topPos = canvasRect.top + (y * scaleY);
-      const containerWidth = size * scaleX;
-      const containerHeight = size * scaleY;
-      
-      this.enemyViewer3DContainer.style.left = `${leftPos}px`;
-      this.enemyViewer3DContainer.style.top = `${topPos}px`;
-      this.enemyViewer3DContainer.style.width = `${containerWidth}px`;
-      this.enemyViewer3DContainer.style.height = `${containerHeight}px`;
-      
-      // Update Three.js renderer when size changes
-      const currentWidth = parseFloat(this.enemyViewer3DContainer.style.width || '0');
-      const currentHeight = parseFloat(this.enemyViewer3DContainer.style.height || '0');
-      const sizeChanged = Math.abs(currentWidth - containerWidth) > 1 || Math.abs(currentHeight - containerHeight) > 1;
-      
-      if (sizeChanged && this.enemyViewer3D) {
-        this.enemyViewer3D.onResize(containerWidth, containerHeight);
-      }
+      // Initial position setup
+      this.update3DViewersPosition();
     }
     
     // Name below
@@ -806,6 +758,54 @@ export class BattleUI {
       console.log('[Battle UI] ✓ Enemy 3D viewer created');
     } catch (error) {
       console.error('[Battle UI] ❌ Failed to create enemy viewer:', error);
+    }
+  }
+
+  public update3DViewersPosition() {
+    // Update player viewer position
+    if (this.playerViewer3DContainer && this.playerViewer3D) {
+      const x = 150;
+      const y = 220;
+      const size = 80;
+      
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const leftPos = canvasRect.left + (x * scaleX);
+      const topPos = canvasRect.top + (y * scaleY);
+      const containerWidth = size * scaleX;
+      const containerHeight = size * scaleY;
+      
+      this.playerViewer3DContainer.style.left = `${leftPos}px`;
+      this.playerViewer3DContainer.style.top = `${topPos}px`;
+      this.playerViewer3DContainer.style.width = `${containerWidth}px`;
+      this.playerViewer3DContainer.style.height = `${containerHeight}px`;
+      
+      this.playerViewer3D.onResize(containerWidth, containerHeight);
+    }
+    
+    // Update enemy viewer position
+    if (this.enemyViewer3DContainer && this.enemyViewer3D) {
+      const x = this.canvas.width - 230;
+      const y = 220;
+      const size = 80;
+      
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const leftPos = canvasRect.left + (x * scaleX);
+      const topPos = canvasRect.top + (y * scaleY);
+      const containerWidth = size * scaleX;
+      const containerHeight = size * scaleY;
+      
+      this.enemyViewer3DContainer.style.left = `${leftPos}px`;
+      this.enemyViewer3DContainer.style.top = `${topPos}px`;
+      this.enemyViewer3DContainer.style.width = `${containerWidth}px`;
+      this.enemyViewer3DContainer.style.height = `${containerHeight}px`;
+      
+      this.enemyViewer3D.onResize(containerWidth, containerHeight);
     }
   }
 
