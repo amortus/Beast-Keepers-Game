@@ -72,14 +72,11 @@ export function generateBeastFromRelic(
   ];
   const affinity = rng.choice(affinities);
 
-  // Gera nome procedural baseado no input
-  const beastName = generateProceduralName(relicInput, line, rng);
-
-  // Cria a besta base
+  // Cria a besta base com o nome escolhido pelo jogador
   const beast = createBeast(line, guardianName, week);
 
   // Aplica modificadores procedurais
-  beast.name = beastName;
+  // Nome já foi definido em createBeast() como guardianName
   beast.blood = blood;
   beast.affinity = affinity;
 

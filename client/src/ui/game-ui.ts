@@ -832,7 +832,7 @@ export class GameUI {
     // Mostrar idade da besta em dias
     const ageInfo = calculateBeastAge(beast, serverTime);
     
-    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias (${ageInfo.daysRemaining} restantes)`, x + 10, y + 15, {
+    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 10, y + 15, {
       font: 'bold 16px monospace',
       color: COLORS.primary.gold,
     });

@@ -143,8 +143,8 @@ export function generateRandomBeast(playerName: string) {
   // Calculate HP based on vitality
   const maxHp = randomizedAttributes.vitality * 5;
   
-  // Generate unique name
-  const beastName = `${lineData.name} de ${playerName}`;
+  // Usar apenas o nome do jogador
+  const beastName = playerName;
   
   const beast = {
     id: `beast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
