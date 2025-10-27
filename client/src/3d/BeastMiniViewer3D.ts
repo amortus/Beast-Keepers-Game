@@ -49,7 +49,6 @@ export class BeastMiniViewer3D {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     
     // Style the canvas for visibility
-    this.renderer.domElement.style.border = '2px solid lime'; // Green border for debugging
     this.renderer.domElement.style.display = 'block';
     
     container.appendChild(this.renderer.domElement);
