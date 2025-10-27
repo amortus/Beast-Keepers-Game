@@ -40,7 +40,7 @@ import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item
 import { preloadBeastImages } from './utils/beast-images';
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
-import { TECHNIQUES } from './data/techniques';
+import { TECHNIQUES, getStartingTechniques } from './data/techniques';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -373,14 +373,23 @@ async function loadGameFromServer() {
               }
             }
             
-            console.log('[Beast] Technique IDs from server:', techIds);
+            console.log('[Beast] Technique IDs from server:', serverBeast.techniques);
+            console.log('[Beast] Parsed IDs:', techIds);
             
             // Convert technique IDs to full Technique objects
-            const techniques = techIds
+            let techniques = techIds
               .map(id => TECHNIQUES[id])
               .filter(tech => tech !== undefined);
             
-            console.log('[Beast] Converted to Technique objects:', techniques);
+            // FALLBACK: If no techniques, give starting technique for the beast line
+            if (techniques.length === 0) {
+              console.warn('[Beast] ⚠️ No techniques found in server data! Using fallback...');
+              console.log('[Beast] Beast line:', serverBeast.line);
+              techniques = getStartingTechniques(serverBeast.line);
+              console.log('[Beast] Fallback techniques assigned:', techniques);
+            }
+            
+            console.log('[Beast] Final techniques:', techniques);
             
             return techniques;
           })(),
