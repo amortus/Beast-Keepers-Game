@@ -11,10 +11,19 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
       },
+      output: {
+        manualChunks: {
+          three: ['three'],
+        },
+      },
     },
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     port: 5173,
     open: true,
+  },
+  optimizeDeps: {
+    include: ['three'],
   },
 });
