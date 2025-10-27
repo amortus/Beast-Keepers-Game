@@ -36,6 +36,9 @@ export class Ranch3DUI {
     this.beast = beast;
     
     this.setupEventListeners();
+    
+    // Initialize directly in 3D mode (skip 2D intermediate screen)
+    this.enter3DMode();
   }
   
   private setupEventListeners() {

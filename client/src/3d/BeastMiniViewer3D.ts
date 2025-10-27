@@ -33,9 +33,9 @@ export class BeastMiniViewer3D {
       0.1,
       100
     );
-    this.camera.position.set(2.5, 1.5, 3);
-    this.camera.lookAt(0, 0.5, 0);
-    console.log('[MiniViewer3D] Camera positioned at (2.5, 1.5, 3) looking at (0, 0.5, 0)');
+    this.camera.position.set(2.5, 1.0, 3);
+    this.camera.lookAt(0, 0, 0);
+    console.log('[MiniViewer3D] Camera positioned at (2.5, 1.0, 3) looking at (0, 0, 0)');
     
     // Setup renderer
     this.renderer = new THREE.WebGLRenderer({ 
@@ -87,18 +87,6 @@ export class BeastMiniViewer3D {
     console.log('[MiniViewer3D] ========== START MODEL LOADING ==========');
     console.log('[MiniViewer3D] Beast:', beast.name, '/', beast.line);
     
-    // SEMPRE adicionar um cubo de teste primeiro
-    const testCube = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.5, 0.5),
-      new THREE.MeshBasicMaterial({ 
-        color: 0x00ff00, // Verde brilhante
-        wireframe: false
-      })
-    );
-    testCube.position.set(0, 0.5, 0);
-    this.scene.add(testCube);
-    console.log('[MiniViewer3D] ✓ Test cube added (green)');
-    
     try {
       // Generate 3D model for beast line
       const beastLine = beast.line.toLowerCase() as BeastLine;
@@ -115,9 +103,9 @@ export class BeastMiniViewer3D {
       console.log('[MiniViewer3D] Model size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2));
       console.log('[MiniViewer3D] Model center:', center.x.toFixed(2), center.y.toFixed(2), center.z.toFixed(2));
       
-      // Calculate scale to fit in view
+      // Calculate scale to fit in view (slightly larger for better visibility)
       const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 1.5 / maxDim;
+      const scale = 1.8 / maxDim;
       
       this.beastModel.scale.setScalar(scale);
       
@@ -125,8 +113,8 @@ export class BeastMiniViewer3D {
       const offset = center.clone().multiplyScalar(scale);
       this.beastModel.position.sub(offset);
       
-      // Adjust Y position to center vertically in viewport
-      this.beastModel.position.y = 0.5;
+      // Adjust Y position to center vertically in viewport (more centered)
+      this.beastModel.position.y = 0;
       
       this.scene.add(this.beastModel);
       
