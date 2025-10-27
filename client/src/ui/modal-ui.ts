@@ -271,7 +271,7 @@ export class ModalUI {
 
     const width = 600;
     const choiceCount = this.currentModal.choices.length;
-    const height = 200 + (choiceCount * 60);
+    const height = 200 + (choiceCount * 60) + 70; // +70 para o botão Voltar
     const x = (this.canvas.width - width) / 2;
     const y = (this.canvas.height - height) / 2;
 
@@ -325,6 +325,32 @@ export class ModalUI {
       });
 
       btnY += btnHeight + 10;
+    });
+
+    // Botão Voltar (abaixo das escolhas)
+    btnY += 10; // Espaço extra
+    const backBtnWidth = 200;
+    const backBtnHeight = 45;
+    const backBtnX = x + (width - backBtnWidth) / 2;
+    const backIsHovered = isMouseOver(this.mouseX, this.mouseY, backBtnX, btnY, backBtnWidth, backBtnHeight);
+
+    drawButton(this.ctx, backBtnX, btnY, backBtnWidth, backBtnHeight, '← Voltar', {
+      bgColor: COLORS.ui.error,
+      hoverColor: '#c53030',
+      isHovered: backIsHovered,
+    });
+
+    this.buttons.set('back', {
+      x: backBtnX,
+      y: btnY,
+      width: backBtnWidth,
+      height: backBtnHeight,
+      action: () => {
+        if (this.currentModal?.onCancel) {
+          this.currentModal.onCancel();
+        }
+        this.hide();
+      },
     });
   }
 
