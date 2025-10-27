@@ -33,9 +33,9 @@ export class BeastMiniViewer3D {
       0.1,
       100
     );
-    this.camera.position.set(2.5, 0.5, 3);
-    this.camera.lookAt(0, -0.5, 0);
-    console.log('[MiniViewer3D] Camera positioned at (2.5, 0.5, 3) looking at (0, -0.5, 0)');
+    this.camera.position.set(2.5, 0.3, 3);
+    this.camera.lookAt(0, -0.8, 0);
+    console.log('[MiniViewer3D] Camera positioned at (2.5, 0.3, 3) looking at (0, -0.8, 0)');
     
     // Setup renderer
     this.renderer = new THREE.WebGLRenderer({ 
@@ -113,8 +113,8 @@ export class BeastMiniViewer3D {
       const offset = center.clone().multiplyScalar(scale);
       this.beastModel.position.sub(offset);
       
-      // Adjust Y position to center vertically in viewport (much lower)
-      this.beastModel.position.y = -0.7;
+      // Adjust Y position to center vertically in viewport (VERY low to compensate)
+      this.beastModel.position.y = -1.2;
       
       this.scene.add(this.beastModel);
       
