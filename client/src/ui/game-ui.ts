@@ -392,8 +392,13 @@ export class GameUI {
       }
     }
     
-    // Update position every frame
+    // Update position every frame (but only if not hidden)
     if (this.miniViewer3DContainer) {
+      // Don't update position if viewer is hidden
+      if (this.miniViewer3DContainer.style.display === 'none') {
+        return;
+      }
+      
       const canvasRect = this.canvas.getBoundingClientRect();
       const scaleX = canvasRect.width / this.canvas.width;
       const scaleY = canvasRect.height / this.canvas.height;
