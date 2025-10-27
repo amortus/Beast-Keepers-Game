@@ -30,6 +30,7 @@ export class GameUI {
   private miniViewer3D: BeastMiniViewer3D | null = null;
   private miniViewer3DContainer: HTMLDivElement | null = null;
   private currentBeastForViewer: Beast | null = null;
+  private is3DViewerVisible: boolean = true; // ← Flag para controlar visibilidade
   
   // Public callbacks
   public onView3D: () => void = () => {};
@@ -74,6 +75,7 @@ export class GameUI {
 
   // Public method to hide 3D viewer when changing screens
   public hide3DViewer() {
+    this.is3DViewerVisible = false;
     if (this.miniViewer3DContainer) {
       this.miniViewer3DContainer.style.display = 'none';
       console.log('[GameUI] 3D viewer hidden');
@@ -82,6 +84,7 @@ export class GameUI {
 
   // Public method to show 3D viewer when returning to ranch
   public show3DViewer() {
+    this.is3DViewerVisible = true;
     if (this.miniViewer3DContainer) {
       this.miniViewer3DContainer.style.display = 'block';
       console.log('[GameUI] 3D viewer shown');
@@ -350,6 +353,15 @@ export class GameUI {
   }
 
   private drawBeastSprite(x: number, y: number, width: number, height: number, beast: Beast) {
+    // Don't create or update 3D viewer if it should be hidden
+    if (!this.is3DViewerVisible) {
+      // Just draw the border
+      this.ctx.strokeStyle = COLORS.primary.purple;
+      this.ctx.lineWidth = 3;
+      this.ctx.strokeRect(x, y, width, height);
+      return;
+    }
+    
     // Only create viewer once, not every frame
     if (!this.miniViewer3D || this.currentBeastForViewer?.name !== beast.name) {
       console.log('[GameUI] Creating mini viewer for:', beast.name);
