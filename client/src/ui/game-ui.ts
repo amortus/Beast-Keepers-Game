@@ -72,6 +72,22 @@ export class GameUI {
     this.cleanup3DMiniViewer();
   }
 
+  // Public method to hide 3D viewer when changing screens
+  public hide3DViewer() {
+    if (this.miniViewer3DContainer) {
+      this.miniViewer3DContainer.style.display = 'none';
+      console.log('[GameUI] 3D viewer hidden');
+    }
+  }
+
+  // Public method to show 3D viewer when returning to ranch
+  public show3DViewer() {
+    if (this.miniViewer3DContainer) {
+      this.miniViewer3DContainer.style.display = 'block';
+      console.log('[GameUI] 3D viewer shown');
+    }
+  }
+
   private setupEventListeners() {
     this.canvas.addEventListener('mousemove', (e) => {
       const rect = this.canvas.getBoundingClientRect();

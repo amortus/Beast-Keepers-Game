@@ -685,6 +685,11 @@ function closeDialogue() {
 function openShop() {
   if (!gameState) return;
 
+  // Hide 3D viewer when opening shop
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
+
   // Create Shop UI
   shopUI = new ShopUI(canvas);
 
@@ -744,6 +749,11 @@ function closeShop() {
   shopUI = null;
   inShop = false;
 
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
+
   // Update main UI
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
@@ -754,6 +764,11 @@ function closeShop() {
 
 function openInventory() {
   if (!gameState) return;
+
+  // Hide 3D viewer when opening inventory
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
 
   // Create Inventory UI
   inventoryUI = new InventoryUI(canvas);
@@ -810,6 +825,11 @@ function closeInventory() {
   inventoryUI = null;
   inInventory = false;
 
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
+
   // Update main UI
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
@@ -824,6 +844,11 @@ function openCraft() {
   // Close other UIs
   if (inShop) closeShop();
   if (inInventory) closeInventory();
+
+  // Hide 3D viewer when opening craft
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
 
   // Create Craft UI
   craftUI = new CraftUI(canvas);
@@ -884,6 +909,11 @@ function closeCraft() {
   craftUI = null;
   inCraft = false;
 
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
+
   // Update main UI
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
@@ -899,6 +929,11 @@ function openQuests() {
   if (inShop) closeShop();
   if (inInventory) closeInventory();
   if (inCraft) closeCraft();
+
+  // Hide 3D viewer when opening quests
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
 
   // Create Quests UI
   questsUI = new QuestsUI(canvas);
@@ -964,6 +999,11 @@ function closeQuests() {
   questsUI = null;
   inQuests = false;
 
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
+
   // Update main UI
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
@@ -980,6 +1020,11 @@ function openAchievements() {
   if (inInventory) closeInventory();
   if (inCraft) closeCraft();
   if (inQuests) closeQuests();
+
+  // Hide 3D viewer when opening achievements
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
 
   // Create Achievements UI
   achievementsUI = new AchievementsUI(canvas);
@@ -998,6 +1043,11 @@ function closeAchievements() {
   }
   achievementsUI = null;
   inAchievements = false;
+
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
 
   // Update main UI
   if (gameUI && gameState) {
@@ -1019,6 +1069,11 @@ function openExploration() {
   if (inCraft) closeCraft();
   if (inQuests) closeQuests();
   if (inAchievements) closeAchievements();
+
+  // Hide 3D viewer when opening exploration
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
 
   // Create Exploration UI
   explorationUI = new ExplorationUI(canvas);
@@ -1448,6 +1503,11 @@ function closeExploration() {
   explorationState = null;
   inExploration = false;
   isExplorationBattle = false;
+
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
 
   // Update main UI
   if (gameUI && gameState) {
