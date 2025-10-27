@@ -510,7 +510,8 @@ async function loadGameFromServer() {
           lastTournament: serverBeast.last_tournament || 0,
           explorationCount: serverBeast.exploration_count || 0,
           birthDate: serverBeast.birth_date || Date.now(),
-          lastUpdate: serverBeast.last_update || Date.now()
+          lastUpdate: serverBeast.last_update || Date.now(),
+          workBonusCount: serverBeast.work_bonus_count || 0
         };
         
         console.log('[Game] Loaded Beast from server:', gameState.activeBeast.name, `(${gameState.activeBeast.line})`);

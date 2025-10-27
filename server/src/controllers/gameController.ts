@@ -292,6 +292,7 @@ export async function updateBeast(req: AuthRequest, res: Response) {
          exploration_count = COALESCE($25, exploration_count),
          birth_date = COALESCE($26, birth_date),
          last_update = COALESCE($27, last_update),
+         work_bonus_count = COALESCE($28, work_bonus_count),
          updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -322,7 +323,8 @@ export async function updateBeast(req: AuthRequest, res: Response) {
         beastData.lastTournament,
         beastData.explorationCount,
         beastData.birthDate,
-        beastData.lastUpdate
+        beastData.lastUpdate,
+        beastData.workBonusCount
       ]
     );
 

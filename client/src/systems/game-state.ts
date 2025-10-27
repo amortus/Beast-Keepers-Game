@@ -124,7 +124,8 @@ export async function saveGame(state: GameState): Promise<void> {
           lastTournament: beast.lastTournament,
           explorationCount: beast.explorationCount,
           birthDate: beast.birthDate,
-          lastUpdate: beast.lastUpdate
+          lastUpdate: beast.lastUpdate,
+          workBonusCount: beast.workBonusCount
         });
       }
       

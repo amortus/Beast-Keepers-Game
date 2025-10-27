@@ -157,6 +157,9 @@ export interface Beast {
   explorationCount?: number;    // contador de explorações no período atual
   birthDate?: number;           // timestamp de nascimento
   lastUpdate?: number;          // timestamp da última atualização
+  
+  // Bônus de trabalho (limite 10 vezes)
+  workBonusCount?: number;      // 0-10 bônus recebidos
 }
 
 export interface LifeEvent {

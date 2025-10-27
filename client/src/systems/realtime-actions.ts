@@ -247,14 +247,20 @@ function applyActionRewards(
     // ===== TRABALHO =====
     case 'work_warehouse':
       {
-        // 5% chance de +1 força ou resistência
-        const bonus = Math.random() < 0.05;
+        const workBonusCount = beast.workBonusCount || 0;
+        const canGetBonus = workBonusCount < 10;
+        
+        // 5% chance de +1 força ou resistência (apenas se não atingiu limite)
+        const bonus = canGetBonus && Math.random() < 0.05;
         let bonusMsg = '';
         
         if (bonus) {
           const stat = Math.random() < 0.5 ? 'might' : 'ward';
           beast.attributes[stat] += 1;
-          bonusMsg = ` +1 ${stat === 'might' ? 'Força' : 'Resistência'} bônus!`;
+          beast.workBonusCount = (beast.workBonusCount || 0) + 1;
+          bonusMsg = ` +1 ${stat === 'might' ? 'Força' : 'Resistência'} bônus! (${beast.workBonusCount}/10)`;
+        } else if (!canGetBonus) {
+          bonusMsg = ' (Limite de bônus atingido)';
         }
         
         beast.secondaryStats.fatigue += 30;
@@ -268,14 +274,20 @@ function applyActionRewards(
       
     case 'work_farm':
       {
-        // 5% chance de +1 força ou vitalidade
-        const bonus = Math.random() < 0.05;
+        const workBonusCount = beast.workBonusCount || 0;
+        const canGetBonus = workBonusCount < 10;
+        
+        // 5% chance de +1 força ou vitalidade (apenas se não atingiu limite)
+        const bonus = canGetBonus && Math.random() < 0.05;
         let bonusMsg = '';
         
         if (bonus) {
           const stat = Math.random() < 0.5 ? 'might' : 'vitality';
           beast.attributes[stat] += 1;
-          bonusMsg = ` +1 ${stat === 'might' ? 'Força' : 'Vitalidade'} bônus!`;
+          beast.workBonusCount = (beast.workBonusCount || 0) + 1;
+          bonusMsg = ` +1 ${stat === 'might' ? 'Força' : 'Vitalidade'} bônus! (${beast.workBonusCount}/10)`;
+        } else if (!canGetBonus) {
+          bonusMsg = ' (Limite de bônus atingido)';
         }
         
         beast.secondaryStats.fatigue += 30;
@@ -289,14 +301,20 @@ function applyActionRewards(
       
     case 'work_guard':
       {
-        // 5% chance de +1 foco ou resistência
-        const bonus = Math.random() < 0.05;
+        const workBonusCount = beast.workBonusCount || 0;
+        const canGetBonus = workBonusCount < 10;
+        
+        // 5% chance de +1 foco ou resistência (apenas se não atingiu limite)
+        const bonus = canGetBonus && Math.random() < 0.05;
         let bonusMsg = '';
         
         if (bonus) {
           const stat = Math.random() < 0.5 ? 'focus' : 'ward';
           beast.attributes[stat] += 1;
-          bonusMsg = ` +1 ${stat === 'focus' ? 'Foco' : 'Resistência'} bônus!`;
+          beast.workBonusCount = (beast.workBonusCount || 0) + 1;
+          bonusMsg = ` +1 ${stat === 'focus' ? 'Foco' : 'Resistência'} bônus! (${beast.workBonusCount}/10)`;
+        } else if (!canGetBonus) {
+          bonusMsg = ' (Limite de bônus atingido)';
         }
         
         beast.secondaryStats.fatigue += 30;
@@ -311,14 +329,20 @@ function applyActionRewards(
       
     case 'work_library':
       {
-        // 5% chance de +1 astúcia ou foco
-        const bonus = Math.random() < 0.05;
+        const workBonusCount = beast.workBonusCount || 0;
+        const canGetBonus = workBonusCount < 10;
+        
+        // 5% chance de +1 astúcia ou foco (apenas se não atingiu limite)
+        const bonus = canGetBonus && Math.random() < 0.05;
         let bonusMsg = '';
         
         if (bonus) {
           const stat = Math.random() < 0.5 ? 'wit' : 'focus';
           beast.attributes[stat] += 1;
-          bonusMsg = ` +1 ${stat === 'wit' ? 'Astúcia' : 'Foco'} bônus!`;
+          beast.workBonusCount = (beast.workBonusCount || 0) + 1;
+          bonusMsg = ` +1 ${stat === 'wit' ? 'Astúcia' : 'Foco'} bônus! (${beast.workBonusCount}/10)`;
+        } else if (!canGetBonus) {
+          bonusMsg = ' (Limite de bônus atingido)';
         }
         
         beast.secondaryStats.fatigue += 10;
