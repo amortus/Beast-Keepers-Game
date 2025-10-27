@@ -1389,6 +1389,22 @@ function openExploration() {
     showMessage('Você precisa de uma besta ativa para explorar!', '⚠️ Sem Besta');
     return;
   }
+  
+  // Verificar limite de explorações
+  const beast = gameState.activeBeast;
+  const serverTime = gameState.serverTime || Date.now();
+  const explorationCheck = canStartAction(beast, 'exploration', serverTime);
+  
+  if (!explorationCheck.can) {
+    const timeMsg = explorationCheck.timeRemaining 
+      ? `\nTempo restante: ${formatTime(explorationCheck.timeRemaining)}`
+      : '';
+    showMessage(
+      `${explorationCheck.reason}${timeMsg}`,
+      '⚠️ Exploração Bloqueada'
+    );
+    return;
+  }
 
   // Close other UIs
   if (inShop) closeShop();
@@ -1810,7 +1826,7 @@ function continueExploration() {
 }
 
 function finishExploration() {
-  if (!explorationState || !gameState) return;
+  if (!explorationState || !gameState || !gameState.activeBeast) return;
 
   const rewards = endExploration(explorationState);
 
@@ -1823,14 +1839,30 @@ function finishExploration() {
       gameState.inventory.push({ ...material });
     }
   }
+  
+  // Incrementar contador de explorações
+  const beast = gameState.activeBeast;
+  beast.explorationCount = (beast.explorationCount || 0) + 1;
+  beast.lastExploration = Date.now();
+  
+  // Resetar contador se passou o cooldown
+  if (beast.explorationCount >= 10) {
+    const cooldownEnd = beast.lastExploration + (2 * 60 * 60 * 1000);
+    console.log(`[Exploration] Limit reached! Cooldown until: ${new Date(cooldownEnd).toLocaleTimeString()}`);
+  }
 
   // Mostrar resumo
   const materialCount = rewards.materials.length;
+  const explorationInfo = beast.explorationCount >= 10 
+    ? `\n⚠️ Limite de explorações atingido (${beast.explorationCount}/10)! Aguarde 2h para resetar.`
+    : `\nExplorações: ${beast.explorationCount}/10`;
+  
   showMessage(
     `Exploração concluída!\n` +
     `📍 Distância: ${rewards.totalDistance}m\n` +
     `⚔️ Inimigos: ${rewards.enemiesDefeated}\n` +
-    `💎 Materiais: ${materialCount} tipos coletados`,
+    `💎 Materiais: ${materialCount} tipos coletados` +
+    explorationInfo,
     '🗺️ Exploração Finalizada'
   );
 
