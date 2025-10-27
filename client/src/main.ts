@@ -535,11 +535,12 @@ function openVillage() {
     title: '🏘️ Vila',
     message: 'Quem você quer visitar na vila?',
     choices: npcChoices,
-    onConfirm: (indexStr) => {
-      if (indexStr !== undefined) {
-        const index = parseInt(indexStr);
-        if (index >= 0 && index < npcs.length) {
-          openDialogueWith(npcs[index].id);
+    onConfirm: (choice) => {
+      if (choice !== undefined) {
+        // Find NPC by matching the choice text
+        const npcIndex = npcChoices.indexOf(choice);
+        if (npcIndex >= 0 && npcIndex < npcs.length) {
+          openDialogueWith(npcs[npcIndex].id);
         }
       }
     },
@@ -1454,13 +1455,14 @@ function startTournament() {
     title: '🏆 Escolha o Torneio',
     message: `Você tem: ${gameState.economy.coronas}💰 | Vitórias: ${gameState.victories}`,
     choices: rankNames,
-    onConfirm: (indexStr) => {
-      if (indexStr === undefined || !gameState || !gameState.activeBeast) return;
+    onConfirm: (choice) => {
+      if (choice === undefined || !gameState || !gameState.activeBeast) return;
       
-      const index = parseInt(indexStr);
-      if (index < 0 || index >= ranks.length) return;
+      // Find rank by matching the choice text
+      const rankIndex = rankNames.indexOf(choice);
+      if (rankIndex < 0 || rankIndex >= ranks.length) return;
       
-      const rank = ranks[index];
+      const rank = ranks[rankIndex];
       
       // Check if can enter
       if (!canEnterTournament(rank, gameState.victories, gameState.economy.coronas)) {
