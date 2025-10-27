@@ -1,16 +1,17 @@
 /**
  * Beast Viewer 3D - Monster Rancher PS1 Style
- * Displays 2D beast sprites in a 3D environment using billboarding
+ * Displays 3D beast models in a 3D environment
  */
 
 import * as THREE from 'three';
 import type { Beast } from '../types';
+import { generateBeastModel, type BeastLine } from './models/BeastModels';
 
 export class BeastViewer3D {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private beastSprite: THREE.Sprite | null = null;
+  private beastModel: THREE.Group | null = null;
   private animationFrameId: number | null = null;
   
   // Camera controls
@@ -45,7 +46,7 @@ export class BeastViewer3D {
     container.appendChild(this.renderer.domElement);
     
     this.setupScene();
-    this.loadBeastSprite();
+    this.loadBeastModel();
     this.updateCameraPosition();
     this.animate();
   }
@@ -111,37 +112,21 @@ export class BeastViewer3D {
     this.scene.add(ground);
   }
   
-  private async loadBeastSprite() {
+  private loadBeastModel() {
     try {
-      // Load beast sprite texture
-      const spritePath = `/assets/beasts/sprites/${this.beast.line}.png`;
+      // Generate 3D model for beast line
+      const beastLine = this.beast.line.toLowerCase() as BeastLine;
+      this.beastModel = generateBeastModel(beastLine);
       
-      const textureLoader = new THREE.TextureLoader();
-      const texture = await textureLoader.loadAsync(spritePath);
+      // Position model
+      this.beastModel.position.set(0, 0, 0);
       
-      // Configure texture for pixel-perfect rendering
-      texture.magFilter = THREE.NearestFilter;
-      texture.minFilter = THREE.NearestFilter;
+      this.scene.add(this.beastModel);
       
-      // Create sprite material
-      const spriteMaterial = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        alphaTest: 0.5, // Cut off semi-transparent pixels
-        sizeAttenuation: true
-      });
-      
-      // Create sprite
-      this.beastSprite = new THREE.Sprite(spriteMaterial);
-      this.beastSprite.scale.set(3, 3, 1); // Scale to be visible (3x3 units)
-      this.beastSprite.position.set(0, 1.5, 0); // Position above ground
-      
-      this.scene.add(this.beastSprite);
-      
-      console.log(`[3D] Loaded sprite for ${this.beast.line}`);
+      console.log(`[3D] Loaded 3D model for ${this.beast.line}`);
       
     } catch (error) {
-      console.error('[3D] Failed to load beast sprite:', error);
+      console.error('[3D] Failed to load beast model:', error);
       
       // Fallback: Create colored cube as placeholder
       const geometry = new THREE.BoxGeometry(2, 2, 2);
@@ -167,13 +152,12 @@ export class BeastViewer3D {
     this.time += 0.016; // ~60 FPS
     
     // Idle animation: gentle breathing/bobbing
-    if (this.beastSprite) {
-      const breathingOffset = Math.sin(this.time * 2) * 0.1; // Slow breathing
-      this.beastSprite.position.y = 1.5 + breathingOffset;
+    if (this.beastModel) {
+      const breathingOffset = Math.sin(this.time * 2) * 0.05; // Subtle breathing
+      this.beastModel.position.y = breathingOffset;
       
-      // Slight scale breathing effect
-      const scaleBreathing = 1 + Math.sin(this.time * 2) * 0.05;
-      this.beastSprite.scale.set(3 * scaleBreathing, 3 * scaleBreathing, 1);
+      // Slight rotation animation
+      this.beastModel.rotation.y = Math.sin(this.time * 0.5) * 0.1;
     }
     
     // Slow camera orbit (auto-rotate)
@@ -233,10 +217,12 @@ export class BeastViewer3D {
     
     // Dispose of all geometries and materials
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Sprite) {
+      if (object instanceof THREE.Mesh) {
         object.geometry?.dispose();
         if (object.material instanceof THREE.Material) {
           object.material.dispose();
+        } else if (Array.isArray(object.material)) {
+          object.material.forEach(mat => mat.dispose());
         }
       }
     });

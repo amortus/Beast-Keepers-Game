@@ -64,6 +64,8 @@ export class Ranch3DUI {
     this.buttons.clear();
     
     if (this.is3DMode) {
+      // Clear canvas with transparency for 3D mode
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.render3DView();
     } else {
       this.render2DView();
@@ -127,28 +129,60 @@ export class Ranch3DUI {
   }
   
   private render3DView() {
-    // Draw minimal 2D overlay with controls
+    // Draw beast name at top (semi-transparent background)
+    const nameBoxWidth = 600;
+    const nameBoxHeight = 100;
+    const nameBoxX = (this.canvas.width - nameBoxWidth) / 2;
+    const nameBoxY = 20;
+    
+    // Name panel background
+    this.ctx.fillStyle = 'rgba(26, 26, 46, 0.85)';
+    this.ctx.fillRect(nameBoxX, nameBoxY, nameBoxWidth, nameBoxHeight);
+    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(nameBoxX, nameBoxY, nameBoxWidth, nameBoxHeight);
+    
+    // Beast name
+    drawText(this.ctx, this.beast.name, this.canvas.width / 2, nameBoxY + 35, {
+      align: 'center',
+      font: 'bold 32px monospace',
+      color: COLORS.primary.gold
+    });
+    
+    // Beast info
+    drawText(this.ctx, `${this.beast.line} - ${this.beast.blood}`, this.canvas.width / 2, nameBoxY + 70, {
+      align: 'center',
+      font: '18px monospace',
+      color: COLORS.ui.textDim
+    });
+    
+    // Draw control panel (right side)
     const panelX = this.canvas.width - 250;
-    const panelY = 20;
+    const panelY = 140;
     const panelWidth = 230;
-    const panelHeight = 300;
+    const panelHeight = 400;
     
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: 'rgba(26, 26, 46, 0.9)',
       borderColor: COLORS.primary.purple
     });
     
-    drawText(this.ctx, '🎮 Controles 3D', panelX + 115, panelY + 25, {
+    drawText(this.ctx, '🎮 CONTROLES 3D', panelX + 115, panelY + 30, {
       align: 'center',
-      font: 'bold 16px monospace',
+      font: 'bold 18px monospace',
       color: COLORS.primary.gold
+    });
+    
+    drawText(this.ctx, 'Câmera:', panelX + 20, panelY + 65, {
+      font: 'bold 14px monospace',
+      color: COLORS.ui.text
     });
     
     // Camera controls
     const btnWidth = 100;
     const btnHeight = 35;
     const btnX = panelX + 15;
-    let btnY = panelY + 50;
+    let btnY = panelY + 80;
     
     // Rotate Left button
     this.drawControlButton('← Girar', btnX, btnY, btnWidth, btnHeight, () => {
@@ -191,25 +225,43 @@ export class Ranch3DUI {
       this.viewer3D?.resetCamera();
     });
     
-    btnY += 60;
+    btnY += 50;
     
-    // Back to 2D button
-    const backBtnHeight = 45;
-    this.drawControlButton('← Voltar para 2D', btnX, btnY, 200, backBtnHeight, () => {
+    // Separator line
+    this.ctx.strokeStyle = COLORS.primary.purple;
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(panelX + 15, btnY);
+    this.ctx.lineTo(panelX + panelWidth - 15, btnY);
+    this.ctx.stroke();
+    
+    btnY += 20;
+    
+    // Back to 2D button (LARGER and more visible)
+    const backBtnHeight = 50;
+    const backBtnWidth = 200;
+    const backBtnX = panelX + 15;
+    
+    this.drawControlButton('← VOLTAR PARA 2D', backBtnX, btnY, backBtnWidth, backBtnHeight, () => {
       this.exit3DMode();
       this.onExit3D(); // Trigger callback to main.ts
     }, COLORS.ui.error);
     
-    // Draw beast name overlay
-    drawText(this.ctx, this.beast.name, this.canvas.width / 2, 40, {
+    // Instructions at bottom
+    btnY += backBtnHeight + 20;
+    
+    this.ctx.fillStyle = 'rgba(26, 26, 46, 0.7)';
+    this.ctx.fillRect(panelX + 10, btnY, panelWidth - 20, 60);
+    
+    drawText(this.ctx, '💡 Dica:', panelX + 115, btnY + 20, {
       align: 'center',
-      font: 'bold 32px monospace',
+      font: 'bold 12px monospace',
       color: COLORS.primary.gold
     });
     
-    drawText(this.ctx, `${this.beast.line} - ${this.beast.blood}`, this.canvas.width / 2, 75, {
+    drawText(this.ctx, 'Use os controles acima', panelX + 115, btnY + 40, {
       align: 'center',
-      font: '18px monospace',
+      font: '11px monospace',
       color: COLORS.ui.textDim
     });
   }

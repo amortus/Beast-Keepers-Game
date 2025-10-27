@@ -8,6 +8,7 @@ import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-help
 import { getLifePhase } from '../systems/beast';
 import { getBeastLineData } from '../data/beasts';
 import { getBeastSprite } from '../utils/beast-images';
+import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
 
 export class GameUI {
   private canvas: HTMLCanvasElement;
@@ -25,6 +26,11 @@ export class GameUI {
   // Button positions
   private buttons: Map<string, { x: number; y: number; width: number; height: number; action?: () => void }> = new Map();
   
+  // 3D Mini Viewer
+  private miniViewer3D: BeastMiniViewer3D | null = null;
+  private miniViewer3DContainer: HTMLDivElement | null = null;
+  private currentBeastForViewer: Beast | null = null;
+  
   // Public callbacks
   public onView3D: () => void = () => {};
 
@@ -36,6 +42,34 @@ export class GameUI {
     this.gameState = gameState;
     
     this.setupEventListeners();
+  }
+  
+  // Cleanup 3D mini viewer
+  private cleanup3DMiniViewer() {
+    console.log('[GameUI] Cleanup started...', {
+      hasViewer: !!this.miniViewer3D,
+      hasContainer: !!this.miniViewer3DContainer
+    });
+    
+    if (this.miniViewer3D) {
+      console.log('[GameUI] Disposing viewer...');
+      this.miniViewer3D.dispose();
+      this.miniViewer3D = null;
+    }
+    
+    if (this.miniViewer3DContainer && this.miniViewer3DContainer.parentNode) {
+      console.log('[GameUI] Removing container from DOM...');
+      this.miniViewer3DContainer.parentNode.removeChild(this.miniViewer3DContainer);
+      this.miniViewer3DContainer = null;
+    }
+    
+    this.currentBeastForViewer = null;
+    console.log('[GameUI] ✓ Cleanup complete');
+  }
+  
+  // Call this when UI is destroyed or beast changes significantly
+  public dispose() {
+    this.cleanup3DMiniViewer();
   }
 
   private setupEventListeners() {
@@ -194,7 +228,9 @@ export class GameUI {
     });
 
     // Beast "sprite" (placeholder)
+    console.log('[GameUI] About to call drawBeastSprite...');
     this.drawBeastSprite(x + width / 2 - 60, y + 80, 120, 120, beast);
+    console.log('[GameUI] drawBeastSprite call completed');
 
     // 3D View button (below sprite)
     const view3DBtnX = x + width / 2 - 75;
@@ -298,16 +334,69 @@ export class GameUI {
   }
 
   private drawBeastSprite(x: number, y: number, width: number, height: number, beast: Beast) {
-    // Tentar obter a imagem da criatura
-    const img = getBeastSprite(beast.name);
-    
-    if (img && img.complete && img.naturalWidth > 0) {
-      // Desenhar a imagem real da criatura
-      this.ctx.drawImage(img, x, y, width, height);
-    } else {
-      // Usar fallback se a imagem não estiver disponível
-      this.drawBeastFallback(x, y, width, height, beast);
+    // Only create viewer once, not every frame
+    if (!this.miniViewer3D || this.currentBeastForViewer?.name !== beast.name) {
+      console.log('[GameUI] Creating mini viewer for:', beast.name);
+      this.cleanup3DMiniViewer();
+      
+      // Create container for 3D viewer
+      this.miniViewer3DContainer = document.createElement('div');
+      this.miniViewer3DContainer.id = 'beast-mini-viewer-3d';
+      this.miniViewer3DContainer.style.cssText = `
+        position: fixed;
+        pointer-events: none;
+        z-index: 100;
+        background: rgba(106, 61, 122, 0.3);
+        border: 2px solid rgba(106, 61, 122, 0.6);
+      `;
+      
+      document.body.appendChild(this.miniViewer3DContainer);
+      console.log('[GameUI] ✓ Container created and appended');
+      
+      // Calculate initial position and size
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const containerWidth = width * scaleX;
+      const containerHeight = height * scaleY;
+      
+      // Create 3D viewer
+      try {
+        this.miniViewer3D = new BeastMiniViewer3D(
+          this.miniViewer3DContainer, 
+          beast, 
+          containerWidth, 
+          containerHeight
+        );
+        this.currentBeastForViewer = beast;
+        console.log('[GameUI] ✓ Viewer created successfully');
+      } catch (error) {
+        console.error('[GameUI] ❌ Failed:', error);
+      }
     }
+    
+    // Update position every frame
+    if (this.miniViewer3DContainer) {
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const leftPos = canvasRect.left + (x * scaleX);
+      const topPos = canvasRect.top + (y * scaleY);
+      const containerWidth = width * scaleX;
+      const containerHeight = height * scaleY;
+      
+      this.miniViewer3DContainer.style.left = `${leftPos}px`;
+      this.miniViewer3DContainer.style.top = `${topPos}px`;
+      this.miniViewer3DContainer.style.width = `${containerWidth}px`;
+      this.miniViewer3DContainer.style.height = `${containerHeight}px`;
+    }
+    
+    // Draw border on canvas
+    this.ctx.strokeStyle = COLORS.primary.purple;
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(x, y, width, height);
   }
 
   private drawBeastFallback(x: number, y: number, width: number, height: number, beast: Beast) {

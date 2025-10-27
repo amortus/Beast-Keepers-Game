@@ -116,6 +116,10 @@ function startRenderLoop() {
       explorationUI.draw(explorationState || undefined);
     } else if (inRanch3D && ranch3DUI) {
       ranch3DUI.render();
+      // Clean up mini viewer when in full 3D mode
+      if (gameUI) {
+        gameUI.dispose();
+      }
     } else if (gameUI && gameState) {
       gameUI.draw();
     }

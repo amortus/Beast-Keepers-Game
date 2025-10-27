@@ -6,10 +6,10 @@ Sistema de visualização 3D para as Beasts, inspirado no Monster Rancher do Pla
 
 ## Features Implementadas
 
-### ✅ **Billboarding System**
-- Sprites 2D sempre virados para a câmera
-- Mantém qualidade pixelada (NearestFilter)
-- Transparência com alpha test
+### ✅ **Modelos 3D Procedurais**
+- 10 criaturas únicas com geometria low-poly
+- Modelos gerados proceduralmente em Three.js
+- Estilo retro PS1 com iluminação moderna
 
 ### ✅ **PS1-Style Graphics**
 - Sem antialiasing (retro look)
@@ -141,7 +141,7 @@ sprite.scale.set(3 * scaleBreathing, 3 * scaleBreathing, 1);
 - `main.ts` - State management and callbacks
 
 ### **Assets Required**
-- `public/assets/beasts/sprites/*.png` - Beast sprites (10 files)
+- None! All models are procedurally generated in code
 
 ## Performance
 
@@ -182,13 +182,26 @@ sprite.scale.set(3 * scaleBreathing, 3 * scaleBreathing, 1);
 
 ## Monster Rancher Inspirations Used
 
-- ✅ **Sprite billboarding** - Beasts são sprites 2D em mundo 3D
+- ✅ **Low-poly 3D models** - Modelos 3D simples e estilizados
 - ✅ **Orbital camera** - Câmera gira ao redor da criatura
-- ✅ **Simple animations** - Idle breathing simples
+- ✅ **Simple animations** - Idle breathing e rotação suave
 - ✅ **Dark background** - Fundo escuro/roxo
 - ✅ **Checkered floor** - Piso xadrez característico
 - ✅ **PS1 lighting** - Iluminação simples de 3 pontos
-- ✅ **Low-fi aesthetic** - Sem antialiasing, pixelado
+- ✅ **Low-fi aesthetic** - Geometria simples, estética retro
+
+## 10 Criaturas Implementadas
+
+1. **Olgrim** - Olho flutuante com 6 tentáculos (purple)
+2. **Terravox** - Golem de pedra robusto (brown/gray)
+3. **Feralis** - Felino ágil com cauda longa (green)
+4. **Brontis** - Réptil bípede com cauda (dark green)
+5. **Zephyra** - Ave com asas e bico (sky blue)
+6. **Ignar** - Fera de fogo com chifres (red-orange, glowing)
+7. **Mirella** - Criatura anfíbia estilo sapo (light blue)
+8. **Umbrix** - Besta sombria com tentáculos etéreos (dark purple/black)
+9. **Sylphid** - Espírito etéreo com partículas (golden, translucent)
+10. **Raukor** - Lobo lupino com cauda espessa (silver-gray)
 
 ## Usage Example
 

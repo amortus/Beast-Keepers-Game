@@ -32,6 +32,9 @@
       /* Pixelated rendering para estética retro */
       image-rendering: pixelated;
       image-rendering: crisp-edges;
+      /* Garantir que canvas fique acima do 3D */
+      position: relative;
+      z-index: 10;
     }
 
     #loading {
