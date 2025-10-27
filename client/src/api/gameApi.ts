@@ -40,5 +40,38 @@ export const gameApi = {
   async updateBeast(beastId: string, beastData: any): Promise<ApiResponse<BeastDTO>> {
     return apiClient.put(`/game/beast/${beastId}`, beastData);
   },
+
+  /**
+   * Get server time (Brasília timezone)
+   */
+  async getServerTime(): Promise<number> {
+    const response = await apiClient.get('/game/time');
+    return response.data?.timestamp || Date.now();
+  },
+
+  /**
+   * Start a timed action for a beast
+   */
+  async startBeastAction(beastId: string, actionType: string, duration: number, completesAt: number): Promise<ApiResponse<any>> {
+    return apiClient.post(`/game/beast/${beastId}/action/start`, {
+      actionType,
+      duration,
+      completesAt,
+    });
+  },
+
+  /**
+   * Complete a beast action
+   */
+  async completeBeastAction(beastId: string): Promise<ApiResponse<any>> {
+    return apiClient.post(`/game/beast/${beastId}/action/complete`, {});
+  },
+
+  /**
+   * Cancel a beast action
+   */
+  async cancelBeastAction(beastId: string): Promise<ApiResponse<any>> {
+    return apiClient.post(`/game/beast/${beastId}/action/cancel`, {});
+  },
 };
 

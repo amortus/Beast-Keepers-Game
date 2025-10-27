@@ -2,13 +2,15 @@
  * UI Principal do Beast Keepers
  */
 
-import type { GameState, Beast, WeeklyAction } from '../types';
+import type { GameState, Beast, WeeklyAction, BeastAction } from '../types';
 import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
-import { getLifePhase } from '../systems/beast';
+import { getLifePhase, calculateBeastAge } from '../systems/beast';
 import { getBeastLineData } from '../data/beasts';
 import { getBeastSprite } from '../utils/beast-images';
 import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
+import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';
+import { formatTime } from '../utils/time-format';
 
 export class GameUI {
   private canvas: HTMLCanvasElement;
@@ -589,6 +591,11 @@ export class GameUI {
   }
 
   private drawActionMenu() {
+    if (!this.gameState.activeBeast) return;
+    
+    const beast = this.gameState.activeBeast;
+    const serverTime = this.gameState.serverTime || Date.now();
+    
     const x = 20;
     const y = 570;
     const width = this.canvas.width - 40;
@@ -596,7 +603,14 @@ export class GameUI {
 
     drawPanel(this.ctx, x, y, width, height);
 
-    drawText(this.ctx, 'AÇÕES SEMANAIS', x + 10, y + 10, {
+    // Se tem ação em progresso, mostrar progresso
+    if (beast.currentAction) {
+      this.drawActionProgress(beast, serverTime, x, y, width, height);
+      return;
+    }
+
+    // Se não tem ação, mostrar menu de ações
+    drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 10, y + 10, {
       font: 'bold 20px monospace',
       color: COLORS.primary.gold,
     });
@@ -637,7 +651,7 @@ export class GameUI {
 
     // Show actions for selected category
     if (this.actionCategory) {
-      this.drawActionList(x + 10, y + 95);
+      this.drawActionList(x + 10, y + 95, beast, serverTime);
     } else {
       drawText(this.ctx, 'Selecione uma categoria acima', x + 10, y + 100, {
         font: '16px monospace',
@@ -645,8 +659,83 @@ export class GameUI {
       });
     }
   }
+  
+  private drawActionProgress(beast: Beast, serverTime: number, x: number, y: number, width: number, height: number) {
+    if (!beast.currentAction) return;
+    
+    const action = beast.currentAction;
+    const progress = getActionProgress(action, serverTime);
+    const timeRemaining = Math.max(0, action.completesAt - serverTime);
+    
+    drawText(this.ctx, '⏳ AÇÃO EM PROGRESSO', x + 10, y + 10, {
+      font: 'bold 20px monospace',
+      color: COLORS.primary.gold,
+    });
+    
+    // Nome da ação
+    drawText(this.ctx, getRealtimeActionName(action.type), x + 10, y + 45, {
+      font: 'bold 18px monospace',
+      color: COLORS.ui.text,
+    });
+    
+    // Barra de progresso
+    const barX = x + 10;
+    const barY = y + 75;
+    const barWidth = width - 20;
+    const barHeight = 30;
+    
+    // Fundo da barra
+    this.ctx.fillStyle = COLORS.bg.dark;
+    this.ctx.fillRect(barX, barY, barWidth, barHeight);
+    
+    // Progresso
+    this.ctx.fillStyle = COLORS.primary.green;
+    this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+    
+    // Borda
+    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+    
+    // Texto de progresso
+    drawText(this.ctx, `${Math.floor(progress * 100)}%`, barX + barWidth / 2, barY + 18, {
+      align: 'center',
+      font: 'bold 16px monospace',
+      color: COLORS.ui.text,
+    });
+    
+    // Tempo restante
+    drawText(this.ctx, `Tempo restante: ${formatTime(timeRemaining)}`, x + 10, y + 120, {
+      font: 'bold 16px monospace',
+      color: COLORS.ui.info,
+    });
+    
+    // Botão cancelar
+    if (action.canCancel) {
+      const cancelBtnX = x + width - 210;
+      const cancelBtnY = y + height - 45;
+      const cancelBtnWidth = 200;
+      const cancelBtnHeight = 35;
+      const isHovered = isMouseOver(this.mouseX, this.mouseY, cancelBtnX, cancelBtnY, cancelBtnWidth, cancelBtnHeight);
+      
+      drawButton(this.ctx, cancelBtnX, cancelBtnY, cancelBtnWidth, cancelBtnHeight, '❌ Cancelar Ação', {
+        bgColor: COLORS.ui.error,
+        isHovered,
+      });
+      
+      this.buttons.set('cancel_action', {
+        x: cancelBtnX,
+        y: cancelBtnY,
+        width: cancelBtnWidth,
+        height: cancelBtnHeight,
+        action: () => {
+          this.onCancelAction();
+        },
+      });
+    }
+  }
 
-  private drawActionList(x: number, y: number) {
+  private drawActionList(x: number, y: number, beast: Beast, serverTime: number) {
     const actions = this.getActionsForCategory();
     const buttonWidth = 160;
     const buttonHeight = 35;
@@ -657,10 +746,14 @@ export class GameUI {
       const buttonY = y + Math.floor(index / 4) * (buttonHeight + spacing);
       const isHovered = isMouseOver(this.mouseX, this.mouseY, buttonX, buttonY, buttonWidth, buttonHeight);
       const isSelected = this.selectedAction === action.id;
+      
+      // Verificar se pode iniciar esta ação
+      const canStart = canStartAction(beast, action.id, serverTime);
 
       drawButton(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, action.label, {
         bgColor: isSelected ? COLORS.ui.success : COLORS.bg.light,
         isHovered,
+        isDisabled: !canStart.can,
       });
 
       this.buttons.set(`action_${action.id}`, {
@@ -669,45 +762,64 @@ export class GameUI {
         width: buttonWidth,
         height: buttonHeight,
         action: () => {
-          this.selectedAction = action.id;
+          if (canStart.can) {
+            this.onStartAction(action.id as BeastAction['type']);
+          } else {
+            // Mostrar mensagem de erro se não pode iniciar
+            console.log('[UI] Cannot start action:', canStart.reason);
+          }
         },
       });
+      
+      // Mostrar cooldown se houver
+      if (!canStart.can && canStart.timeRemaining) {
+        drawText(this.ctx, formatTime(canStart.timeRemaining), buttonX + buttonWidth / 2, buttonY + buttonHeight + 12, {
+          align: 'center',
+          font: '10px monospace',
+          color: COLORS.ui.error,
+        });
+      }
     });
   }
 
   private getActionsForCategory(): Array<{ id: WeeklyAction; label: string }> {
     if (this.actionCategory === 'train') {
       return [
-        { id: 'train_might', label: 'Força' },
-        { id: 'train_wit', label: 'Astúcia' },
-        { id: 'train_focus', label: 'Foco' },
-        { id: 'train_agility', label: 'Agilidade' },
-        { id: 'train_ward', label: 'Resistência' },
-        { id: 'train_vitality', label: 'Vitalidade' },
+        { id: 'train_might', label: 'Força (2min)' },
+        { id: 'train_wit', label: 'Astúcia (2min)' },
+        { id: 'train_focus', label: 'Foco (2min)' },
+        { id: 'train_agility', label: 'Agilidade (2min)' },
+        { id: 'train_ward', label: 'Resistência (2min)' },
+        { id: 'train_vitality', label: 'Vitalidade (2min)' },
       ];
     } else if (this.actionCategory === 'work') {
       return [
-        { id: 'work_warehouse', label: 'Armazém (300💰)' },
-        { id: 'work_farm', label: 'Fazenda (400💰)' },
-        { id: 'work_guard', label: 'Guarda (500💰)' },
-        { id: 'work_library', label: 'Biblioteca (350💰)' },
+        { id: 'work_warehouse', label: 'Armazém (10min, 400💰)' },
+        { id: 'work_farm', label: 'Fazenda (10min, 350💰)' },
+        { id: 'work_guard', label: 'Guarda (10min, 500💰)' },
+        { id: 'work_library', label: 'Biblioteca (10min, 350💰)' },
       ];
     } else if (this.actionCategory === 'rest') {
       return [
-        { id: 'rest_sleep', label: 'Dormir' },
-        { id: 'rest_freetime', label: 'Tempo Livre' },
-        { id: 'rest_walk', label: 'Passeio' },
-        { id: 'rest_eat', label: 'Comer Bem' },
+        { id: 'rest_sleep', label: 'Dormir (4h)' },
+        { id: 'rest_freetime', label: 'Tempo Livre (10min)' },
+        { id: 'rest_walk', label: 'Passeio (10min)' },
+        { id: 'rest_eat', label: 'Comer Bem (10min)' },
       ];
     } else if (this.actionCategory === 'tournament') {
       return [
-        { id: 'tournament', label: '🏆 Entrar em Torneio' },
+        { id: 'tournament', label: '🏆 Torneio (4h cooldown)' },
       ];
     }
     return [];
   }
 
   private drawWeekInfo() {
+    if (!this.gameState.activeBeast) return;
+    
+    const beast = this.gameState.activeBeast;
+    const serverTime = this.gameState.serverTime || Date.now();
+    
     const x = 20;
     const y = this.canvas.height - 60;
     const width = 500;
@@ -717,43 +829,36 @@ export class GameUI {
       bgColor: COLORS.bg.medium,
     });
 
-    drawText(this.ctx, `Semana ${this.gameState.currentWeek} - Ano ${this.gameState.year}`, x + 10, y + 15, {
-      font: 'bold 18px monospace',
+    // Mostrar idade da besta em dias
+    const ageInfo = calculateBeastAge(beast, serverTime);
+    
+    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias (${ageInfo.daysRemaining} restantes)`, x + 10, y + 15, {
+      font: 'bold 16px monospace',
       color: COLORS.primary.gold,
     });
 
-    if (this.selectedAction) {
-      drawText(this.ctx, `Ação selecionada: ${this.getActionName(this.selectedAction)}`, x + 10, y + 35, {
-        font: '14px monospace',
-        color: COLORS.ui.success,
-      });
+    // Mostrar contador de explorações
+    const explorationCount = beast.explorationCount || 0;
+    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 10, y + 35, {
+      font: '14px monospace',
+      color: explorationCount >= 10 ? COLORS.ui.error : COLORS.ui.success,
+    });
+    
+    // Mostrar cooldown de torneio se ativo
+    if (beast.lastTournament) {
+      const tournamentCooldown = (beast.lastTournament + (4 * 60 * 60 * 1000)) - serverTime;
+      if (tournamentCooldown > 0) {
+        drawText(this.ctx, `Torneio: ${formatTime(tournamentCooldown)}`, x + 250, y + 35, {
+          font: '14px monospace',
+          color: COLORS.ui.error,
+        });
+      } else {
+        drawText(this.ctx, `Torneio: Disponível`, x + 250, y + 35, {
+          font: '14px monospace',
+          color: COLORS.ui.success,
+        });
+      }
     }
-
-    // Advance week button
-    const buttonX = this.canvas.width - 220;
-    const buttonY = y;
-    const buttonWidth = 200;
-    const buttonHeight = 50;
-    const isHovered = isMouseOver(this.mouseX, this.mouseY, buttonX, buttonY, buttonWidth, buttonHeight);
-    const isDisabled = !this.selectedAction;
-
-    drawButton(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, '⏩ Avançar Semana', {
-      bgColor: COLORS.ui.success,
-      isHovered,
-      isDisabled,
-    });
-
-    this.buttons.set('advance_week', {
-      x: buttonX,
-      y: buttonY,
-      width: buttonWidth,
-      height: buttonHeight,
-      action: () => {
-        if (this.selectedAction) {
-          this.onAdvanceWeek(this.selectedAction);
-        }
-      },
-    });
   }
 
   private getActionName(action: WeeklyAction): string {
@@ -788,6 +893,8 @@ export class GameUI {
 
   // Callbacks
   public onAdvanceWeek: (action: WeeklyAction) => void = () => {};
+  public onStartAction: (action: BeastAction['type']) => void = () => {};
+  public onCancelAction: () => void = () => {};
   public onOpenTemple: () => void = () => {};
   public onOpenVillage: () => void = () => {};
   public onOpenInventory: () => void = () => {};

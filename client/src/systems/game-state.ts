@@ -13,12 +13,12 @@ import { ACHIEVEMENTS } from './achievements';
  */
 export function createNewGame(playerName: string): GameState {
   // Cria primeira besta (Brontis - boa para iniciantes)
-  const firstBeast = createBeast('brontis', 'Início', 1);
+  const firstBeast = createBeast('brontis', 'Início', 0);
 
   const gameState: GameState = {
-    currentWeek: 1,
-    year: 1,
-    totalWeeks: 1,
+    // Sistema de tempo real
+    serverTime: Date.now(),
+    lastSync: Date.now(),
     
     guardian: {
       name: playerName,
@@ -118,7 +118,13 @@ export async function saveGame(state: GameState): Promise<void> {
           experience: beast.experience,
           techniques: techniqueIds,
           traits: beast.traits,
-          elixirUsage: beast.elixirUsage
+          elixirUsage: beast.elixirUsage,
+          currentAction: beast.currentAction,
+          lastExploration: beast.lastExploration,
+          lastTournament: beast.lastTournament,
+          explorationCount: beast.explorationCount,
+          birthDate: beast.birthDate,
+          lastUpdate: beast.lastUpdate
         });
       }
       

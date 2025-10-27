@@ -23,9 +23,10 @@ function calculateMaxHp(vitality: number): number {
 /**
  * Gera uma nova Besta de uma linha específica
  */
-export function createBeast(line: BeastLine, name: string, currentWeek: number): Beast {
+export function createBeast(line: BeastLine, name: string, currentWeek: number = 0): Beast {
   const lineData = getBeastLineData(line);
   const startingTechniques = getStartingTechniques(line);
+  const now = Date.now();
 
   // Copia atributos base
   const attributes: Attributes = { ...lineData.baseAttributes };
@@ -57,7 +58,7 @@ export function createBeast(line: BeastLine, name: string, currentWeek: number):
       stress: 0,
       loyalty: 50,
       age: 0,
-      maxAge: lineData.baseLifespan,
+      maxAge: lineData.baseLifespan || 365, // dias (padrão 1 ano)
     },
     
     traits: [initialTrait],
@@ -70,6 +71,8 @@ export function createBeast(line: BeastLine, name: string, currentWeek: number):
     maxEssence: 99,
     
     birthWeek: currentWeek,
+    birthDate: now, // timestamp de nascimento
+    lastUpdate: now,
     lifeEvents: [{
       week: currentWeek,
       type: 'birth',
@@ -141,25 +144,51 @@ export function ageBeast(beast: Beast) {
 }
 
 /**
- * Verifica se a besta está viva
+ * Calcula idade da besta em dias reais
  */
-export function isBeastAlive(beast: Beast): boolean {
-  return beast.secondaryStats.age < beast.secondaryStats.maxAge;
+export function calculateBeastAge(
+  beast: Beast,
+  currentTime: number
+): {
+  ageInDays: number;
+  isAlive: boolean;
+  daysRemaining: number;
+} {
+  const birthDate = beast.birthDate || currentTime;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const ageInDays = Math.floor((currentTime - birthDate) / msPerDay);
+  const lifespan = beast.secondaryStats.maxAge || 365; // dias (padrão 1 ano)
+  
+  return {
+    ageInDays,
+    isAlive: ageInDays < lifespan,
+    daysRemaining: Math.max(0, lifespan - ageInDays),
+  };
 }
 
 /**
- * Calcula a fase de vida da besta
+ * Verifica se a besta está viva (baseado em dias reais)
  */
-export function getLifePhase(beast: Beast): 'infant' | 'young' | 'adult' | 'mature' | 'elder' {
-  const age = beast.secondaryStats.age;
-  const maxAge = beast.secondaryStats.maxAge;
-  const percentage = (age / maxAge) * 100;
+export function isBeastAlive(beast: Beast, currentTime?: number): boolean {
+  const time = currentTime || Date.now();
+  const { isAlive } = calculateBeastAge(beast, time);
+  return isAlive;
+}
 
-  if (percentage < 13) return 'infant';       // 0-20 semanas (~13%)
-  if (percentage < 38) return 'young';        // 21-60 semanas
-  if (percentage < 75) return 'adult';        // 61-150 semanas
-  if (percentage < 90) return 'mature';       // 151-180 semanas
-  return 'elder';                             // 181+ semanas
+/**
+ * Calcula a fase de vida da besta (baseado em dias reais)
+ */
+export function getLifePhase(beast: Beast, currentTime?: number): 'infant' | 'young' | 'adult' | 'mature' | 'elder' {
+  const time = currentTime || Date.now();
+  const { ageInDays } = calculateBeastAge(beast, time);
+  const maxAge = beast.secondaryStats.maxAge || 365;
+  const percentage = (ageInDays / maxAge) * 100;
+
+  if (percentage < 13) return 'infant';    // 0-47 dias
+  if (percentage < 38) return 'young';     // 48-138 dias
+  if (percentage < 75) return 'adult';     // 139-273 dias
+  if (percentage < 90) return 'mature';    // 274-328 dias
+  return 'elder';                          // 329+ dias
 }
 
 /**

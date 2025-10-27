@@ -57,13 +57,15 @@ export async function initializeGame(req: AuthRequest, res: Response) {
     const randomBeast = generateRandomBeast(playerName.trim());
 
     // Create initial beast with randomized stats
+    const now = Date.now();
     const beastResult = await client.query(
       `INSERT INTO beasts (
         game_save_id, name, line, blood, affinity, is_active,
         current_hp, max_hp, essence, max_essence,
         might, wit, focus, agility, ward, vitality,
-        loyalty, stress, fatigue, techniques, traits, level, experience
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        loyalty, stress, fatigue, techniques, traits, level, experience,
+        birth_date, last_update
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
       RETURNING *`,
       [
         gameSave.id,
@@ -88,7 +90,9 @@ export async function initializeGame(req: AuthRequest, res: Response) {
         JSON.stringify(randomBeast.techniques),
         JSON.stringify(randomBeast.traits),
         randomBeast.level,
-        randomBeast.experience
+        randomBeast.experience,
+        now, // birth_date
+        now  // last_update
       ]
     );
 
@@ -282,6 +286,12 @@ export async function updateBeast(req: AuthRequest, res: Response) {
          techniques = COALESCE($19, techniques),
          traits = COALESCE($20, traits),
          elixir_usage = COALESCE($21, elixir_usage),
+         current_action = COALESCE($22, current_action),
+         last_exploration = COALESCE($23, last_exploration),
+         last_tournament = COALESCE($24, last_tournament),
+         exploration_count = COALESCE($25, exploration_count),
+         birth_date = COALESCE($26, birth_date),
+         last_update = COALESCE($27, last_update),
          updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -306,7 +316,13 @@ export async function updateBeast(req: AuthRequest, res: Response) {
         beastData.experience,
         beastData.techniques ? JSON.stringify(beastData.techniques) : null,
         beastData.traits ? JSON.stringify(beastData.traits) : null,
-        beastData.elixirUsage ? JSON.stringify(beastData.elixirUsage) : null
+        beastData.elixirUsage ? JSON.stringify(beastData.elixirUsage) : null,
+        beastData.currentAction ? JSON.stringify(beastData.currentAction) : null,
+        beastData.lastExploration,
+        beastData.lastTournament,
+        beastData.explorationCount,
+        beastData.birthDate,
+        beastData.lastUpdate
       ]
     );
 

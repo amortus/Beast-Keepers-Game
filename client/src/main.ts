@@ -26,7 +26,18 @@ import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
-import { isBeastAlive } from './systems/beast';
+import { isBeastAlive, calculateBeastAge } from './systems/beast';
+import { 
+  canStartAction,
+  startAction,
+  completeAction as completeActionClient,
+  cancelAction,
+  applyPassiveRecovery,
+  isActionComplete,
+  getActionProgress,
+  updateExplorationCounter
+} from './systems/realtime-actions';
+import { formatTime } from './utils/time-format';
 import { initiateBattle, executePlayerAction, executeEnemyTurn, applyBattleRewards } from './systems/combat';
 import { generateTournamentOpponent, getTournamentPrize, getTournamentFee, canEnterTournament } from './systems/tournaments';
 import { NPCS, getNPCDialogue, increaseAffinity } from './data/npcs';
@@ -96,6 +107,83 @@ void isExplorationBattle; // Reservado para uso futuro
 // Animation loop
 let lastSaveTime = 0;
 const AUTO_SAVE_INTERVAL = 10000; // 10 segundos
+
+// Realtime sync loop
+let realtimeSyncInterval: number | null = null;
+const SYNC_INTERVAL = 30000; // Sincronizar com servidor a cada 30 segundos
+
+function startRealtimeSync() {
+  if (realtimeSyncInterval) {
+    clearInterval(realtimeSyncInterval);
+  }
+  
+  realtimeSyncInterval = window.setInterval(async () => {
+    if (!gameState || !gameState.activeBeast || !isAuthenticated) return;
+    
+    try {
+      // Sincronizar tempo com servidor
+      const serverTime = await gameApi.getServerTime();
+      gameState.serverTime = serverTime;
+      
+      const now = serverTime;
+      const lastSync = gameState.lastSync || now;
+      
+      // Aplicar recuperação passiva de fadiga/stress
+      applyPassiveRecovery(gameState.activeBeast, lastSync, now);
+      gameState.lastSync = now;
+      
+      // Atualizar contador de explorações
+      updateExplorationCounter(gameState.activeBeast, now);
+      
+      // Verificar se ação completou
+      if (gameState.activeBeast.currentAction) {
+        if (isActionComplete(gameState.activeBeast.currentAction, now)) {
+          // Completar ação no cliente
+          const result = completeActionClient(gameState.activeBeast, gameState);
+          
+          if (result.success) {
+            showMessage(result.message, '✅ Ação Completa');
+            
+            // Salvar no servidor
+            await gameApi.completeBeastAction(gameState.activeBeast.id);
+            await saveGame(gameState);
+          }
+          
+          // Atualizar UI
+          if (gameUI) {
+            gameUI.updateGameState(gameState);
+          }
+        }
+      }
+      
+      // Verificar se besta ainda está viva
+      if (!isBeastAlive(gameState.activeBeast, now)) {
+        const beastName = gameState.activeBeast.name;
+        showMessage(
+          `${beastName} chegou ao fim de sua jornada... 😢\n\nVocê pode criar uma nova besta no Templo dos Ecos.`,
+          '💔 Fim da Jornada'
+        );
+        
+        // Mover para bestas falecidas
+        gameState.deceasedBeasts.push(gameState.activeBeast);
+        gameState.activeBeast = null;
+        
+        // Salvar
+        await saveGame(gameState);
+        
+        // Atualizar UI
+        if (gameUI) {
+          gameUI.updateGameState(gameState);
+        }
+      }
+      
+    } catch (error) {
+      console.error('[Realtime] Sync error:', error);
+    }
+  }, SYNC_INTERVAL);
+  
+  console.log('[Realtime] Sync loop started');
+}
 
 function startRenderLoop() {
   let frameCount = 0;
@@ -341,10 +429,11 @@ async function loadGameFromServer() {
       gameState = createNewGame(serverData.gameSave.player_name);
       
       // Update with server game save data
-      gameState.week = serverData.gameSave.week || 1;
       gameState.economy.coronas = serverData.gameSave.coronas || 500;
       gameState.guardian.victories = serverData.gameSave.victories || 0;
       gameState.guardian.title = serverData.gameSave.current_title || 'Guardião Iniciante';
+      gameState.serverTime = Date.now();
+      gameState.lastSync = Date.now();
       
       // Load the active Beast from server
       if (serverData.beasts && serverData.beasts.length > 0) {
@@ -413,7 +502,15 @@ async function loadGameFromServer() {
           maxEssence: serverBeast.max_essence,
           level: serverBeast.level || 1,
           experience: serverBeast.experience || 0,
-          activeBuffs: []
+          activeBuffs: [],
+          
+          // Campos de tempo real
+          currentAction: serverBeast.current_action,
+          lastExploration: serverBeast.last_exploration || 0,
+          lastTournament: serverBeast.last_tournament || 0,
+          explorationCount: serverBeast.exploration_count || 0,
+          birthDate: serverBeast.birth_date || Date.now(),
+          lastUpdate: serverBeast.last_update || Date.now()
         };
         
         console.log('[Game] Loaded Beast from server:', gameState.activeBeast.name, `(${gameState.activeBeast.line})`);
@@ -426,6 +523,9 @@ async function loadGameFromServer() {
       // No game save found - should trigger game init
       needsGameInit = true;
     }
+    // Iniciar loop de sincronização em tempo real
+    startRealtimeSync();
+    
   } catch (error: any) {
     console.error('[Game] Failed to load from server:', error);
     if (error.message.includes('No game save found')) {
@@ -520,7 +620,94 @@ async function setupGame() {
       handleLogout();
     };
     
-    // Setup week advance callback
+    // Setup action start callback (novo sistema de tempo real)
+    gameUI.onStartAction = async (actionType: BeastAction['type']) => {
+      if (!gameState || !gameState.activeBeast) return;
+      
+      const serverTime = gameState.serverTime || Date.now();
+      const beast = gameState.activeBeast;
+      
+      // Verificar se pode iniciar
+      const canStart = canStartAction(beast, actionType, serverTime);
+      if (!canStart.can) {
+        showMessage(canStart.reason || 'Não pode iniciar esta ação', '⚠️ Ação Bloqueada');
+        return;
+      }
+      
+      // Casos especiais: torneio e exploração não usam o sistema de ações cronometradas
+      if (actionType === 'tournament') {
+        startTournament();
+        return;
+      }
+      
+      if (actionType === 'exploration') {
+        openExploration();
+        return;
+      }
+      
+      // Iniciar ação
+      const action = startAction(beast, actionType, serverTime);
+      beast.currentAction = action;
+      
+      // Enviar para servidor
+      try {
+        await gameApi.startBeastAction(
+          beast.id,
+          action.type,
+          action.duration,
+          action.completesAt
+        );
+        
+        showMessage(
+          `${getRealtimeActionName(action.type)} iniciado! Tempo: ${formatTime(action.duration)}`,
+          '⏳ Ação Iniciada'
+        );
+        
+        // Salvar estado
+        await saveGame(gameState);
+        
+        // Atualizar UI
+        gameUI?.updateGameState(gameState);
+        
+      } catch (error) {
+        console.error('[Action] Failed to start action:', error);
+        beast.currentAction = undefined;
+        showMessage('Erro ao iniciar ação', '⚠️ Erro');
+      }
+    };
+    
+    // Setup action cancel callback
+    gameUI.onCancelAction = async () => {
+      if (!gameState || !gameState.activeBeast) return;
+      
+      const serverTime = gameState.serverTime || Date.now();
+      const beast = gameState.activeBeast;
+      
+      if (!beast.currentAction) return;
+      
+      // Cancelar ação
+      const result = cancelAction(beast, serverTime);
+      
+      if (result.success) {
+        // Enviar para servidor
+        try {
+          await gameApi.cancelBeastAction(beast.id);
+          
+          showMessage(result.message, '❌ Ação Cancelada');
+          
+          // Salvar estado
+          await saveGame(gameState);
+          
+          // Atualizar UI
+          gameUI?.updateGameState(gameState);
+          
+        } catch (error) {
+          console.error('[Action] Failed to cancel action:', error);
+        }
+      }
+    };
+    
+    // Setup week advance callback (legacy - manter por compatibilidade)
     gameUI.onAdvanceWeek = async (action: WeeklyAction) => {
       if (!gameState || !gameState.activeBeast) return;
 
@@ -531,7 +718,7 @@ async function setupGame() {
       }
 
       // Execute action and advance week
-      const result = advanceWeek(gameState.activeBeast, action, gameState.currentWeek);
+      const result = advanceWeek(gameState.activeBeast, action, gameState.currentWeek || 0);
       
       // Add money if gained
       if (result.moneyGain) {
@@ -587,6 +774,15 @@ async function setupGame() {
 
 function openTemple() {
   if (!gameState) return;
+
+  // Verificar se já tem besta ativa e viva
+  if (gameState.activeBeast && isBeastAlive(gameState.activeBeast, Date.now())) {
+    showMessage(
+      'Você já tem uma besta ativa! O Templo só pode ser usado quando sua besta falecer.',
+      '🏛️ Templo Indisponível'
+    );
+    return;
+  }
 
   // Hide 3D viewer when opening Temple
   if (gameUI) {

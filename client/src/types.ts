@@ -83,6 +83,19 @@ export interface Technique {
   description: string;
 }
 
+// ===== AÇÕES EM TEMPO REAL =====
+
+export interface BeastAction {
+  type: 'train_might' | 'train_wit' | 'train_focus' | 'train_agility' | 'train_ward' | 'train_vitality' | 
+        'work_warehouse' | 'work_farm' | 'work_guard' | 'work_library' |
+        'rest_sleep' | 'rest_freetime' | 'rest_walk' | 'rest_eat' |
+        'exploration' | 'tournament';
+  startTime: number;    // timestamp em ms
+  duration: number;     // duração em ms
+  completesAt: number;  // timestamp quando completa
+  canCancel: boolean;
+}
+
 // ===== BESTA =====
 
 export interface Beast {
@@ -136,6 +149,14 @@ export interface Beast {
     youth?: number;      // 0-3 usos
     immortality?: number; // 0-1 uso
   };
+  
+  // Sistema de tempo real
+  currentAction?: BeastAction;
+  lastExploration?: number;     // timestamp da última exploração
+  lastTournament?: number;      // timestamp do último torneio
+  explorationCount?: number;    // contador de explorações no período atual
+  birthDate?: number;           // timestamp de nascimento
+  lastUpdate?: number;          // timestamp da última atualização
 }
 
 export interface LifeEvent {
@@ -339,9 +360,10 @@ export interface Ranch {
 // ===== ESTADO DO JOGO =====
 
 export interface GameState {
-  currentWeek: number;
-  year: number;
-  totalWeeks: number;
+  // Sistema de tempo real
+  serverTime?: number;      // timestamp sincronizado com servidor
+  lastSync?: number;        // timestamp da última sincronização
+  
   guardian: Guardian;
   ranch: Ranch;
   activeBeast: Beast | null;

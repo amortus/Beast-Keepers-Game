@@ -11,6 +11,12 @@ import {
   updateGameSave,
   updateBeast
 } from '../controllers/gameController';
+import {
+  getServerTime,
+  startBeastAction,
+  completeBeastAction,
+  cancelBeastAction
+} from '../controllers/timeController';
 
 const router = Router();
 
@@ -26,6 +32,12 @@ router.put('/save', updateGameSave);
 
 // Beast management
 router.put('/beast/:beastId', updateBeast);
+
+// Time and actions
+router.get('/time', getServerTime);
+router.post('/beast/:beastId/action/start', startBeastAction);
+router.post('/beast/:beastId/action/complete', completeBeastAction);
+router.post('/beast/:beastId/action/cancel', cancelBeastAction);
 
 export default router;
 
