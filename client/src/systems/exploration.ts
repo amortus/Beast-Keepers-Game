@@ -176,9 +176,16 @@ function createWildBeastEnemy(
   distance: number,
   isRare: boolean
 ): WildEnemy {
-  const baseLevel = Math.floor(distance / 100) + 1;
   const difficulty = EXPLORATION_ZONES[zone].difficulty;
-  const level = baseLevel + difficulty;
+  
+  // Progressão muito mais suave:
+  // - Primeiros encontros (0-200m): level baseado apenas na dificuldade da zona
+  // - A cada 300m: +1 level
+  // - Dificuldade da zona: -1 para forest (começa em 1), 0 para outras zonas
+  const distanceBonus = Math.floor(distance / 300);
+  const difficultyOffset = difficulty === 1 ? 0 : (difficulty - 1);
+  const level = 1 + difficultyOffset + distanceBonus;
+  
   const rarity = isRare ? (Math.random() > 0.7 ? 'epic' : 'rare') : (Math.random() > 0.6 ? 'uncommon' : 'common');
 
   // Nomes baseados no GDD - SEMPRE mostra o nome da linha da Besta
