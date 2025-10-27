@@ -542,6 +542,12 @@ async function setupGame() {
 function openTemple() {
   if (!gameState) return;
 
+  // Hide 3D viewer when opening Temple
+  if (gameUI) {
+    gameUI.hide3DViewer();
+    console.log('[Main] Temple opened - 3D viewer hidden');
+  }
+
   // Create Temple UI
   templeUI = new TempleUI(canvas);
 
@@ -580,6 +586,12 @@ function openTemple() {
 function closeTemple() {
   templeUI = null;
   inTemple = false;
+
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+    console.log('[Main] Temple closed - 3D viewer shown');
+  }
 
   // Update main UI
   if (gameUI && gameState) {
