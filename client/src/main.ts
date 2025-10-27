@@ -190,7 +190,7 @@ async function init() {
       resizeCanvas();
       // Update 3D viewer position on resize
       if (gameUI) {
-        gameUI.updateGameState(gameState || createNewGame('', { id: '', name: '', line: 'olgrim', blood: 'common', affinity: 'earth' }));
+        gameUI.update3DViewerPosition();
       }
     });
 

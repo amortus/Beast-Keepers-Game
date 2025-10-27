@@ -91,6 +91,45 @@ export class GameUI {
     }
   }
 
+  // Public method to update 3D viewer position (called on window resize)
+  public update3DViewerPosition() {
+    if (!this.miniViewer3DContainer || !this.is3DViewerVisible || !this.gameState.activeBeast) {
+      return;
+    }
+
+    // Calculate position based on current canvas size
+    const x = 20;
+    const y = 105;
+    const width = 175;
+    const height = 175;
+
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
+
+    const leftPos = canvasRect.left + (x * scaleX);
+    const topPos = canvasRect.top + (y * scaleY);
+    const containerWidth = width * scaleX;
+    const containerHeight = height * scaleY;
+
+    this.miniViewer3DContainer.style.left = `${leftPos}px`;
+    this.miniViewer3DContainer.style.top = `${topPos}px`;
+    this.miniViewer3DContainer.style.width = `${containerWidth}px`;
+    this.miniViewer3DContainer.style.height = `${containerHeight}px`;
+
+    // Also update the Three.js renderer size
+    if (this.miniViewer3D) {
+      this.miniViewer3D.onResize(containerWidth, containerHeight);
+    }
+
+    console.log('[GameUI] 3D viewer position updated on resize:', {
+      width: containerWidth,
+      height: containerHeight,
+      left: leftPos,
+      top: topPos
+    });
+  }
+
   private setupEventListeners() {
     this.canvas.addEventListener('mousemove', (e) => {
       const rect = this.canvas.getBoundingClientRect();
@@ -420,10 +459,20 @@ export class GameUI {
       const containerWidth = width * scaleX;
       const containerHeight = height * scaleY;
       
+      // Check if size changed and update renderer if needed
+      const currentWidth = parseFloat(this.miniViewer3DContainer.style.width || '0');
+      const currentHeight = parseFloat(this.miniViewer3DContainer.style.height || '0');
+      const sizeChanged = Math.abs(currentWidth - containerWidth) > 1 || Math.abs(currentHeight - containerHeight) > 1;
+      
       this.miniViewer3DContainer.style.left = `${leftPos}px`;
       this.miniViewer3DContainer.style.top = `${topPos}px`;
       this.miniViewer3DContainer.style.width = `${containerWidth}px`;
       this.miniViewer3DContainer.style.height = `${containerHeight}px`;
+      
+      // Update Three.js renderer when size changes
+      if (sizeChanged && this.miniViewer3D) {
+        this.miniViewer3D.onResize(containerWidth, containerHeight);
+      }
     }
     
     // Draw border on canvas
