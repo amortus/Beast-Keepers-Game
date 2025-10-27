@@ -151,9 +151,14 @@ function startRenderLoop() {
         gameUI.dispose();
       }
     } else if (gameUI && gameState) {
-      // Only draw GameUI when NO other menu is active
-      if (frameCount % 60 === 0) console.log('[Render] Drawing GAMEUI (Ranch)');
-      gameUI.draw();
+      // Only draw GameUI when NO other menu is active AND modal is not showing
+      if (modalUI && modalUI.isShowing()) {
+        // Skip drawing GameUI when modal is open (e.g., Vila menu)
+        if (frameCount % 60 === 0) console.log('[Render] Skipping GAMEUI - Modal is open');
+      } else {
+        if (frameCount % 60 === 0) console.log('[Render] Drawing GAMEUI (Ranch)');
+        gameUI.draw();
+      }
     }
 
     // Draw modal UI on top of everything
@@ -587,6 +592,12 @@ function closeTemple() {
 function openVillage() {
   if (!gameState || !modalUI) return;
 
+  // Hide 3D viewer when opening Vila modal
+  if (gameUI) {
+    gameUI.hide3DViewer();
+    console.log('[Main] Vila opened - 3D viewer hidden');
+  }
+
   // Show NPC selection usando modal
   const npcs = Object.values(NPCS).filter(npc => npc.unlocked);
   const npcChoices = npcs.map(npc => `${npc.name} - ${npc.title}`);
@@ -606,7 +617,11 @@ function openVillage() {
       }
     },
     onCancel: () => {
-      // Volta para o rancho
+      // Show 3D viewer when returning to ranch
+      if (gameUI) {
+        gameUI.show3DViewer();
+        console.log('[Main] Vila closed - 3D viewer shown');
+      }
     },
   });
 }
