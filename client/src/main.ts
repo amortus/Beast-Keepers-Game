@@ -16,6 +16,7 @@ import { ModalUI } from './ui/modal-ui';
 import { ExplorationUI } from './ui/exploration-ui';
 import { AuthUI } from './ui/auth-ui';
 import { GameInitUI } from './ui/game-init-ui';
+import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive } from './systems/beast';
@@ -67,6 +68,7 @@ let questsUI: QuestsUI | null = null;
 let achievementsUI: AchievementsUI | null = null;
 let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
+let ranch3DUI: Ranch3DUI | null = null;
 let inBattle = false;
 let inTemple = false;
 let inDialogue = false;
@@ -76,6 +78,7 @@ let inCraft = false;
 let inQuests = false;
 let inAchievements = false;
 let inExploration = false;
+let inRanch3D = false;
 let explorationState: ExplorationState | null = null;
 let isExplorationBattle = false; // Flag para diferenciar batalha de exploração
 void isExplorationBattle; // Reservado para uso futuro
@@ -111,6 +114,8 @@ function startRenderLoop() {
       achievementsUI.draw(gameState);
     } else if (inExploration && explorationUI) {
       explorationUI.draw(explorationState || undefined);
+    } else if (inRanch3D && ranch3DUI) {
+      ranch3DUI.render();
     } else if (gameUI && gameState) {
       gameUI.draw();
     }
@@ -360,6 +365,25 @@ async function setupGame() {
 
     // Create UI
     gameUI = new GameUI(canvas, gameState!);
+    
+    // Setup 3D viewer callback
+    gameUI.onView3D = () => {
+      if (!gameState || !gameState.activeBeast) return;
+      
+      console.log('[3D] Opening 3D viewer...');
+      inRanch3D = true;
+      
+      // Create Ranch3D UI
+      ranch3DUI = new Ranch3DUI(canvas, gameState.activeBeast);
+      
+      // Setup exit callback
+      ranch3DUI.onExit3D = () => {
+        console.log('[3D] Exiting 3D mode...');
+        inRanch3D = false;
+        ranch3DUI?.dispose();
+        ranch3DUI = null;
+      };
+    };
     
     // Setup temple callback
     gameUI.onOpenTemple = () => {

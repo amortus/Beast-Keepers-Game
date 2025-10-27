@@ -24,6 +24,9 @@ export class GameUI {
   
   // Button positions
   private buttons: Map<string, { x: number; y: number; width: number; height: number; action?: () => void }> = new Map();
+  
+  // Public callbacks
+  public onView3D: () => void = () => {};
 
   constructor(canvas: HTMLCanvasElement, gameState: GameState) {
     this.canvas = canvas;
@@ -193,6 +196,27 @@ export class GameUI {
     // Beast "sprite" (placeholder)
     this.drawBeastSprite(x + width / 2 - 60, y + 80, 120, 120, beast);
 
+    // 3D View button (below sprite)
+    const view3DBtnX = x + width / 2 - 75;
+    const view3DBtnY = y + 205;
+    const view3DBtnWidth = 150;
+    const view3DBtnHeight = 30;
+    const isView3DHovered = isMouseOver(this.mouseX, this.mouseY, view3DBtnX, view3DBtnY, view3DBtnWidth, view3DBtnHeight);
+    
+    drawButton(this.ctx, view3DBtnX, view3DBtnY, view3DBtnWidth, view3DBtnHeight, '🎮 Ver em 3D', {
+      bgColor: COLORS.primary.blue,
+      hoverColor: '#2c5aa0',
+      isHovered: isView3DHovered,
+    });
+    
+    this.buttons.set('view3d', {
+      x: view3DBtnX,
+      y: view3DBtnY,
+      width: view3DBtnWidth,
+      height: view3DBtnHeight,
+      action: () => this.onView3D(),
+    });
+
     // Age and phase
     const phase = getLifePhase(beast);
     const phaseNames = {
@@ -203,12 +227,12 @@ export class GameUI {
       elder: 'Idoso',
     };
 
-    drawText(this.ctx, `Idade: ${beast.secondaryStats.age} / ${beast.secondaryStats.maxAge} semanas`, x + 10, y + 220, {
+    drawText(this.ctx, `Idade: ${beast.secondaryStats.age} / ${beast.secondaryStats.maxAge} semanas`, x + 10, y + 250, {
       font: '14px monospace',
       color: COLORS.ui.text,
     });
 
-    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, x + 10, y + 240, {
+    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, x + 10, y + 270, {
       font: '14px monospace',
       color: COLORS.ui.info,
     });
@@ -222,7 +246,7 @@ export class GameUI {
       tired: '😴',
     };
 
-    drawText(this.ctx, `Humor: ${moodEmoji[beast.mood]}`, x + 10, y + 260, {
+    drawText(this.ctx, `Humor: ${moodEmoji[beast.mood]}`, x + 10, y + 290, {
       font: '14px monospace',
       color: COLORS.status[beast.mood],
     });
@@ -231,7 +255,7 @@ export class GameUI {
     drawBar(
       this.ctx,
       x + 10,
-      y + 290,
+      y + 320,
       width - 20,
       25,
       beast.currentHp,
@@ -246,7 +270,7 @@ export class GameUI {
     drawBar(
       this.ctx,
       x + 10,
-      y + 325,
+      y + 355,
       width - 20,
       25,
       beast.essence,
@@ -261,7 +285,7 @@ export class GameUI {
     drawBar(
       this.ctx,
       x + 10,
-      y + 360,
+      y + 390,
       width - 20,
       15,
       beast.secondaryStats.fatigue,
