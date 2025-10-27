@@ -24,25 +24,28 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // Security
 app.use(helmet());
 
-// CORS - Allow multiple ports for development
-const allowedOrigins = [
-  FRONTEND_URL,
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176'
-];
-
+// CORS - Allow Vercel deployments and localhost
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow localhost (development)
+    if (origin.includes('localhost')) {
+      return callback(null, true);
     }
+    
+    // Allow any Vercel deployment URL
+    if (origin.includes('vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Allow configured frontend URL
+    if (origin === FRONTEND_URL) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
