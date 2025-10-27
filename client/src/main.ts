@@ -1894,6 +1894,11 @@ function resizeCanvas() {
 }
 
 function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {
+  // Hide 3D viewer when showing message modal
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
+  
   if (modalUI) {
     modalUI.show({
       type: 'message',
@@ -1901,6 +1906,12 @@ function showMessage(message: string, title: string = '💬 Beast Keepers', onCl
       message,
       onConfirm: () => {
         modalUI.hide();
+        
+        // Show 3D viewer again after modal closes
+        if (gameUI) {
+          gameUI.show3DViewer();
+        }
+        
         // Call onClose callback if provided
         if (onClose) {
           onClose();
