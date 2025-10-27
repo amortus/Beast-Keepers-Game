@@ -113,8 +113,8 @@ export class BeastMiniViewer3D {
       const offset = center.clone().multiplyScalar(scale);
       this.beastModel.position.sub(offset);
       
-      // Adjust Y position to center vertically in viewport (more centered)
-      this.beastModel.position.y = 0;
+      // Adjust Y position to center vertically in viewport (lower to compensate for camera angle)
+      this.beastModel.position.y = -0.3;
       
       this.scene.add(this.beastModel);
       
