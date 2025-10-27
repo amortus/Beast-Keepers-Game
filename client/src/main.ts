@@ -1405,6 +1405,15 @@ function openExploration() {
     );
     return;
   }
+  
+  // Incrementar contador ANTES de iniciar exploração
+  beast.explorationCount = (beast.explorationCount || 0) + 1;
+  beast.lastExploration = Date.now();
+  
+  console.log(`[Exploration] Started exploration ${beast.explorationCount}/10`);
+  
+  // Salvar imediatamente
+  saveGame(gameState);
 
   // Close other UIs
   if (inShop) closeShop();
@@ -1840,18 +1849,8 @@ function finishExploration() {
     }
   }
   
-  // Incrementar contador de explorações
-  const beast = gameState.activeBeast;
-  beast.explorationCount = (beast.explorationCount || 0) + 1;
-  beast.lastExploration = Date.now();
-  
-  // Resetar contador se passou o cooldown
-  if (beast.explorationCount >= 10) {
-    const cooldownEnd = beast.lastExploration + (2 * 60 * 60 * 1000);
-    console.log(`[Exploration] Limit reached! Cooldown until: ${new Date(cooldownEnd).toLocaleTimeString()}`);
-  }
-
   // Mostrar resumo
+  const beast = gameState.activeBeast;
   const materialCount = rewards.materials.length;
   const explorationInfo = beast.explorationCount >= 10 
     ? `\n⚠️ Limite de explorações atingido (${beast.explorationCount}/10)! Aguarde 2h para resetar.`
