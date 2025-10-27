@@ -627,7 +627,7 @@ function openDialogueWith(npcId: string) {
     gameUI.hide3DViewer();
   }
   
-  console.log('[Main] inDialogue will be set to TRUE');
+  console.log('[Main] inDialogue will be set to TRUE (at end of function)');
 
   // Create dialogue UI if not exists
   if (!dialogueUI) {
