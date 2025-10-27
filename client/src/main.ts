@@ -102,6 +102,9 @@ function startRenderLoop() {
       battleUI.draw();
     } else if (inTemple && templeUI && gameState) {
       templeUI.draw(gameState);
+    } else if (inDialogue && dialogueUI) {
+      // Draw dialogue UI (Vila) - NO gameUI underneath!
+      dialogueUI.draw();
     } else if (inShop && shopUI && gameState) {
       shopUI.draw(gameState);
     } else if (inInventory && inventoryUI && gameState) {
@@ -114,9 +117,6 @@ function startRenderLoop() {
       achievementsUI.draw(gameState);
     } else if (inExploration && explorationUI) {
       explorationUI.draw(explorationState || undefined);
-    } else if (inDialogue && dialogueUI) {
-      // Draw dialogue UI (Vila) - NO gameUI underneath!
-      dialogueUI.draw();
     } else if (inRanch3D && ranch3DUI) {
       ranch3DUI.render();
       // Clean up mini viewer when in full 3D mode
