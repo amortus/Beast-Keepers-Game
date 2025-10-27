@@ -281,6 +281,11 @@ async function init() {
 function handleLogout() {
   if (!modalUI) return;
 
+  // Hide 3D viewer while logout modal is open
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
+
   // Confirm logout
   modalUI.show({
     type: 'choice',
@@ -308,7 +313,10 @@ function handleLogout() {
       }
     },
     onCancel: () => {
-      // Do nothing
+      // Show 3D viewer again if user cancels
+      if (gameUI) {
+        gameUI.show3DViewer();
+      }
     }
   });
 }
