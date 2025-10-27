@@ -1370,6 +1370,9 @@ function startExplorationBattle(enemy: WildEnemy) {
 
       // Clear battle FIRST
       gameState.currentBattle = undefined;
+      if (battleUI) {
+        battleUI.dispose(); // Cleanup 3D viewers
+      }
       battleUI = null;
       inBattle = false;
       isExplorationBattle = false;
@@ -1402,6 +1405,9 @@ function startExplorationBattle(enemy: WildEnemy) {
 
     // Clear battle
     gameState.currentBattle = undefined;
+    if (battleUI) {
+      battleUI.dispose(); // Cleanup 3D viewers
+    }
     battleUI = null;
     inBattle = false;
     isExplorationBattle = false;
@@ -1821,6 +1827,9 @@ function startTournamentBattle(rank: TournamentRank) {
     
     // Clear battle
     gameState.currentBattle = undefined;
+    if (battleUI) {
+      battleUI.dispose(); // Cleanup 3D viewers
+    }
     battleUI = null;
     inBattle = false;
     

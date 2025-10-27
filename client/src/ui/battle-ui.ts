@@ -8,6 +8,7 @@ import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { canUseTechnique } from '../systems/combat';
 import { getBeastBattlePose } from '../utils/beast-images';
+import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
 
 export class BattleUI {
   private canvas: HTMLCanvasElement;
@@ -23,6 +24,12 @@ export class BattleUI {
   private animationFrame = 0;
   private isAutoBattle = false;
   private autoBattleSpeed = 1; // 1 = normal, 2 = fast, 3 = ultra fast
+  
+  // 3D Viewers
+  private playerViewer3D: BeastMiniViewer3D | null = null;
+  private playerViewer3DContainer: HTMLDivElement | null = null;
+  private enemyViewer3D: BeastMiniViewer3D | null = null;
+  private enemyViewer3DContainer: HTMLDivElement | null = null;
   
   // Button positions
   private buttons: Map<string, { x: number; y: number; width: number; height: number; action?: () => void }> = new Map();
@@ -116,15 +123,35 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Tentar obter a imagem de batalha da criatura
-    const img = getBeastBattlePose(this.battle.player.beast.name);
+    // Create 3D viewer if it doesn't exist
+    if (!this.playerViewer3D) {
+      this.createPlayerViewer3D();
+    }
     
-    if (img && img.complete && img.naturalWidth > 0) {
-      // Desenhar a imagem real da criatura
-      this.ctx.drawImage(img, x, y, size, size);
-    } else {
-      // Usar fallback se a imagem não estiver disponível
-      this.drawPlayerBeastFallback(x, y, size);
+    // Update 3D viewer position
+    if (this.playerViewer3DContainer) {
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const leftPos = canvasRect.left + (x * scaleX);
+      const topPos = canvasRect.top + (y * scaleY);
+      const containerWidth = size * scaleX;
+      const containerHeight = size * scaleY;
+      
+      this.playerViewer3DContainer.style.left = `${leftPos}px`;
+      this.playerViewer3DContainer.style.top = `${topPos}px`;
+      this.playerViewer3DContainer.style.width = `${containerWidth}px`;
+      this.playerViewer3DContainer.style.height = `${containerHeight}px`;
+      
+      // Update Three.js renderer when size changes
+      const currentWidth = parseFloat(this.playerViewer3DContainer.style.width || '0');
+      const currentHeight = parseFloat(this.playerViewer3DContainer.style.height || '0');
+      const sizeChanged = Math.abs(currentWidth - containerWidth) > 1 || Math.abs(currentHeight - containerHeight) > 1;
+      
+      if (sizeChanged && this.playerViewer3D) {
+        this.playerViewer3D.onResize(containerWidth, containerHeight);
+      }
     }
     
     // Name below
@@ -133,13 +160,6 @@ export class BattleUI {
       font: 'bold 14px monospace',
       color: COLORS.primary.green,
     });
-
-    // Breathing animation (pulse)
-    const pulse = Math.sin(this.animationFrame * 0.05) * 2;
-    this.ctx.globalAlpha = 0.3;
-    this.ctx.fillStyle = '#fff';
-    this.ctx.fillRect(x - pulse, y - pulse, size + pulse * 2, size + pulse * 2);
-    this.ctx.globalAlpha = 1;
   }
 
   private drawPlayerBeastFallback(x: number, y: number, size: number) {
@@ -159,15 +179,35 @@ export class BattleUI {
     const y = 220;
     const size = 80;
     
-    // Tentar obter a imagem de batalha da criatura
-    const img = getBeastBattlePose(this.battle.enemy.beast.name);
+    // Create 3D viewer if it doesn't exist
+    if (!this.enemyViewer3D) {
+      this.createEnemyViewer3D();
+    }
     
-    if (img && img.complete && img.naturalWidth > 0) {
-      // Desenhar a imagem real da criatura
-      this.ctx.drawImage(img, x, y, size, size);
-    } else {
-      // Usar fallback se a imagem não estiver disponível
-      this.drawEnemyBeastFallback(x, y, size);
+    // Update 3D viewer position
+    if (this.enemyViewer3DContainer) {
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const leftPos = canvasRect.left + (x * scaleX);
+      const topPos = canvasRect.top + (y * scaleY);
+      const containerWidth = size * scaleX;
+      const containerHeight = size * scaleY;
+      
+      this.enemyViewer3DContainer.style.left = `${leftPos}px`;
+      this.enemyViewer3DContainer.style.top = `${topPos}px`;
+      this.enemyViewer3DContainer.style.width = `${containerWidth}px`;
+      this.enemyViewer3DContainer.style.height = `${containerHeight}px`;
+      
+      // Update Three.js renderer when size changes
+      const currentWidth = parseFloat(this.enemyViewer3DContainer.style.width || '0');
+      const currentHeight = parseFloat(this.enemyViewer3DContainer.style.height || '0');
+      const sizeChanged = Math.abs(currentWidth - containerWidth) > 1 || Math.abs(currentHeight - containerHeight) > 1;
+      
+      if (sizeChanged && this.enemyViewer3D) {
+        this.enemyViewer3D.onResize(containerWidth, containerHeight);
+      }
     }
     
     // Name below
@@ -176,13 +216,6 @@ export class BattleUI {
       font: 'bold 14px monospace',
       color: COLORS.ui.error,
     });
-
-    // Breathing animation
-    const pulse = Math.sin(this.animationFrame * 0.05) * 2;
-    this.ctx.globalAlpha = 0.3;
-    this.ctx.fillStyle = '#f00';
-    this.ctx.fillRect(x - pulse, y - pulse, size + pulse * 2, size + pulse * 2);
-    this.ctx.globalAlpha = 1;
   }
 
   private drawEnemyBeastFallback(x: number, y: number, size: number) {
@@ -714,6 +747,92 @@ export class BattleUI {
 
   public stopAutoBattle() {
     this.isAutoBattle = false;
+  }
+
+  private createPlayerViewer3D() {
+    console.log('[Battle UI] Creating player 3D viewer for:', this.battle.player.beast.name);
+    
+    // Create container
+    this.playerViewer3DContainer = document.createElement('div');
+    this.playerViewer3DContainer.id = 'battle-player-viewer-3d';
+    this.playerViewer3DContainer.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      background: rgba(66, 153, 225, 0.2);
+      border: 2px solid rgba(66, 153, 225, 0.6);
+    `;
+    
+    document.body.appendChild(this.playerViewer3DContainer);
+    
+    // Create 3D viewer
+    try {
+      this.playerViewer3D = new BeastMiniViewer3D(
+        this.playerViewer3DContainer,
+        this.battle.player.beast,
+        80, // Initial size, will be updated in drawPlayerBeast
+        80
+      );
+      console.log('[Battle UI] ✓ Player 3D viewer created');
+    } catch (error) {
+      console.error('[Battle UI] ❌ Failed to create player viewer:', error);
+    }
+  }
+
+  private createEnemyViewer3D() {
+    console.log('[Battle UI] Creating enemy 3D viewer for:', this.battle.enemy.beast.name);
+    
+    // Create container
+    this.enemyViewer3DContainer = document.createElement('div');
+    this.enemyViewer3DContainer.id = 'battle-enemy-viewer-3d';
+    this.enemyViewer3DContainer.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 100;
+      background: rgba(252, 129, 129, 0.2);
+      border: 2px solid rgba(252, 129, 129, 0.6);
+    `;
+    
+    document.body.appendChild(this.enemyViewer3DContainer);
+    
+    // Create 3D viewer
+    try {
+      this.enemyViewer3D = new BeastMiniViewer3D(
+        this.enemyViewer3DContainer,
+        this.battle.enemy.beast,
+        80, // Initial size, will be updated in drawEnemyBeast
+        80
+      );
+      console.log('[Battle UI] ✓ Enemy 3D viewer created');
+    } catch (error) {
+      console.error('[Battle UI] ❌ Failed to create enemy viewer:', error);
+    }
+  }
+
+  public dispose() {
+    console.log('[Battle UI] Disposing 3D viewers');
+    
+    // Cleanup player viewer
+    if (this.playerViewer3D) {
+      this.playerViewer3D.dispose();
+      this.playerViewer3D = null;
+    }
+    if (this.playerViewer3DContainer) {
+      this.playerViewer3DContainer.remove();
+      this.playerViewer3DContainer = null;
+    }
+    
+    // Cleanup enemy viewer
+    if (this.enemyViewer3D) {
+      this.enemyViewer3D.dispose();
+      this.enemyViewer3D = null;
+    }
+    if (this.enemyViewer3DContainer) {
+      this.enemyViewer3DContainer.remove();
+      this.enemyViewer3DContainer = null;
+    }
+    
+    console.log('[Battle UI] ✓ Cleanup complete');
   }
 
   // Callbacks
