@@ -2135,8 +2135,8 @@ function showMessage(message: string, title: string = '💬 Beast Keepers', onCl
       onConfirm: () => {
         modalUI.hide();
         
-        // Show 3D viewer again after modal closes
-        if (gameUI) {
+        // Show 3D viewer again after modal closes (apenas se não estiver em exploração ou batalha)
+        if (gameUI && !inExploration && !inBattle) {
           gameUI.show3DViewer();
         }
         
