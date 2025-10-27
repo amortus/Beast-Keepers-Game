@@ -88,10 +88,29 @@ let lastSaveTime = 0;
 const AUTO_SAVE_INTERVAL = 10000; // 10 segundos
 
 function startRenderLoop() {
+  let frameCount = 0;
   function render(time: number) {
+    frameCount++;
+    
     // Clear canvas
     ctx.fillStyle = '#0f0f1e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Debug log every 60 frames (1 second)
+    if (frameCount % 60 === 0) {
+      console.log('[Render] State:', {
+        inDialogue,
+        inShop,
+        inInventory,
+        inCraft,
+        inQuests,
+        inAchievements,
+        inExploration,
+        inBattle,
+        inTemple,
+        inRanch3D
+      });
+    }
 
     // Render based on state
     if (inAuth && authUI) {
@@ -104,6 +123,7 @@ function startRenderLoop() {
       templeUI.draw(gameState);
     } else if (inDialogue && dialogueUI) {
       // Draw dialogue UI (Vila) - NO gameUI underneath!
+      if (frameCount % 60 === 0) console.log('[Render] Drawing DIALOGUE ONLY');
       dialogueUI.draw();
     } else if (inShop && shopUI && gameState) {
       shopUI.draw(gameState);
@@ -125,6 +145,7 @@ function startRenderLoop() {
       }
     } else if (gameUI && gameState) {
       // Only draw GameUI when NO other menu is active
+      if (frameCount % 60 === 0) console.log('[Render] Drawing GAMEUI (Ranch)');
       gameUI.draw();
     }
 
