@@ -281,6 +281,7 @@ export async function updateBeast(req: AuthRequest, res: Response) {
          experience = COALESCE($18, experience),
          techniques = COALESCE($19, techniques),
          traits = COALESCE($20, traits),
+         elixir_usage = COALESCE($21, elixir_usage),
          updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -304,7 +305,8 @@ export async function updateBeast(req: AuthRequest, res: Response) {
         beastData.level,
         beastData.experience,
         beastData.techniques ? JSON.stringify(beastData.techniques) : null,
-        beastData.traits ? JSON.stringify(beastData.traits) : null
+        beastData.traits ? JSON.stringify(beastData.traits) : null,
+        beastData.elixirUsage ? JSON.stringify(beastData.elixirUsage) : null
       ]
     );
 

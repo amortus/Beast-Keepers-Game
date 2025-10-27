@@ -123,6 +123,19 @@ export interface Beast {
   // Aparência
   color?: string;
   variant?: string;
+  
+  // Uso de elixires
+  elixirUsage?: {
+    might?: number;      // 0-5 usos
+    wit?: number;        // 0-5 usos
+    focus?: number;      // 0-5 usos
+    agility?: number;    // 0-5 usos
+    ward?: number;       // 0-5 usos
+    vitality?: number;   // 0-5 usos
+    total?: number;      // 0-20 usos totais
+    youth?: number;      // 0-3 usos
+    immortality?: number; // 0-1 uso
+  };
 }
 
 export interface LifeEvent {

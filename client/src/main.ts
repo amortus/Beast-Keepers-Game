@@ -35,6 +35,8 @@ import { useItem } from './systems/inventory';
 import { calculateTournamentDrops } from './systems/drops';
 import { trackAction, trackSpending, unlockQuests, getCompletedQuests } from './systems/quests';
 import { startExploration, advanceExploration, defeatEnemy, collectMaterials, endExploration } from './systems/exploration';
+import { executeCraft } from './systems/craft';
+import { getItemById } from './data/shop';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item } from './types';
 import { preloadBeastImages } from './utils/beast-images';
@@ -934,6 +936,19 @@ function openInventory() {
     }
   };
 
+  inventoryUI.onShowConfirmation = (title: string, message: string, onConfirm: () => void, onCancel?: () => void) => {
+    modalUI.show({
+      type: 'choice',
+      title,
+      message,
+      choices: ['Confirmar', 'Cancelar'],
+      onConfirm: () => {
+        onConfirm();
+      },
+      onCancel: onCancel || (() => {}),
+    });
+  };
+
   inventoryUI.onClose = () => {
     closeInventory();
   };
@@ -977,42 +992,37 @@ function openCraft() {
   craftUI.onCraftItem = (recipe) => {
     if (!gameState) return;
 
-    // Import executeCraft
-    import('./systems/craft').then(({ executeCraft }) => {
-      const result = executeCraft(recipe, gameState!.inventory);
+    const result = executeCraft(recipe, gameState.inventory);
 
-      if (result.success && result.result) {
-        // Add result to inventory
-        const existingItem = gameState!.inventory.find(i => i.id === result.result!.id);
-        if (existingItem && existingItem.quantity) {
-          existingItem.quantity += result.result.quantity || 1;
-        } else {
-          import('./data/shop').then(({ getItemById }) => {
-            const item = getItemById(result.result!.id);
-            if (item) {
-              gameState!.inventory.push({ ...item, quantity: result.result!.quantity || 1 });
-            }
-          });
-        }
-
-        showMessage(result.message);
-
-        // Save game
-        saveGame(gameState!);
-
-        // Update craft UI
-        if (craftUI) {
-          craftUI.draw(gameState!);
-        }
-
-        // Update main UI
-        if (gameUI) {
-          gameUI.updateGameState(gameState!);
-        }
+    if (result.success && result.result) {
+      // Add result to inventory
+      const existingItem = gameState.inventory.find(i => i.id === result.result!.id);
+      if (existingItem && existingItem.quantity) {
+        existingItem.quantity += result.result.quantity || 1;
       } else {
-        showMessage(result.message, '⚠️ Item');
+        const item = getItemById(result.result.id);
+        if (item) {
+          gameState.inventory.push({ ...item, quantity: result.result.quantity || 1 });
+        }
       }
-    });
+
+      showMessage(result.message);
+
+      // Save game
+      saveGame(gameState);
+
+      // Update craft UI
+      if (craftUI) {
+        craftUI.draw(gameState);
+      }
+
+      // Update main UI
+      if (gameUI) {
+        gameUI.updateGameState(gameState);
+      }
+    } else {
+      showMessage(result.message, '⚠️ Item');
+    }
   };
 
   craftUI.onClose = () => {

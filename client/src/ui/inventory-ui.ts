@@ -19,6 +19,7 @@ export class InventoryUI {
 
   public onUseItem: ((item: Item) => void) | null = null;
   public onClose: (() => void) | null = null;
+  public onShowConfirmation: ((title: string, message: string, onConfirm: () => void, onCancel?: () => void) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -321,7 +322,18 @@ export class InventoryUI {
         width: useBtnWidth,
         height: useBtnHeight,
         action: () => {
-          if (this.onUseItem && this.selectedItem) {
+          if (this.selectedItem && this.onShowConfirmation) {
+            const beastName = gameState.activeBeast?.name || 'Besta';
+            this.onShowConfirmation(
+              `Usar ${this.selectedItem.name}?`,
+              `Deseja usar ${this.selectedItem.name} em ${beastName}?\n\n${this.selectedItem.description}`,
+              () => {
+                if (this.onUseItem) {
+                  this.onUseItem(this.selectedItem!);
+                }
+              }
+            );
+          } else if (this.onUseItem && this.selectedItem) {
             this.onUseItem(this.selectedItem);
           }
         },

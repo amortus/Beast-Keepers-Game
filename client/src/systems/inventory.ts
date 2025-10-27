@@ -4,6 +4,7 @@
  */
 
 import type { GameState, Beast, Item } from '../types';
+import { canUseItem, useItem as useItemEffect, type ItemUseResult } from './item-effects';
 
 export interface ItemEffect {
   success: boolean;
@@ -30,39 +31,58 @@ export function useItem(gameState: GameState, item: Item, beast: Beast): ItemEff
     };
   }
 
-  // Aplicar efeito baseado na categoria e ID
-  let effect: ItemEffect;
-
-  switch (item.category) {
-    case 'food':
-      effect = applyFoodEffect(item, beast);
-      break;
-    case 'herb':
-      effect = applyHerbEffect(item, beast);
-      break;
-    case 'crystal':
-      effect = applyCrystalEffect(item, beast);
-      break;
-    case 'training':
-      effect = applyTrainingEffect(item, beast, gameState);
-      break;
-    default:
-      effect = {
-        success: false,
-        message: 'Este item não pode ser usado aqui.',
-      };
+  // Verificar se o item pode ser usado
+  const canUse = canUseItem(item, beast);
+  if (!canUse.canUse) {
+    return {
+      success: false,
+      message: canUse.reason || 'Item não pode ser usado!',
+    };
   }
 
+  // Usar o novo sistema de efeitos de itens
+  const result: ItemUseResult = useItemEffect(item, beast);
+
   // Se o efeito foi aplicado com sucesso, remover do inventário
-  if (effect.success) {
+  if (result.success) {
     inventoryItem.quantity -= 1;
     if (inventoryItem.quantity <= 0) {
       const index = gameState.inventory.indexOf(inventoryItem);
       gameState.inventory.splice(index, 1);
     }
+
+    // Aplicar mudanças na besta
+    if (result.changes) {
+      if (result.changes.hp !== undefined) {
+        beast.currentHp = result.changes.hp;
+      }
+      if (result.changes.essence !== undefined) {
+        beast.essence = result.changes.essence;
+      }
+      if (result.changes.attributes) {
+        Object.assign(beast.attributes, result.changes.attributes);
+      }
+      if (result.changes.stress !== undefined) {
+        beast.secondaryStats.stress = result.changes.stress;
+      }
+      if (result.changes.loyalty !== undefined) {
+        beast.secondaryStats.loyalty = result.changes.loyalty;
+      }
+      if (result.changes.age !== undefined) {
+        beast.secondaryStats.age = result.changes.age;
+      }
+    }
   }
 
-  return effect;
+  return {
+    success: result.success,
+    message: result.message,
+    changes: result.changes ? {
+      hp: result.changes.hp,
+      essence: result.changes.essence,
+      stress: result.changes.stress,
+    } : undefined,
+  };
 }
 
 /**

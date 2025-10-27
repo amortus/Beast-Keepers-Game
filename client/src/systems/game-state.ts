@@ -117,7 +117,8 @@ export async function saveGame(state: GameState): Promise<void> {
           level: beast.level,
           experience: beast.experience,
           techniques: techniqueIds,
-          traits: beast.traits
+          traits: beast.traits,
+          elixirUsage: beast.elixirUsage
         });
       }
       
