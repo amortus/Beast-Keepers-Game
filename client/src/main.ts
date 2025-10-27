@@ -40,6 +40,7 @@ import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item
 import { preloadBeastImages } from './utils/beast-images';
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
+import { TECHNIQUES } from './data/techniques';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -359,8 +360,30 @@ async function loadGameFromServer() {
           },
           traits: Array.isArray(serverBeast.traits) ? serverBeast.traits : 
                  (typeof serverBeast.traits === 'string' ? JSON.parse(serverBeast.traits) : []),
-          techniques: Array.isArray(serverBeast.techniques) ? serverBeast.techniques :
-                     (typeof serverBeast.techniques === 'string' ? JSON.parse(serverBeast.techniques) : []),
+          techniques: (() => {
+            // Parse techniques from server
+            let techIds: string[] = [];
+            if (Array.isArray(serverBeast.techniques)) {
+              techIds = serverBeast.techniques;
+            } else if (typeof serverBeast.techniques === 'string') {
+              try {
+                techIds = JSON.parse(serverBeast.techniques);
+              } catch {
+                techIds = [];
+              }
+            }
+            
+            console.log('[Beast] Technique IDs from server:', techIds);
+            
+            // Convert technique IDs to full Technique objects
+            const techniques = techIds
+              .map(id => TECHNIQUES[id])
+              .filter(tech => tech !== undefined);
+            
+            console.log('[Beast] Converted to Technique objects:', techniques);
+            
+            return techniques;
+          })(),
           currentHp: serverBeast.current_hp,
           maxHp: serverBeast.max_hp,
           essence: serverBeast.essence,
