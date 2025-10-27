@@ -4,6 +4,8 @@
  */
 
 import type { Item } from '../types';
+import { EXPLORATION_RECIPES } from '../data/exploration-recipes';
+import { POKEMON_INSPIRED_RECIPES } from '../data/pokemon-inspired-recipes';
 
 export interface CraftRecipe {
   id: string;
@@ -168,13 +170,29 @@ export function executeCraft(recipe: CraftRecipe, inventory: Item[]): { success:
  * Retorna receitas que o jogador pode craftar
  */
 export function getAvailableRecipes(inventory: Item[]): CraftRecipe[] {
-  return CRAFT_RECIPES.filter(recipe => canCraft(recipe, inventory));
+  return getAllRecipes().filter(recipe => canCraft(recipe, inventory));
 }
 
 /**
- * Retorna todas as receitas
+ * Retorna todas as receitas (incluindo exploração e Pokémon)
  */
 export function getAllRecipes(): CraftRecipe[] {
-  return CRAFT_RECIPES;
+  return [...CRAFT_RECIPES, ...EXPLORATION_RECIPES, ...POKEMON_INSPIRED_RECIPES];
+}
+
+/**
+ * Retorna receitas por categoria
+ */
+export function getRecipesByCategory(category: 'basic' | 'exploration' | 'pokemon'): CraftRecipe[] {
+  switch (category) {
+    case 'basic':
+      return CRAFT_RECIPES;
+    case 'exploration':
+      return EXPLORATION_RECIPES;
+    case 'pokemon':
+      return POKEMON_INSPIRED_RECIPES;
+    default:
+      return getAllRecipes();
+  }
 }
 
