@@ -17,7 +17,7 @@ export class BeastMiniViewer3D {
   
   // Animation state
   private time = 0;
-  private baseYPosition = -4.0; // Store the base Y position (drastic lowering)
+  private baseYPosition = -2.0; // Store the base Y position (centered)
   
   constructor(container: HTMLElement, beast: Beast, width: number = 120, height: number = 120) {
     this.container = container;
@@ -114,8 +114,8 @@ export class BeastMiniViewer3D {
       const offset = center.clone().multiplyScalar(scale);
       this.beastModel.position.sub(offset);
       
-      // Adjust Y position to center vertically in viewport (DRASTIC lowering as user requested)
-      this.baseYPosition = -4.0;
+      // Adjust Y position to center vertically in viewport (centered position)
+      this.baseYPosition = -2.0;
       this.beastModel.position.y = this.baseYPosition;
       
       this.scene.add(this.beastModel);
