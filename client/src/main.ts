@@ -1366,8 +1366,17 @@ function startExplorationBattle(enemy: WildEnemy) {
       inBattle = false;
       isExplorationBattle = false;
       
+      // DON'T show 3D viewer yet - modal will be open
+      console.log('[Main] Defeat - keeping 3D hidden until modal closes');
+      
       // Show message and close exploration
-      showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota');
+      showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota', () => {
+        // Show 3D viewer AFTER modal is closed
+        if (gameUI) {
+          gameUI.show3DViewer();
+          console.log('[Main] Defeat modal closed - showing 3D viewer now');
+        }
+      });
       
       // Force close exploration after a short delay to ensure message is shown
       setTimeout(() => {
@@ -1612,8 +1621,8 @@ function closeExploration() {
   inExploration = false;
   isExplorationBattle = false;
 
-  // Show 3D viewer when returning to ranch
-  if (gameUI) {
+  // Show 3D viewer when returning to ranch (but only if no modal is open)
+  if (gameUI && (!modalUI || !modalUI.isShowing())) {
     gameUI.show3DViewer();
   }
 
@@ -1782,7 +1791,13 @@ function startTournamentBattle(rank: TournamentRank) {
     } else if (battle.winner === 'enemy') {
       gameState.defeats++;
       gameState.activeBeast!.defeats++;
-      showMessage('Você foi derrotado!');
+      showMessage('Você foi derrotado!', '💀 Derrota', () => {
+        // Show 3D viewer AFTER modal is closed
+        if (gameUI) {
+          gameUI.show3DViewer();
+          console.log('[Main] Tournament defeat modal closed - showing 3D viewer');
+        }
+      });
     } else {
       showMessage('Você fugiu da batalha.');
     }
@@ -1843,14 +1858,18 @@ function resizeCanvas() {
   canvas.height = logicalHeight;
 }
 
-function showMessage(message: string, title: string = '💬 Beast Keepers') {
+function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {
   if (modalUI) {
     modalUI.show({
       type: 'message',
       title,
       message,
       onConfirm: () => {
-        modalUI.hide(); // ← CORREÇÃO: Fecha o modal após confirmação
+        modalUI.hide();
+        // Call onClose callback if provided
+        if (onClose) {
+          onClose();
+        }
       },
     });
   }
