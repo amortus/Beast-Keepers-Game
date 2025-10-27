@@ -587,6 +587,11 @@ function openDialogueWith(npcId: string) {
     return;
   }
 
+  // Hide 3D viewer when opening dialogue (Vila)
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
+
   // Create dialogue UI if not exists
   if (!dialogueUI) {
     dialogueUI = new DialogueUI(canvas);
@@ -677,6 +682,11 @@ function closeDialogue() {
   inDialogue = false;
   if (dialogueUI) {
     dialogueUI.close();
+  }
+
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
   }
 }
 
