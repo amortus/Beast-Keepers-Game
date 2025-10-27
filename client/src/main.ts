@@ -120,7 +120,8 @@ function startRenderLoop() {
       if (gameUI) {
         gameUI.dispose();
       }
-    } else if (gameUI && gameState) {
+    } else if (gameUI && gameState && !inDialogue) {
+      // Only draw GameUI when NOT in dialogue (Vila)
       gameUI.draw();
     }
 
@@ -154,7 +155,13 @@ async function init() {
 
     // Setup canvas
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      // Update 3D viewer position on resize
+      if (gameUI) {
+        gameUI.updateGameState(gameState || createNewGame('', { id: '', name: '', line: 'olgrim', blood: 'common', affinity: 'earth' }));
+      }
+    });
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
