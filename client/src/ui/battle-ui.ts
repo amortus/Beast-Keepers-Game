@@ -537,12 +537,32 @@ export class BattleUI {
 
     // List techniques
     const techniques = this.battle.player.beast.techniques;
+    
+    console.log('[BattleUI] Drawing technique menu');
+    console.log('[BattleUI] Beast:', this.battle.player.beast.name);
+    console.log('[BattleUI] Techniques array:', techniques);
+    console.log('[BattleUI] Techniques count:', techniques.length);
+    
     const techBtnWidth = 180;
     const techBtnHeight = 30;
     const techSpacing = 5;
     const techPerRow = 4;
 
+    if (techniques.length === 0) {
+      drawText(this.ctx, '⚠️ Nenhuma técnica disponível!', x + width / 2, y + 80, {
+        align: 'center',
+        font: 'bold 18px monospace',
+        color: COLORS.ui.warning,
+      });
+      drawText(this.ctx, 'Esta besta não possui técnicas carregadas.', x + width / 2, y + 110, {
+        align: 'center',
+        font: '14px monospace',
+        color: COLORS.ui.textDim,
+      });
+    }
+
     techniques.forEach((tech, i) => {
+      console.log(`[BattleUI] Technique ${i}:`, tech);
       const col = i % techPerRow;
       const row = Math.floor(i / techPerRow);
       const techBtnX = x + 10 + col * (techBtnWidth + techSpacing);
