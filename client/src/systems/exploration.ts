@@ -229,8 +229,16 @@ function createWildBeastEnemy(
   };
 
   // Calcula stats baseados no level, dificuldade e raridade
-  const statBase = 20 + level * 3 + difficulty * 5;
-  const rarityMultiplier = rarity === 'epic' ? 1.5 : rarity === 'rare' ? 1.3 : rarity === 'uncommon' ? 1.1 : 1.0;
+  // Progressão balanceada: bestas level 1 começam com stats ~10-15
+  // Level 1: stats base 10
+  // Level 2: stats base 13
+  // Level 3: stats base 16
+  // Dificuldade adiciona apenas 1-2 por level de zona
+  const statBase = 10 + (level - 1) * 3 + (difficulty - 1) * 1;
+  const rarityMultiplier = rarity === 'epic' ? 1.4 : rarity === 'rare' ? 1.25 : rarity === 'uncommon' ? 1.1 : 1.0;
+  
+  // Variação aleatória reduzida (0-5 ao invés de 0-10)
+  const randomVariation = () => Math.floor(Math.random() * 6);
   
   return {
     id: `wild_${beastLine}_${Date.now()}`,
@@ -240,12 +248,12 @@ function createWildBeastEnemy(
     rarity,
     description: `${name} habita ${EXPLORATION_ZONES[zone].name}`,
     stats: {
-      might: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
-      wit: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
-      focus: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
-      agility: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
-      ward: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
-      vitality: Math.floor((statBase + Math.floor(Math.random() * 10)) * rarityMultiplier),
+      might: Math.floor((statBase + randomVariation()) * rarityMultiplier),
+      wit: Math.floor((statBase + randomVariation()) * rarityMultiplier),
+      focus: Math.floor((statBase + randomVariation()) * rarityMultiplier),
+      agility: Math.floor((statBase + randomVariation()) * rarityMultiplier),
+      ward: Math.floor((statBase + randomVariation()) * rarityMultiplier),
+      vitality: Math.floor((statBase + randomVariation()) * rarityMultiplier),
     },
     aiPersonality: aiPersonalities[beastLine],
     drops: generateEnemyDrops(rarity),

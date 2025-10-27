@@ -1280,15 +1280,19 @@ function startExplorationBattle(enemy: WildEnemy) {
     traits: [],
     mood: 'neutral',
     techniques: [
-      // Técnicas padrão
-      { id: 'tackle', name: 'Investida', essenceCost: 5, damage: 15, type: 'physical', description: 'Ataque físico básico' },
-      { id: 'scratch', name: 'Arranhar', essenceCost: 3, damage: 10, type: 'physical', description: 'Ataque rápido' },
-      { id: 'roar', name: 'Rugido', essenceCost: 8, damage: 20, type: 'mystical', description: 'Intimidar o oponente' },
+      // Técnicas padrão - dano reduzido para level baixo
+      { id: 'tackle', name: 'Investida', essenceCost: 5, damage: 8 + enemy.level * 2, type: 'physical', description: 'Ataque físico básico' },
+      { id: 'scratch', name: 'Arranhar', essenceCost: 3, damage: 5 + enemy.level, type: 'physical', description: 'Ataque rápido' },
+      { id: 'roar', name: 'Rugido', essenceCost: 8, damage: 12 + enemy.level * 3, type: 'mystical', description: 'Intimidar o oponente' },
     ],
-    currentHp: enemy.stats.vitality * 10,
-    maxHp: enemy.stats.vitality * 10,
-    essence: 50,
-    maxEssence: 50,
+    // HP e Essência balanceados:
+    // Level 1: ~50-75 HP, 30 Essência
+    // Level 2: ~65-95 HP, 35 Essência
+    // Level 5: ~110-155 HP, 50 Essência
+    currentHp: enemy.stats.vitality * 5 + enemy.level * 5,
+    maxHp: enemy.stats.vitality * 5 + enemy.level * 5,
+    essence: 30 + enemy.level * 5,
+    maxEssence: 30 + enemy.level * 5,
     birthWeek: 0,
     lifeEvents: [],
     victories: 0,
