@@ -17,6 +17,7 @@ export class BeastMiniViewer3D {
   
   // Animation state
   private time = 0;
+  private baseYPosition = -4.0; // Store the base Y position (drastic lowering)
   
   constructor(container: HTMLElement, beast: Beast, width: number = 120, height: number = 120) {
     this.container = container;
@@ -33,9 +34,9 @@ export class BeastMiniViewer3D {
       0.1,
       100
     );
-    this.camera.position.set(2.5, 0.65, 3);
-    this.camera.lookAt(0, -0.35, 0);
-    console.log('[MiniViewer3D] Camera positioned at (2.5, 0.65, 3) looking at (0, -0.35, 0)');
+    this.camera.position.set(2.5, 0.6, 3);
+    this.camera.lookAt(0, -0.4, 0);
+    console.log('[MiniViewer3D] Camera positioned at (2.5, 0.6, 3) looking at (0, -0.4, 0)');
     
     // Setup renderer
     this.renderer = new THREE.WebGLRenderer({ 
@@ -113,8 +114,9 @@ export class BeastMiniViewer3D {
       const offset = center.clone().multiplyScalar(scale);
       this.beastModel.position.sub(offset);
       
-      // Adjust Y position to center vertically in viewport (fine-tuned position)
-      this.beastModel.position.y = -0.5;
+      // Adjust Y position to center vertically in viewport (DRASTIC lowering as user requested)
+      this.baseYPosition = -4.0;
+      this.beastModel.position.y = this.baseYPosition;
       
       this.scene.add(this.beastModel);
       
@@ -149,9 +151,9 @@ export class BeastMiniViewer3D {
     
     // Gentle idle animation
     if (this.beastModel) {
-      // Subtle breathing
+      // Subtle breathing - ADD to base position, don't overwrite!
       const breathingOffset = Math.sin(this.time * 2) * 0.05;
-      this.beastModel.position.y = 0.5 + breathingOffset;
+      this.beastModel.position.y = this.baseYPosition + breathingOffset;
       
       // Slow auto-rotation
       this.beastModel.rotation.y = this.time * 0.3;
