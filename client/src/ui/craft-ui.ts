@@ -5,7 +5,7 @@
 import type { GameState } from '../types';
 import { COLORS } from './colors';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
-import { getAllRecipes, getRecipesByCategory, canCraft, type CraftRecipe } from '../systems/craft';
+import { getAllRecipes, canCraft, type CraftRecipe } from '../systems/craft';
 import { getItemById } from '../data/shop';
 
 export class CraftUI {
@@ -17,7 +17,6 @@ export class CraftUI {
 
   private selectedRecipe: CraftRecipe | null = null;
   private scrollOffset = 0;
-  private selectedCategory: 'all' | 'basic' | 'exploration' | 'pokemon' = 'all';
 
   public onCraftItem: ((recipe: CraftRecipe) => void) | null = null;
   public onClose: (() => void) | null = null;
@@ -43,7 +42,7 @@ export class CraftUI {
 
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const recipes = this.getCurrentRecipes();
+      const recipes = getAllRecipes();
       const maxScroll = Math.max(0, recipes.length - 7); // 7 receitas visíveis
       this.scrollOffset += e.deltaY > 0 ? 1 : -1;
       this.scrollOffset = Math.max(0, Math.min(maxScroll, this.scrollOffset));
@@ -58,19 +57,6 @@ export class CraftUI {
         }
       }
     });
-  }
-
-  private getCurrentRecipes(): CraftRecipe[] {
-    switch (this.selectedCategory) {
-      case 'basic':
-        return getRecipesByCategory('basic');
-      case 'exploration':
-        return getRecipesByCategory('exploration');
-      case 'pokemon':
-        return getRecipesByCategory('pokemon');
-      default:
-        return getAllRecipes();
-    }
   }
 
   public draw(gameState: GameState) {
@@ -97,56 +83,19 @@ export class CraftUI {
       color: COLORS.primary.green,
     });
 
+    // Contador de receitas (abaixo do título)
+    const recipes = getAllRecipes();
+    const availableCount = recipes.filter(r => canCraft(r, gameState.inventory)).length;
+    drawText(this.ctx, `${availableCount}/${recipes.length} disponíveis`, panelX + 20, panelY + 55, {
+      font: 'bold 16px monospace',
+      color: COLORS.ui.text,
+    });
+
     // Botão de fechar (melhorado)
     const closeBtnWidth = 100;
     const closeBtnHeight = 35;
     const closeBtnX = panelX + panelWidth - closeBtnWidth - 10;
     const closeBtnY = panelY + 10;
-    
-    // Botões de categoria
-    const categoryButtons = [
-      { id: 'all', name: 'Todas', icon: '📋' },
-      { id: 'basic', name: 'Básicas', icon: '⚗️' },
-      { id: 'exploration', name: 'Exploração', icon: '🗺️' },
-      { id: 'pokemon', name: 'Pokémon', icon: '🎮' },
-    ];
-
-    const categoryBtnWidth = 120;
-    const categoryBtnHeight = 30;
-    const categoryStartX = panelX + 20;
-    const categoryStartY = panelY + 60;
-
-    categoryButtons.forEach((cat, index) => {
-      const btnX = categoryStartX + index * (categoryBtnWidth + 10);
-      const btnY = categoryStartY;
-      const isSelected = this.selectedCategory === cat.id;
-      const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, categoryBtnWidth, categoryBtnHeight);
-
-      drawButton(this.ctx, btnX, btnY, categoryBtnWidth, categoryBtnHeight, `${cat.icon} ${cat.name}`, {
-        bgColor: isSelected ? COLORS.primary.green : COLORS.ui.button,
-        textColor: isSelected ? COLORS.ui.text : COLORS.ui.text,
-        isHovered: isHovered && !isSelected,
-      });
-
-      this.buttons.set(`category_${cat.id}`, {
-        x: btnX,
-        y: btnY,
-        width: categoryBtnWidth,
-        height: categoryBtnHeight,
-        action: () => {
-          this.selectedCategory = cat.id as any;
-          this.scrollOffset = 0; // Reset scroll when changing category
-        },
-      });
-    });
-
-    // Contador de receitas (abaixo dos botões de categoria)
-    const recipes = this.getCurrentRecipes();
-    const availableCount = recipes.filter(r => canCraft(r, gameState.inventory)).length;
-    drawText(this.ctx, `${availableCount}/${recipes.length} disponíveis`, panelX + 20, panelY + 100, {
-      font: 'bold 16px monospace',
-      color: COLORS.ui.text,
-    });
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
@@ -167,7 +116,7 @@ export class CraftUI {
     });
 
     // Lista de receitas
-    this.drawRecipeList(panelX + 20, panelY + 120, panelWidth - 460, panelHeight - 150, gameState);
+    this.drawRecipeList(panelX + 20, panelY + 80, panelWidth - 460, panelHeight - 110, gameState);
 
     // Painel de detalhes
     this.drawRecipeDetails(panelX + panelWidth - 420, panelY + 70, 400, panelHeight - 100, gameState);
@@ -178,7 +127,7 @@ export class CraftUI {
       bgColor: COLORS.bg.dark,
     });
 
-    const recipes = this.getCurrentRecipes();
+    const recipes = getAllRecipes();
 
     if (recipes.length === 0) {
       drawText(this.ctx, 'Nenhuma receita', x + width / 2, y + height / 2, {

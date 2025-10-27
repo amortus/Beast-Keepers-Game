@@ -4,7 +4,6 @@
  */
 
 import type { Item } from '../types';
-import { EXPLORATION_RECIPES } from '../data/exploration-recipes';
 import { POKEMON_INSPIRED_RECIPES } from '../data/pokemon-inspired-recipes';
 
 export interface CraftRecipe {
@@ -17,99 +16,9 @@ export interface CraftRecipe {
 }
 
 /**
- * Receitas de Craft Disponíveis
+ * Receitas de Craft Disponíveis (Apenas Pokémon)
  */
-export const CRAFT_RECIPES: CraftRecipe[] = [
-  // Alimentos Avançados
-  {
-    id: 'feast_from_basics',
-    name: 'Banquete Especial',
-    description: 'Combine alimentos básicos para criar um banquete',
-    ingredients: [
-      { itemId: 'basic_food', quantity: 2 },
-      { itemId: 'vital_fruit', quantity: 1 },
-    ],
-    result: { itemId: 'feast', quantity: 1 },
-  },
-
-  // Cristais Combinados
-  {
-    id: 'supreme_echo',
-    name: 'Cristal de Eco Supremo',
-    description: 'Funde 3 Cristais de Eco em um Cristal Supremo',
-    ingredients: [
-      { itemId: 'echo_crystal', quantity: 3 },
-    ],
-    result: { itemId: 'echo_crystal_supreme', quantity: 1 },
-  },
-  {
-    id: 'legendary_from_vitals',
-    name: 'Cristal Lendário',
-    description: 'Combine cristais de Essência e Vitais para criar um Lendário',
-    ingredients: [
-      { itemId: 'essence_crystal', quantity: 2 },
-      { itemId: 'vitality_crystal', quantity: 2 },
-    ],
-    result: { itemId: 'legendary_crystal', quantity: 1 },
-  },
-
-  // Elixires Poderosos
-  {
-    id: 'elixir_from_herbs',
-    name: 'Elixir Vital',
-    description: 'Combine ervas medicinais para criar um elixir poderoso',
-    ingredients: [
-      { itemId: 'healing_herb', quantity: 2 },
-      { itemId: 'energy_herb', quantity: 2 },
-      { itemId: 'serene_herb', quantity: 1 },
-    ],
-    result: { itemId: 'elixir_vitality', quantity: 1 },
-  },
-  {
-    id: 'ambrosia_from_feast',
-    name: 'Ambrósia',
-    description: 'Transforme banquetes e ervas em Ambrósia',
-    ingredients: [
-      { itemId: 'feast', quantity: 3 },
-      { itemId: 'mood_herb', quantity: 2 },
-    ],
-    result: { itemId: 'ambrosía', quantity: 1 },
-  },
-
-  // Relíquias Upgrade
-  {
-    id: 'ancient_from_common',
-    name: 'Relíquia Antiga',
-    description: 'Combine 3 Relíquias Comuns para criar uma Antiga',
-    ingredients: [
-      { itemId: 'common_relic', quantity: 3 },
-    ],
-    result: { itemId: 'ancient_relic', quantity: 1 },
-  },
-  {
-    id: 'obscure_from_ancient',
-    name: 'Relíquia Obscura',
-    description: 'Funde 2 Relíquias Antigas em uma Obscura',
-    ingredients: [
-      { itemId: 'ancient_relic', quantity: 2 },
-    ],
-    result: { itemId: 'obscure_relic', quantity: 1 },
-  },
-
-  // Itens de Treino Especiais
-  {
-    id: 'master_manual',
-    name: 'Manual do Mestre',
-    description: 'Combine todos os itens de treino básicos',
-    ingredients: [
-      { itemId: 'training_weights', quantity: 1 },
-      { itemId: 'focus_charm', quantity: 1 },
-      { itemId: 'agility_boots', quantity: 1 },
-      { itemId: 'wisdom_tome', quantity: 1 },
-    ],
-    result: { itemId: 'master_training_manual', quantity: 1 },
-  },
-];
+export const CRAFT_RECIPES: CraftRecipe[] = POKEMON_INSPIRED_RECIPES;
 
 /**
  * Verifica se o jogador tem os ingredientes necessários
@@ -170,29 +79,13 @@ export function executeCraft(recipe: CraftRecipe, inventory: Item[]): { success:
  * Retorna receitas que o jogador pode craftar
  */
 export function getAvailableRecipes(inventory: Item[]): CraftRecipe[] {
-  return getAllRecipes().filter(recipe => canCraft(recipe, inventory));
+  return CRAFT_RECIPES.filter(recipe => canCraft(recipe, inventory));
 }
 
 /**
- * Retorna todas as receitas (incluindo exploração e Pokémon)
+ * Retorna todas as receitas
  */
 export function getAllRecipes(): CraftRecipe[] {
-  return [...CRAFT_RECIPES, ...EXPLORATION_RECIPES, ...POKEMON_INSPIRED_RECIPES];
-}
-
-/**
- * Retorna receitas por categoria
- */
-export function getRecipesByCategory(category: 'basic' | 'exploration' | 'pokemon'): CraftRecipe[] {
-  switch (category) {
-    case 'basic':
-      return CRAFT_RECIPES;
-    case 'exploration':
-      return EXPLORATION_RECIPES;
-    case 'pokemon':
-      return POKEMON_INSPIRED_RECIPES;
-    default:
-      return getAllRecipes();
-  }
+  return CRAFT_RECIPES;
 }
 
