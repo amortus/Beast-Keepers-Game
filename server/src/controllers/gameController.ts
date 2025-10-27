@@ -233,3 +233,91 @@ export async function updateGameSave(req: AuthRequest, res: Response) {
   }
 }
 
+/**
+ * Update beast data
+ */
+export async function updateBeast(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
+    }
+
+    const { beastId } = req.params;
+    const beastData = req.body;
+
+    // Verify beast belongs to user's game save
+    const ownershipCheck = await query(
+      `SELECT b.id FROM beasts b
+       JOIN game_saves gs ON b.game_save_id = gs.id
+       WHERE b.id = $1 AND gs.user_id = $2`,
+      [beastId, userId]
+    );
+
+    if (ownershipCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Beast not found' } as ApiResponse);
+    }
+
+    // Update beast with all provided data
+    const result = await query(
+      `UPDATE beasts
+       SET 
+         name = COALESCE($2, name),
+         current_hp = COALESCE($3, current_hp),
+         max_hp = COALESCE($4, max_hp),
+         essence = COALESCE($5, essence),
+         max_essence = COALESCE($6, max_essence),
+         might = COALESCE($7, might),
+         wit = COALESCE($8, wit),
+         focus = COALESCE($9, focus),
+         agility = COALESCE($10, agility),
+         ward = COALESCE($11, ward),
+         vitality = COALESCE($12, vitality),
+         loyalty = COALESCE($13, loyalty),
+         stress = COALESCE($14, stress),
+         fatigue = COALESCE($15, fatigue),
+         age = COALESCE($16, age),
+         level = COALESCE($17, level),
+         experience = COALESCE($18, experience),
+         techniques = COALESCE($19, techniques),
+         traits = COALESCE($20, traits),
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [
+        beastId,
+        beastData.name,
+        beastData.currentHp,
+        beastData.maxHp,
+        beastData.essence,
+        beastData.maxEssence,
+        beastData.attributes?.might,
+        beastData.attributes?.wit,
+        beastData.attributes?.focus,
+        beastData.attributes?.agility,
+        beastData.attributes?.ward,
+        beastData.attributes?.vitality,
+        beastData.secondaryStats?.loyalty,
+        beastData.secondaryStats?.stress,
+        beastData.secondaryStats?.fatigue,
+        beastData.secondaryStats?.age,
+        beastData.level,
+        beastData.experience,
+        beastData.techniques ? JSON.stringify(beastData.techniques) : null,
+        beastData.traits ? JSON.stringify(beastData.traits) : null
+      ]
+    );
+
+    console.log(`[Game] Beast ${beastId} updated for user ${userId}`);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0]
+    } as ApiResponse);
+
+  } catch (error) {
+    console.error('[Game] Update beast error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to update beast' } as ApiResponse);
+  }
+}
+

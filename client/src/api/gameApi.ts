@@ -33,5 +33,12 @@ export const gameApi = {
   async updateGameSave(data: Partial<GameSaveDTO>): Promise<ApiResponse<GameSaveDTO>> {
     return apiClient.put('/game/save', data);
   },
+
+  /**
+   * Update beast data
+   */
+  async updateBeast(beastId: string, beastData: any): Promise<ApiResponse<BeastDTO>> {
+    return apiClient.put(`/game/beast/${beastId}`, beastData);
+  },
 };
 

@@ -8,7 +8,8 @@ import { authenticateToken } from '../middleware/auth';
 import {
   initializeGame,
   getGameSave,
-  updateGameSave
+  updateGameSave,
+  updateBeast
 } from '../controllers/gameController';
 
 const router = Router();
@@ -22,6 +23,9 @@ router.post('/initialize', initializeGame);
 // Game save
 router.get('/save', getGameSave);
 router.put('/save', updateGameSave);
+
+// Beast management
+router.put('/beast/:beastId', updateBeast);
 
 export default router;
 

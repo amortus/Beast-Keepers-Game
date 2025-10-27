@@ -74,8 +74,57 @@ export function createNewGame(playerName: string): GameState {
  */
 export async function saveGame(state: GameState): Promise<void> {
   try {
+    // Save locally first (for offline support)
     await saveToStorage('beast_keepers_save', state);
-    console.log('[Save] Jogo salvo com sucesso');
+    
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem('auth_token');
+    
+    if (token) {
+      // Import gameApi here to avoid circular dependency
+      const { gameApi } = await import('../api/gameApi');
+      
+      // Save game save data to server
+      await gameApi.updateGameSave({
+        week: state.currentWeek,
+        coronas: state.economy.coronas,
+        victories: state.guardian.victories,
+        current_title: state.guardian.title,
+        win_streak: state.winStreak,
+        lose_streak: state.loseStreak,
+        total_trains: state.totalTrains,
+        total_crafts: state.totalCrafts,
+        total_spent: state.totalSpent
+      });
+      
+      // Save active beast data to server
+      if (state.activeBeast) {
+        const beast = state.activeBeast;
+        
+        // Extract technique IDs from full technique objects
+        const techniqueIds = beast.techniques.map((tech: any) => 
+          typeof tech === 'string' ? tech : tech.id
+        );
+        
+        await gameApi.updateBeast(beast.id, {
+          name: beast.name,
+          currentHp: beast.currentHp,
+          maxHp: beast.maxHp,
+          essence: beast.essence,
+          maxEssence: beast.maxEssence,
+          attributes: beast.attributes,
+          secondaryStats: beast.secondaryStats,
+          level: beast.level,
+          experience: beast.experience,
+          techniques: techniqueIds,
+          traits: beast.traits
+        });
+      }
+      
+      console.log('[Save] Jogo salvo com sucesso (local + servidor)');
+    } else {
+      console.log('[Save] Jogo salvo localmente (não autenticado)');
+    }
   } catch (error) {
     console.error('[Save] Erro ao salvar:', error);
     throw error;
