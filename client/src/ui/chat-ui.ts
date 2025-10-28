@@ -72,9 +72,9 @@ export class ChatUI {
     this.container.id = 'chat-ui-container';
     this.container.style.cssText = `
       position: fixed;
-      bottom: 20px;
-      left: 20px;
-      width: 400px;
+      top: 80px;
+      right: 20px;
+      width: 350px;
       height: 40px;
       background: rgba(15, 15, 30, 0.95);
       border: 2px solid #4a5568;
@@ -85,6 +85,7 @@ export class ChatUI {
       font-family: monospace;
       font-size: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      max-height: calc(100vh - 100px);
     `;
     document.body.appendChild(this.container);
 
@@ -132,39 +133,62 @@ export class ChatUI {
   }
 
   private setupEventListeners(): void {
+    // Remover listeners anteriores
+    const oldContainer = this.container;
+    
+    // Event delegation simplificado
     this.container.addEventListener('click', (e) => {
+      e.stopPropagation();
       const target = e.target as HTMLElement;
+      
+      console.log('[Chat] Click detected:', target.className, target.tagName);
+      
+      // Toggle expand/collapse - qualquer clique no header (exceto dentro de tabs ou input)
+      if (target.closest('.chat-header')) {
+        const clickedInTabs = target.closest('.chat-tabs-container');
+        const isInput = target.classList.contains('chat-input') || target.tagName === 'INPUT';
+        
+        if (!clickedInTabs && !isInput) {
+          console.log('[Chat] Toggling from header click');
+          this.toggleExpanded();
+          return;
+        }
+      }
 
-      // Toggle expand/collapse
-      if (target.classList.contains('chat-toggle-btn')) {
+      // Toggle via botão
+      if (target.classList.contains('chat-toggle-btn') || target.closest('.chat-toggle-btn')) {
+        console.log('[Chat] Toggling from button click');
         this.toggleExpanded();
         return;
       }
 
-      // Selecionar aba
-      if (target.classList.contains('chat-tab')) {
-        const tabId = target.getAttribute('data-tab-id');
-        if (tabId) {
-          this.selectTab(tabId);
-        }
-        return;
-      }
-
-      // Fechar aba
+      // Selecionar aba (não disparar se clicou no X de fechar)
       if (target.classList.contains('chat-tab-close')) {
         const tabId = target.getAttribute('data-tab-id');
         if (tabId) {
+          console.log('[Chat] Closing tab:', tabId);
           this.closeTab(tabId);
         }
         return;
       }
 
+      const tabElement = target.closest('.chat-tab');
+      if (tabElement && !target.classList.contains('chat-tab-close')) {
+        const tabId = tabElement.getAttribute('data-tab-id');
+        if (tabId) {
+          console.log('[Chat] Selecting tab:', tabId);
+          this.selectTab(tabId);
+        }
+        return;
+      }
+
       // Enviar mensagem
-      if (target.classList.contains('chat-send-btn')) {
+      if (target.classList.contains('chat-send-btn') || target.closest('.chat-send-btn')) {
+        console.log('[Chat] Sending message');
         this.handleSendMessage();
         return;
       }
-    });
+    }, true); // Usar capture phase
 
     // Input de mensagem
     const input = this.container.querySelector('.chat-input') as HTMLInputElement;
@@ -273,7 +297,7 @@ export class ChatUI {
    */
   private toggleExpanded(): void {
     this.isExpanded = !this.isExpanded;
-    this.container.style.height = this.isExpanded ? '300px' : '40px';
+    this.container.style.height = this.isExpanded ? '400px' : '40px';
     this.render();
 
     // Auto-scroll para última mensagem quando expandir
@@ -605,29 +629,31 @@ export class ChatUI {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 5px 10px;
-        background: rgba(26, 32, 44, 0.9);
+        padding: 8px 10px;
+        background: rgba(26, 32, 44, 0.95);
         border-bottom: 1px solid #4a5568;
         cursor: pointer;
         user-select: none;
+        min-height: 40px;
       " class="chat-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="color: #fff; font-weight: bold;">💬 Chat</span>
           ${this.isExpanded ? `<span style="color: #888; font-size: 10px;">${activeTab?.name || ''}</span>` : ''}
         </div>
-        <button class="chat-toggle-btn" style="
+        <div class="chat-toggle-btn" style="
           background: none;
           border: none;
           color: #fff;
           cursor: pointer;
           font-size: 16px;
-          padding: 0 5px;
-        ">${this.isExpanded ? '▼' : '▲'}</button>
+          padding: 5px 10px;
+          user-select: none;
+        ">${this.isExpanded ? '▼' : '▲'}</div>
       </div>
 
       ${this.isExpanded ? `
         <!-- Tabs -->
-        <div style="
+        <div class="chat-tabs-container" style="
           display: flex;
           gap: 2px;
           padding: 5px;
