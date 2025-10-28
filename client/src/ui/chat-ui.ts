@@ -72,9 +72,9 @@ export class ChatUI {
     this.container.id = 'chat-ui-container';
     this.container.style.cssText = `
       position: fixed;
-      top: 80px;
-      right: 20px;
-      width: 350px;
+      bottom: 20px;
+      left: 20px;
+      width: 400px;
       height: 40px;
       background: rgba(15, 15, 30, 0.95);
       border: 2px solid #4a5568;

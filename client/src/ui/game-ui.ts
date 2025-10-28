@@ -820,7 +820,8 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    const x = 20;
+    // Mudado para direita para não conflitar com o chat
+    const x = this.canvas.width - 520;
     const y = this.canvas.height - 60;
     const width = 500;
     const height = 50;

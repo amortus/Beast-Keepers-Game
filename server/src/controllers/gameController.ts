@@ -374,75 +374,131 @@ export async function updateBeast(req: AuthRequest, res: Response) {
       return res.status(404).json({ success: false, error: 'Beast not found' } as ApiResponse);
     }
 
-    // Update beast with all provided data
-    const result = await query(
-      `UPDATE beasts
-       SET 
-         name = COALESCE($2, name),
-         current_hp = COALESCE($3, current_hp),
-         max_hp = COALESCE($4, max_hp),
-         essence = COALESCE($5, essence),
-         max_essence = COALESCE($6, max_essence),
-         might = COALESCE($7, might),
-         wit = COALESCE($8, wit),
-         focus = COALESCE($9, focus),
-         agility = COALESCE($10, agility),
-         ward = COALESCE($11, ward),
-         vitality = COALESCE($12, vitality),
-         loyalty = COALESCE($13, loyalty),
-         stress = COALESCE($14, stress),
-         fatigue = COALESCE($15, fatigue),
-         age = COALESCE($16, age),
-         level = COALESCE($17, level),
-         experience = COALESCE($18, experience),
-         techniques = COALESCE($19, techniques),
-         traits = COALESCE($20, traits),
-         elixir_usage = COALESCE($21, elixir_usage),
-         current_action = COALESCE($22, current_action),
-         last_exploration = COALESCE($23, last_exploration),
-         last_tournament = COALESCE($24, last_tournament),
-         exploration_count = COALESCE($25, exploration_count),
-         birth_date = COALESCE($26, birth_date),
-         last_update = COALESCE($27, last_update),
-         work_bonus_count = COALESCE($28, work_bonus_count),
-         age_in_days = COALESCE($29, age_in_days),
-         last_day_processed = COALESCE($30, last_day_processed),
-         updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [
-        beastId,
-        beastData.name,
-        beastData.currentHp,
-        beastData.maxHp,
-        beastData.essence,
-        beastData.maxEssence,
-        beastData.attributes?.might,
-        beastData.attributes?.wit,
-        beastData.attributes?.focus,
-        beastData.attributes?.agility,
-        beastData.attributes?.ward,
-        beastData.attributes?.vitality,
-        beastData.secondaryStats?.loyalty,
-        beastData.secondaryStats?.stress,
-        beastData.secondaryStats?.fatigue,
-        beastData.secondaryStats?.age,
-        beastData.level,
-        beastData.experience,
-        beastData.techniques ? JSON.stringify(beastData.techniques) : null,
-        beastData.traits ? JSON.stringify(beastData.traits) : null,
-        beastData.elixirUsage ? JSON.stringify(beastData.elixirUsage) : null,
-        beastData.currentAction ? JSON.stringify(beastData.currentAction) : null,
-        beastData.lastExploration,
-        beastData.lastTournament,
-        beastData.explorationCount,
-        beastData.birthDate,
-        beastData.lastUpdate,
-        beastData.workBonusCount,
-        beastData.ageInDays,
-        beastData.lastDayProcessed
-      ]
-    );
+    // Verificar quais colunas existem na tabela beasts
+    const columnCheck = await query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'beasts' 
+      AND column_name IN ('elixir_usage', 'current_action', 'last_exploration', 'last_tournament', 
+                          'exploration_count', 'birth_date', 'last_update', 'work_bonus_count', 
+                          'age_in_days', 'last_day_processed', 'level', 'experience')
+    `);
+    
+    const availableColumns = columnCheck.rows.map(r => r.column_name);
+    const hasElixirUsage = availableColumns.includes('elixir_usage');
+    const hasCurrentAction = availableColumns.includes('current_action');
+    const hasLastExploration = availableColumns.includes('last_exploration');
+    const hasLastTournament = availableColumns.includes('last_tournament');
+    const hasExplorationCount = availableColumns.includes('exploration_count');
+    const hasBirthDate = availableColumns.includes('birth_date');
+    const hasLastUpdate = availableColumns.includes('last_update');
+    const hasWorkBonusCount = availableColumns.includes('work_bonus_count');
+    const hasAgeInDays = availableColumns.includes('age_in_days');
+    const hasLastDayProcessed = availableColumns.includes('last_day_processed');
+    const hasLevel = availableColumns.includes('level');
+    const hasExperience = availableColumns.includes('experience');
+    const hasAge = availableColumns.includes('age');
+
+    // Construir UPDATE dinamicamente
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    let paramIndex = 2;
+    
+    // Campos obrigatórios sempre presentes
+    const baseFields = [
+      { field: 'name', value: beastData.name },
+      { field: 'current_hp', value: beastData.currentHp },
+      { field: 'max_hp', value: beastData.maxHp },
+      { field: 'essence', value: beastData.essence },
+      { field: 'max_essence', value: beastData.maxEssence },
+      { field: 'might', value: beastData.attributes?.might },
+      { field: 'wit', value: beastData.attributes?.wit },
+      { field: 'focus', value: beastData.attributes?.focus },
+      { field: 'agility', value: beastData.attributes?.agility },
+      { field: 'ward', value: beastData.attributes?.ward },
+      { field: 'vitality', value: beastData.attributes?.vitality },
+      { field: 'loyalty', value: beastData.secondaryStats?.loyalty },
+      { field: 'stress', value: beastData.secondaryStats?.stress },
+      { field: 'fatigue', value: beastData.secondaryStats?.fatigue },
+      { field: 'techniques', value: beastData.techniques ? JSON.stringify(beastData.techniques) : null },
+      { field: 'traits', value: beastData.traits ? JSON.stringify(beastData.traits) : null },
+    ];
+
+    baseFields.forEach(({ field, value }) => {
+      updateFields.push(`${field} = COALESCE($${paramIndex++}, ${field})`);
+      updateValues.push(value);
+    });
+
+    if (hasAge) {
+      updateFields.push(`age = COALESCE($${paramIndex++}, age)`);
+      updateValues.push(beastData.secondaryStats?.age);
+    }
+
+    if (hasLevel) {
+      updateFields.push(`level = COALESCE($${paramIndex++}, level)`);
+      updateValues.push(beastData.level);
+    }
+
+    if (hasExperience) {
+      updateFields.push(`experience = COALESCE($${paramIndex++}, experience)`);
+      updateValues.push(beastData.experience);
+    }
+
+    if (hasElixirUsage) {
+      updateFields.push(`elixir_usage = COALESCE($${paramIndex++}, elixir_usage)`);
+      updateValues.push(beastData.elixirUsage ? JSON.stringify(beastData.elixirUsage) : null);
+    }
+
+    if (hasCurrentAction) {
+      updateFields.push(`current_action = COALESCE($${paramIndex++}, current_action)`);
+      updateValues.push(beastData.currentAction ? JSON.stringify(beastData.currentAction) : null);
+    }
+
+    if (hasLastExploration) {
+      updateFields.push(`last_exploration = COALESCE($${paramIndex++}, last_exploration)`);
+      updateValues.push(beastData.lastExploration);
+    }
+
+    if (hasLastTournament) {
+      updateFields.push(`last_tournament = COALESCE($${paramIndex++}, last_tournament)`);
+      updateValues.push(beastData.lastTournament);
+    }
+
+    if (hasExplorationCount) {
+      updateFields.push(`exploration_count = COALESCE($${paramIndex++}, exploration_count)`);
+      updateValues.push(beastData.explorationCount);
+    }
+
+    if (hasBirthDate) {
+      updateFields.push(`birth_date = COALESCE($${paramIndex++}, birth_date)`);
+      updateValues.push(beastData.birthDate);
+    }
+
+    if (hasLastUpdate) {
+      updateFields.push(`last_update = COALESCE($${paramIndex++}, last_update)`);
+      updateValues.push(beastData.lastUpdate);
+    }
+
+    if (hasWorkBonusCount) {
+      updateFields.push(`work_bonus_count = COALESCE($${paramIndex++}, work_bonus_count)`);
+      updateValues.push(beastData.workBonusCount);
+    }
+
+    if (hasAgeInDays) {
+      updateFields.push(`age_in_days = COALESCE($${paramIndex++}, age_in_days)`);
+      updateValues.push(beastData.ageInDays);
+    }
+
+    if (hasLastDayProcessed) {
+      updateFields.push(`last_day_processed = COALESCE($${paramIndex++}, last_day_processed)`);
+      updateValues.push(beastData.lastDayProcessed);
+    }
+
+    updateFields.push('updated_at = NOW()');
+
+    const updateQuery = `UPDATE beasts SET ${updateFields.join(', ')} WHERE id = $1 RETURNING *`;
+    
+    const result = await query(updateQuery, [beastId, ...updateValues]);
 
     console.log(`[Game] Beast ${beastId} updated for user ${userId}`);
 
