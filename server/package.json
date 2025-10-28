@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "ts-node src/db/migrate.ts",
+    "migrate:friends": "ts-node src/db/run-friends-migration.ts",
     "vercel-build": "tsc"
   },
   "dependencies": {

@@ -9,6 +9,47 @@ import { AuthRequest } from '../middleware/auth';
 import { ApiResponse } from '../types';
 
 /**
+ * Garante que a tabela friendships existe
+ */
+async function ensureFriendshipsTable(): Promise<void> {
+  try {
+    // Verificar se tabela existe
+    const checkResult = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'friendships'
+      );
+    `);
+    
+    if (!checkResult.rows[0].exists) {
+      console.log('[Friends] Creating friendships table...');
+      await query(`
+        BEGIN;
+        CREATE TABLE friendships (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          requested_at TIMESTAMP DEFAULT NOW(),
+          accepted_at TIMESTAMP,
+          UNIQUE(user_id, friend_id),
+          CHECK (user_id != friend_id)
+        );
+        CREATE INDEX idx_friendships_user ON friendships(user_id, status);
+        CREATE INDEX idx_friendships_friend ON friendships(friend_id, status);
+        COMMIT;
+      `);
+      console.log('[Friends] Table friendships created successfully');
+    }
+  } catch (error: any) {
+    // Se já existe, tudo bem
+    if (error.code !== '42P07' && !error.message?.includes('already exists')) {
+      throw error;
+    }
+  }
+}
+
+/**
  * Listar amigos aceitos
  */
 export async function getFriends(req: AuthRequest, res: Response) {
@@ -17,6 +58,9 @@ export async function getFriends(req: AuthRequest, res: Response) {
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
+
+    // Verificar se tabela existe, criar se necessário
+    await ensureFriendshipsTable();
 
     const result = await query(
       `SELECT 
@@ -72,6 +116,8 @@ export async function getFriendRequests(req: AuthRequest, res: Response) {
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
+
+    await ensureFriendshipsTable();
 
     const result = await query(
       `SELECT 
@@ -199,13 +245,49 @@ export async function sendFriendRequest(req: AuthRequest, res: Response) {
         message: 'Friend request sent'
       } as ApiResponse);
     } catch (dbError: any) {
-      // Verificar se é erro de constraint (tabela não existe, etc)
+      // Verificar se é erro de tabela não existir
       if (dbError.code === '42P01') {
-        console.error('[Friends] Table friendships does not exist. Migration needs to be run.');
-        return res.status(500).json({ 
-          success: false, 
-          error: 'Sistema de amigos não está configurado. Contate o administrador.' 
-        } as ApiResponse);
+        console.error('[Friends] Table friendships does not exist. Creating it automatically...');
+        
+        try {
+          // Criar tabela automaticamente se não existir
+          await query(`
+            BEGIN;
+            CREATE TABLE IF NOT EXISTS friendships (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              status VARCHAR(20) NOT NULL DEFAULT 'pending',
+              requested_at TIMESTAMP DEFAULT NOW(),
+              accepted_at TIMESTAMP,
+              UNIQUE(user_id, friend_id),
+              CHECK (user_id != friend_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id, status);
+            CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id, status);
+            COMMIT;
+          `);
+          
+          console.log('[Friends] Table friendships created successfully');
+          
+          // Tentar inserir novamente
+          await query(
+            `INSERT INTO friendships (user_id, friend_id, status) 
+             VALUES ($1, $2, 'pending')`,
+            [userId, friendId]
+          );
+
+          return res.status(200).json({
+            success: true,
+            message: 'Friend request sent'
+          } as ApiResponse);
+        } catch (createError: any) {
+          console.error('[Friends] Failed to create table:', createError);
+          return res.status(500).json({ 
+            success: false, 
+            error: 'Erro ao configurar sistema de amigos. Tente novamente em alguns instantes.' 
+          } as ApiResponse);
+        }
       }
       
       // Re-lançar se for outro erro
@@ -230,6 +312,8 @@ export async function acceptFriendRequest(req: AuthRequest, res: Response) {
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
+
+    await ensureFriendshipsTable();
 
     const { friendId } = req.params;
     const friendIdNum = parseInt(friendId);
@@ -285,6 +369,8 @@ export async function removeFriend(req: AuthRequest, res: Response) {
     if (!userId) {
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
+
+    await ensureFriendshipsTable();
 
     const { friendId } = req.params;
     const friendIdNum = parseInt(friendId);
