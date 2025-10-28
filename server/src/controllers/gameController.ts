@@ -82,111 +82,112 @@ export async function initializeGame(req: AuthRequest, res: Response) {
     const offset = utcTime - brasiliaTime;
     const midnightTimestamp = brasiliaMidnight.getTime() + offset;
     
-    // Verificar se as colunas de ciclo diário existem antes de inserir
-    console.log('[Game] Checking for age columns...');
+    // Verificar quais colunas existem na tabela beasts
+    console.log('[Game] Checking for available columns...');
+    let hasBirthDate = false;
+    let hasLastUpdate = false;
     let hasAgeInDays = false;
     let hasLastDayProcessed = false;
+    let hasLevel = false;
+    let hasExperience = false;
     
     try {
       const columnCheck = await client.query(`
         SELECT column_name 
         FROM information_schema.columns 
         WHERE table_name = 'beasts' 
-        AND column_name IN ('age_in_days', 'last_day_processed')
+        AND column_name IN ('birth_date', 'last_update', 'age_in_days', 'last_day_processed', 'level', 'experience')
       `);
       
-      hasAgeInDays = columnCheck.rows.some(r => r.column_name === 'age_in_days');
-      hasLastDayProcessed = columnCheck.rows.some(r => r.column_name === 'last_day_processed');
-      console.log('[Game] Age columns check:', { hasAgeInDays, hasLastDayProcessed });
+      const availableColumns = columnCheck.rows.map(r => r.column_name);
+      hasBirthDate = availableColumns.includes('birth_date');
+      hasLastUpdate = availableColumns.includes('last_update');
+      hasAgeInDays = availableColumns.includes('age_in_days');
+      hasLastDayProcessed = availableColumns.includes('last_day_processed');
+      hasLevel = availableColumns.includes('level');
+      hasExperience = availableColumns.includes('experience');
+      
+      console.log('[Game] Available columns:', { hasBirthDate, hasLastUpdate, hasAgeInDays, hasLastDayProcessed, hasLevel, hasExperience });
     } catch (columnError: any) {
-      console.warn('[Game] Error checking columns, assuming they dont exist:', columnError.message);
-      hasAgeInDays = false;
-      hasLastDayProcessed = false;
+      console.warn('[Game] Error checking columns, using minimal INSERT:', columnError.message);
+      // Assume nenhuma coluna nova existe
     }
     
-    let insertQuery: string;
-    let insertValues: any[];
+    // Construir query dinamicamente baseado nas colunas disponíveis
+    const baseColumns = [
+      'game_save_id', 'name', 'line', 'blood', 'affinity', 'is_active',
+      'current_hp', 'max_hp', 'essence', 'max_essence',
+      'might', 'wit', 'focus', 'agility', 'ward', 'vitality',
+      'loyalty', 'stress', 'fatigue', 'techniques', 'traits'
+    ];
     
-    if (hasAgeInDays && hasLastDayProcessed) {
-      // Inserir com todos os campos incluindo ciclo diário
-      insertQuery = `INSERT INTO beasts (
-        game_save_id, name, line, blood, affinity, is_active,
-        current_hp, max_hp, essence, max_essence,
-        might, wit, focus, agility, ward, vitality,
-        loyalty, stress, fatigue, techniques, traits, level, experience,
-        birth_date, last_update, age_in_days, last_day_processed
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
-      RETURNING *`;
-      
-      insertValues = [
-        gameSave.id,
-        randomBeast.name,
-        randomBeast.line,
-        randomBeast.blood,
-        randomBeast.affinity,
-        true,
-        randomBeast.currentHp,
-        randomBeast.maxHp,
-        randomBeast.essence,
-        randomBeast.maxEssence,
-        randomBeast.attributes.might,
-        randomBeast.attributes.wit,
-        randomBeast.attributes.focus,
-        randomBeast.attributes.agility,
-        randomBeast.attributes.ward,
-        randomBeast.attributes.vitality,
-        randomBeast.secondaryStats.loyalty,
-        randomBeast.secondaryStats.stress,
-        randomBeast.secondaryStats.fatigue,
-        JSON.stringify(randomBeast.techniques),
-        JSON.stringify(randomBeast.traits),
-        randomBeast.level,
-        randomBeast.experience,
-        now,
-        now,
-        0,
-        midnightTimestamp
-      ];
-    } else {
-      // Inserir sem campos de ciclo diário (fallback para bancos antigos)
-      console.warn('[Game] Age columns not found, using fallback INSERT');
-      insertQuery = `INSERT INTO beasts (
-        game_save_id, name, line, blood, affinity, is_active,
-        current_hp, max_hp, essence, max_essence,
-        might, wit, focus, agility, ward, vitality,
-        loyalty, stress, fatigue, techniques, traits, level, experience,
-        birth_date, last_update
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
-      RETURNING *`;
-      
-      insertValues = [
-        gameSave.id,
-        randomBeast.name,
-        randomBeast.line,
-        randomBeast.blood,
-        randomBeast.affinity,
-        true,
-        randomBeast.currentHp,
-        randomBeast.maxHp,
-        randomBeast.essence,
-        randomBeast.maxEssence,
-        randomBeast.attributes.might,
-        randomBeast.attributes.wit,
-        randomBeast.attributes.focus,
-        randomBeast.attributes.agility,
-        randomBeast.attributes.ward,
-        randomBeast.attributes.vitality,
-        randomBeast.secondaryStats.loyalty,
-        randomBeast.secondaryStats.stress,
-        randomBeast.secondaryStats.fatigue,
-        JSON.stringify(randomBeast.techniques),
-        JSON.stringify(randomBeast.traits),
-        randomBeast.level,
-        randomBeast.experience,
-        now,
-        now
-      ];
+    const baseValues = [
+      gameSave.id,
+      randomBeast.name,
+      randomBeast.line,
+      randomBeast.blood,
+      randomBeast.affinity,
+      true,
+      randomBeast.currentHp,
+      randomBeast.maxHp,
+      randomBeast.essence,
+      randomBeast.maxEssence,
+      randomBeast.attributes.might,
+      randomBeast.attributes.wit,
+      randomBeast.attributes.focus,
+      randomBeast.attributes.agility,
+      randomBeast.attributes.ward,
+      randomBeast.attributes.vitality,
+      randomBeast.secondaryStats.loyalty,
+      randomBeast.secondaryStats.stress,
+      randomBeast.secondaryStats.fatigue,
+      JSON.stringify(randomBeast.techniques),
+      JSON.stringify(randomBeast.traits)
+    ];
+    
+    let insertColumns = [...baseColumns];
+    let insertValues = [...baseValues];
+    let paramIndex = baseValues.length + 1;
+    
+    if (hasLevel) {
+      insertColumns.push('level');
+      insertValues.push(randomBeast.level);
+      paramIndex++;
     }
+    
+    if (hasExperience) {
+      insertColumns.push('experience');
+      insertValues.push(randomBeast.experience);
+      paramIndex++;
+    }
+    
+    if (hasBirthDate) {
+      insertColumns.push('birth_date');
+      insertValues.push(now);
+      paramIndex++;
+    }
+    
+    if (hasLastUpdate) {
+      insertColumns.push('last_update');
+      insertValues.push(now);
+      paramIndex++;
+    }
+    
+    if (hasAgeInDays) {
+      insertColumns.push('age_in_days');
+      insertValues.push(0);
+      paramIndex++;
+    }
+    
+    if (hasLastDayProcessed) {
+      insertColumns.push('last_day_processed');
+      insertValues.push(midnightTimestamp);
+      paramIndex++;
+    }
+    
+    // Construir query final
+    const placeholders = insertValues.map((_, i) => `$${i + 1}`).join(', ');
+    const insertQuery = `INSERT INTO beasts (${insertColumns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
     
     console.log('[Game] Inserting beast with query:', insertQuery.substring(0, 100) + '...');
     console.log('[Game] Insert values count:', insertValues.length);
