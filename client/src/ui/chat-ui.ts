@@ -5,7 +5,7 @@
  */
 
 import type { ChatMessage, ChatTab, Friend, FriendRequest } from '../types';
-import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, onConnect, onFriendOnline, onFriendOffline, getConnectionStatus } from '../services/chatClient';
+import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, onConnect, onFriendOnline, onFriendOffline, onFriendUpdate, getConnectionStatus } from '../services/chatClient';
 import { friendsApi } from '../api/friendsApi';
 
 // Cores de mensagem (padrão WoW)
@@ -573,6 +573,23 @@ export class ChatUI {
       if (this.onFriendStatusChange) {
         this.onFriendStatusChange(data.username, false);
       }
+    });
+
+    // Atualização de amizade (pedido enviado/aceito/rejeitado/removido)
+    onFriendUpdate((data) => {
+      console.log('[ChatUI] Friend update received:', data);
+      
+      // Sempre recarregar lista de amigos e pedidos quando houver atualização
+      // Isso garante que a UI sempre esteja sincronizada, mesmo que o usuário não esteja vendo a aba de amigos
+      this.loadFriends().then(() => {
+        // Após recarregar amigos, recarregar pedidos e atualizar UI
+        this.loadFriendRequests().then(() => {
+          // Se estiver na aba de amigos, renderizar novamente para mostrar mudanças
+          if (this.activeTabId === 'friends') {
+            this.render();
+          }
+        });
+      });
     });
 
     // Erros

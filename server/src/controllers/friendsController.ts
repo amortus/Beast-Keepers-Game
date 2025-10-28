@@ -7,6 +7,7 @@ import { Response } from 'express';
 import { query } from '../db/connection';
 import { AuthRequest } from '../middleware/auth';
 import { ApiResponse } from '../types';
+import { notifyFriendUpdate } from '../services/chatService';
 
 /**
  * Garante que a tabela friendships existe
@@ -240,6 +241,30 @@ export async function sendFriendRequest(req: AuthRequest, res: Response) {
         [userId, friendId]
       );
 
+      // Buscar informações do amigo para notificação
+      const friendResult = await query(
+        `SELECT display_name FROM users WHERE id = $1`,
+        [friendId]
+      );
+      const friendName = friendResult.rows[0]?.display_name || 'Unknown';
+
+      // Notificar o remetente (que enviou o pedido)
+      notifyFriendUpdate(userId, 'request-sent', {
+        friendId: friendId,
+        friendName: friendName,
+      });
+
+      // Notificar o destinatário (que recebeu o pedido)
+      const senderResult = await query(
+        `SELECT display_name FROM users WHERE id = $1`,
+        [userId]
+      );
+      const senderName = senderResult.rows[0]?.display_name || 'Unknown';
+      notifyFriendUpdate(friendId, 'request-sent', {
+        friendId: userId,
+        friendName: senderName,
+      });
+
       return res.status(200).json({
         success: true,
         message: 'Friend request sent'
@@ -276,6 +301,30 @@ export async function sendFriendRequest(req: AuthRequest, res: Response) {
              VALUES ($1, $2, 'pending')`,
             [userId, friendId]
           );
+
+          // Buscar informações do amigo para notificação
+          const friendResult = await query(
+            `SELECT display_name FROM users WHERE id = $1`,
+            [friendId]
+          );
+          const friendName = friendResult.rows[0]?.display_name || 'Unknown';
+
+          // Notificar o remetente (que enviou o pedido)
+          notifyFriendUpdate(userId, 'request-sent', {
+            friendId: friendId,
+            friendName: friendName,
+          });
+
+          // Notificar o destinatário (que recebeu o pedido)
+          const senderResult = await query(
+            `SELECT display_name FROM users WHERE id = $1`,
+            [userId]
+          );
+          const senderName = senderResult.rows[0]?.display_name || 'Unknown';
+          notifyFriendUpdate(friendId, 'request-sent', {
+            friendId: userId,
+            friendName: senderName,
+          });
 
           return res.status(200).json({
             success: true,
@@ -347,6 +396,32 @@ export async function acceptFriendRequest(req: AuthRequest, res: Response) {
       [existingResult.rows[0].id]
     );
 
+    // Buscar informações de ambos os usuários para notificação
+    const friendInfo = await query(
+      `SELECT u1.id as sender_id, u1.display_name as sender_name, u2.id as receiver_id, u2.display_name as receiver_name
+       FROM friendships f
+       JOIN users u1 ON f.user_id = u1.id
+       JOIN users u2 ON f.friend_id = u2.id
+       WHERE f.id = $1`,
+      [existingResult.rows[0].id]
+    );
+
+    if (friendInfo.rows.length > 0) {
+      const { sender_id, sender_name, receiver_id, receiver_name } = friendInfo.rows[0];
+
+      // Notificar o remetente (quem enviou o pedido)
+      notifyFriendUpdate(sender_id, 'request-accepted', {
+        friendId: receiver_id,
+        friendName: receiver_name,
+      });
+
+      // Notificar o destinatário (quem aceitou o pedido)
+      notifyFriendUpdate(receiver_id, 'request-accepted', {
+        friendId: sender_id,
+        friendName: sender_name,
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Friend request accepted'
@@ -382,6 +457,14 @@ export async function removeFriend(req: AuthRequest, res: Response) {
       } as ApiResponse);
     }
 
+    // Buscar informações do amigo antes de remover
+    const friendInfo = await query(
+      `SELECT u.id, u.display_name
+       FROM users u
+       WHERE u.id = $1`,
+      [friendIdNum]
+    );
+
     // Verificar se existe amizade
     const existingResult = await query(
       `SELECT id FROM friendships 
@@ -401,6 +484,28 @@ export async function removeFriend(req: AuthRequest, res: Response) {
       `DELETE FROM friendships WHERE id = $1`,
       [existingResult.rows[0].id]
     );
+
+    // Notificar ambos os usuários
+    if (friendInfo.rows.length > 0) {
+      const friendName = friendInfo.rows[0].display_name;
+
+      // Notificar o usuário atual
+      notifyFriendUpdate(userId, 'friend-removed', {
+        friendId: friendIdNum,
+        friendName: friendName,
+      });
+
+      // Notificar o amigo removido
+      const currentUserInfo = await query(
+        `SELECT display_name FROM users WHERE id = $1`,
+        [userId]
+      );
+      const currentUserName = currentUserInfo.rows[0]?.display_name || 'Unknown';
+      notifyFriendUpdate(friendIdNum, 'friend-removed', {
+        friendId: userId,
+        friendName: currentUserName,
+      });
+    }
 
     return res.status(200).json({
       success: true,

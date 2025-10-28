@@ -489,3 +489,37 @@ export function notifyOnlineUsers(message: { channel?: 'global' | 'group' | 'tra
   console.log(`[ChatService] Notification sent to all online users: ${message.message.substring(0, 50)}...`);
 }
 
+/**
+ * Notifica um usuário específico sobre mudanças em friendships
+ */
+export function notifyFriendUpdate(userId: number, eventType: 'request-sent' | 'request-accepted' | 'request-rejected' | 'friend-removed', data?: any) {
+  if (!io) {
+    console.warn('[ChatService] Socket.IO not initialized, cannot notify user');
+    return;
+  }
+
+  const sockets = userSockets.get(userId);
+  if (!sockets || sockets.size === 0) {
+    // Usuário não está online, não precisa notificar
+    return;
+  }
+
+  // Notificar todos os sockets do usuário
+  sockets.forEach(socketId => {
+    io?.to(socketId).emit('friend:update', {
+      type: eventType,
+      data: data,
+      timestamp: Date.now(),
+    });
+  });
+
+  console.log(`[ChatService] Friend update notification sent to user ${userId}: ${eventType}`);
+}
+
+/**
+ * Obtém instância do Socket.IO (para uso externo)
+ */
+export function getSocketIO(): SocketServer | null {
+  return io;
+}
+
