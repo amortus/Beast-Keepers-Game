@@ -397,13 +397,8 @@ async function init() {
             if (!chatUI && token) {
               chatUI = new ChatUI();
               chatUI.connect(token);
-              // Callback para atualizar status de amigos na UI de amigos
-              chatUI.onFriendStatusChange = (username, isOnline) => {
-                friendsUI?.updateOnlineStatus(username, isOnline);
-              };
+              // Friends agora está integrado no ChatUI
             }
-            
-            // Friends agora está integrado no ChatUI
           }
           
           await loadGameFromServer();

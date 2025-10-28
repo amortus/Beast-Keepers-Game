@@ -134,16 +134,23 @@ export async function sendFriendRequest(req: AuthRequest, res: Response) {
       } as ApiResponse);
     }
 
-    // Buscar usuário por display_name
+    // Limpar e normalizar o nome de usuário (remove espaços extras)
+    const searchUsername = username.trim();
+
+    // Buscar usuário por display_name (case-insensitive e ignora espaços extras)
+    // Usa LOWER e TRIM para garantir que encontre mesmo com diferenças de case/espaços
     const userResult = await query(
-      'SELECT id, display_name FROM users WHERE display_name = $1',
-      [username]
+      `SELECT id, display_name 
+       FROM users 
+       WHERE LOWER(TRIM(display_name)) = LOWER(TRIM($1))`,
+      [searchUsername]
     );
 
     if (userResult.rows.length === 0) {
+      console.log(`[Friends] User not found: "${searchUsername}"`);
       return res.status(404).json({ 
         success: false, 
-        error: 'User not found' 
+        error: `Usuário "${searchUsername}" não encontrado` 
       } as ApiResponse);
     }
 
