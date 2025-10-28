@@ -5,7 +5,7 @@
  */
 
 import type { ChatMessage, ChatTab } from '../types';
-import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, onConnect, getConnectionStatus } from '../services/chatClient';
+import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, onConnect, onFriendOnline, onFriendOffline, getConnectionStatus } from '../services/chatClient';
 
 // Cores de mensagem (padrão WoW)
 const CHAT_COLORS = {
@@ -25,6 +25,16 @@ export class ChatUI {
   private inputValue: string = '';
   private scrollPosition: number = 0;
   private maxScroll: number = 0;
+  private onlineUsers: Set<string> = new Set();
+  
+  // Autocomplete state
+  private autocompleteVisible: boolean = false;
+  private autocompleteSuggestions: string[] = [];
+  private autocompleteSelectedIndex: number = 0;
+  private autocompleteQuery: string = '';
+  
+  // Friends integration
+  public onFriendStatusChange?: (username: string, isOnline: boolean) => void;
 
   // Callbacks
   public onMessageReceived?: (msg: ChatMessage) => void;
@@ -136,6 +146,14 @@ export class ChatUI {
     e.stopPropagation();
     const target = e.target as HTMLElement;
     
+    // Autocomplete item click
+    if (target.classList.contains('autocomplete-item')) {
+      const index = parseInt(target.getAttribute('data-index') || '0');
+      this.autocompleteSelectedIndex = index;
+      this.applyAutocomplete();
+      return;
+    }
+    
     // Toggle expand/collapse - clicar no header (mas não em tabs ou input)
     const header = target.closest('.chat-header');
     if (header) {
@@ -179,40 +197,136 @@ export class ChatUI {
     }
   };
 
-  private setupEventListeners(): void {
-    // Remover listener anterior se existir
-    this.container.removeEventListener('click', this.clickHandler);
-    // Adicionar novo listener
-    this.container.addEventListener('click', this.clickHandler);
-
-    // Input de mensagem - reanexar sempre que renderizar
-    const input = this.container.querySelector('.chat-input') as HTMLInputElement;
-    if (input) {
-      // Limpar listeners anteriores se existirem
-      input.onkeypress = null;
-      input.oninput = null;
+  private keydownHandler = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    
+    // Verificar se é o input do chat
+    if (target.classList.contains('chat-input') || target.tagName === 'INPUT') {
+      const input = target as HTMLInputElement;
       
-      // Event listener para Enter
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+      // Verificar se realmente está digitando - input deve estar focado E ter valor
+      const isFocused = document.activeElement === input;
+      const hasValue = input.value.trim().length > 0;
+      
+      // Autocomplete navigation
+      if (this.autocompleteVisible) {
+        if (e.key === 'ArrowDown') {
           e.preventDefault();
           e.stopPropagation();
-          this.handleSendMessage();
+          this.autocompleteSelectedIndex = 
+            (this.autocompleteSelectedIndex + 1) % this.autocompleteSuggestions.length;
+          this.render();
+          return;
         }
-      });
-
-      // Event listener para atualizar valor
-      input.addEventListener('input', (e) => {
-        this.inputValue = (e.target as HTMLInputElement).value;
-      });
+        
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.autocompleteSelectedIndex = 
+            (this.autocompleteSelectedIndex - 1 + this.autocompleteSuggestions.length) 
+            % this.autocompleteSuggestions.length;
+          this.render();
+          return;
+        }
+        
+        if (e.key === 'Tab' || (e.key === 'Enter' && this.autocompleteSuggestions.length > 0)) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.applyAutocomplete();
+          return;
+        }
+        
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.autocompleteVisible = false;
+          this.render();
+          return;
+        }
+      }
       
-      // Focar no input quando expandir
-      if (this.isExpanded) {
-        setTimeout(() => {
-          input.focus();
-        }, 50);
+      // Send message (apenas se: autocomplete não está ativo, está focado, tem conteúdo)
+      if (e.key === 'Enter' && !e.shiftKey && !this.autocompleteVisible && isFocused && hasValue) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleSendMessage();
+        return;
       }
     }
+  };
+
+  private inputHandler = (e: Event) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('chat-input')) {
+      const input = target as HTMLInputElement;
+      this.inputValue = input.value;
+      
+      // Detectar @ para autocomplete
+      const cursorPos = input.selectionStart || 0;
+      const textBeforeCursor = input.value.substring(0, cursorPos);
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+      
+      if (lastAtIndex !== -1) {
+        const query = textBeforeCursor.substring(lastAtIndex + 1);
+        
+        // Buscar apenas se não há espaço após @
+        if (!query.includes(' ')) {
+          this.autocompleteQuery = query;
+          this.autocompleteSuggestions = this.getAvailableNicks()
+            .filter(nick => nick.toLowerCase().startsWith(query.toLowerCase()));
+          this.autocompleteVisible = this.autocompleteSuggestions.length > 0;
+          this.autocompleteSelectedIndex = 0;
+          this.render();
+          
+          // Focar no input novamente para manter cursor
+          setTimeout(() => {
+            input.focus();
+            input.setSelectionRange(cursorPos, cursorPos);
+          }, 0);
+        } else {
+          this.autocompleteVisible = false;
+          this.render();
+        }
+      } else {
+        this.autocompleteVisible = false;
+        this.render();
+      }
+    }
+  };
+
+  private blurHandler = (e: FocusEvent) => {
+    // Fechar autocomplete quando perder foco (mas não se clicou no autocomplete)
+    const target = e.target as HTMLElement;
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    
+    if (target.classList.contains('chat-input')) {
+      // Se o foco foi para dentro do container (autocomplete), não fechar
+      if (relatedTarget && this.container.contains(relatedTarget) && relatedTarget.classList.contains('autocomplete-item')) {
+        return;
+      }
+      
+      // Fechar autocomplete após um pequeno delay para permitir click no item
+      setTimeout(() => {
+        if (!this.container.contains(document.activeElement) || !document.activeElement?.classList.contains('chat-input')) {
+          this.autocompleteVisible = false;
+          this.render();
+        }
+      }, 150);
+    }
+  };
+
+  private setupEventListeners(): void {
+    // Remover listeners anteriores se existirem
+    this.container.removeEventListener('click', this.clickHandler);
+    this.container.removeEventListener('keydown', this.keydownHandler);
+    this.container.removeEventListener('input', this.inputHandler);
+    this.container.removeEventListener('blur', this.blurHandler, true);
+    
+    // Adicionar novos listeners com event delegation
+    this.container.addEventListener('click', this.clickHandler);
+    this.container.addEventListener('keydown', this.keydownHandler);
+    this.container.addEventListener('input', this.inputHandler);
+    this.container.addEventListener('blur', this.blurHandler, true);
 
     // Scroll das mensagens
     const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
@@ -271,14 +385,36 @@ export class ChatUI {
       }
     });
 
-    // Usuário entrou
+    // Usuário entrou - armazenar mas NÃO mostrar mensagem pública e NÃO notificar
+    // Apenas armazenar para autocomplete. Notificações de amigos vêm via onFriendOnline/onFriendOffline
     onUserJoined((data) => {
-      this.addSystemMessage(`${data.username} entrou no jogo`);
+      this.onlineUsers.add(data.username);
+      // NÃO chamar onFriendStatusChange aqui - isso seria para TODOS os usuários
+      // Apenas o servidor (via friend:online/offline) deve notificar sobre amigos
     });
 
-    // Usuário saiu
+    // Usuário saiu - remover mas NÃO mostrar mensagem pública e NÃO notificar
+    // Apenas remover da lista de usuários online
     onUserLeft((data) => {
-      this.addSystemMessage(`${data.username} saiu do jogo`);
+      this.onlineUsers.delete(data.username);
+      // NÃO chamar onFriendStatusChange aqui - isso seria para TODOS os usuários
+      // Apenas o servidor (via friend:online/offline) deve notificar sobre amigos
+    });
+
+    // Amigo ficou online - mostrar mensagem de sistema
+    onFriendOnline((data) => {
+      this.addSystemMessage(`${data.username} está online`, false);
+      if (this.onFriendStatusChange) {
+        this.onFriendStatusChange(data.username, true);
+      }
+    });
+
+    // Amigo ficou offline - mostrar mensagem de sistema
+    onFriendOffline((data) => {
+      this.addSystemMessage(`${data.username} ficou offline`, false);
+      if (this.onFriendStatusChange) {
+        this.onFriendStatusChange(data.username, false);
+      }
     });
 
     // Erros
@@ -301,10 +437,14 @@ export class ChatUI {
         joinChannel('group');
         joinChannel('trade');
         
-        // Carregar histórico da aba ativa imediatamente
+        // Carregar histórico da aba ativa imediatamente (se não for whisper)
         const activeTab = this.tabs.find(t => t.id === this.activeTabId);
         if (activeTab && activeTab.channel !== 'whisper') {
-          joinChannel(activeTab.channel);
+          // Validar que o canal é válido antes de fazer join
+          const validChannels = ['global', 'group', 'trade'];
+          if (validChannels.includes(activeTab.channel)) {
+            joinChannel(activeTab.channel);
+          }
         }
       } else {
         // Tentar novamente em 500ms
@@ -340,6 +480,11 @@ export class ChatUI {
     if (this.isExpanded) {
       setTimeout(() => {
         this.scrollToBottom();
+        // Focar no input quando expandir para permitir digitar imediatamente
+        const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+        if (input) {
+          input.focus();
+        }
       }, 100);
     }
   }
@@ -352,13 +497,26 @@ export class ChatUI {
     const tab = this.tabs.find(t => t.id === tabId);
     if (tab) {
       tab.unreadCount = 0; // Limpar contador não lidas
-      if (!tab.messages.length && getConnectionStatus()) {
-        // Carregar histórico se ainda não carregou
-        joinChannel(tab.channel);
+      // NUNCA tentar carregar histórico para whispers via joinChannel
+      // Whispers não são canais - são conexões diretas entre usuários
+      if (!tab.messages.length && getConnectionStatus() && tab.channel !== 'whisper') {
+        // Validar que o canal é válido antes de fazer join
+        const validChannels = ['global', 'group', 'trade'];
+        if (validChannels.includes(tab.channel)) {
+          joinChannel(tab.channel);
+        }
       }
     }
     this.render();
     this.scrollToBottom();
+    
+    // Focar no input após selecionar aba
+    setTimeout(() => {
+      const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+      if (input) {
+        input.focus();
+      }
+    }, 50);
   }
 
   /**
@@ -413,13 +571,14 @@ export class ChatUI {
       this.toggleExpanded();
     }
     
-    // Resetar placeholder após um momento
+    // Focar no input imediatamente
     setTimeout(() => {
       const input = this.container.querySelector('.chat-input') as HTMLInputElement;
       if (input && this.activeTabId === newTab.id) {
-        input.placeholder = 'Digite sua mensagem... (/w usuário msg)';
+        input.focus();
+        input.placeholder = 'Digite sua mensagem... (Enter para enviar)';
       }
-    }, 2000);
+    }, 100);
   }
 
   /**
@@ -581,6 +740,12 @@ export class ChatUI {
     const input = this.container.querySelector('.chat-input') as HTMLInputElement;
     if (!input) return;
 
+    // Fechar autocomplete se estiver aberto
+    if (this.autocompleteVisible) {
+      this.autocompleteVisible = false;
+      this.render();
+    }
+
     const text = input.value.trim();
     if (!text) return;
 
@@ -631,6 +796,75 @@ export class ChatUI {
 
     input.value = '';
     this.inputValue = '';
+  }
+
+  /**
+   * Coleta nicks disponíveis para autocomplete
+   */
+  private getAvailableNicks(): string[] {
+    const nicks = new Set<string>();
+    const currentUsername = localStorage.getItem('username') || '';
+    
+    // Adicionar usuários das mensagens recentes
+    this.tabs.forEach(tab => {
+      tab.messages.forEach(msg => {
+        if (msg.sender !== 'Sistema' && msg.sender !== currentUsername) {
+          nicks.add(msg.sender);
+        }
+        // Também adicionar recipient de whispers se não for o usuário atual
+        if (msg.recipient && msg.recipient !== currentUsername) {
+          nicks.add(msg.recipient);
+        }
+      });
+    });
+    
+    // Adicionar usuários online
+    this.onlineUsers.forEach(user => {
+      if (user !== currentUsername) {
+        nicks.add(user);
+      }
+    });
+    
+    return Array.from(nicks).sort();
+  }
+
+  /**
+   * Aplica autocomplete selecionado ao input
+   */
+  private applyAutocomplete(): void {
+    if (this.autocompleteSuggestions.length === 0) return;
+    
+    const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+    if (!input) return;
+    
+    const selectedNick = this.autocompleteSuggestions[this.autocompleteSelectedIndex];
+    const cursorPos = input.selectionStart || 0;
+    const textBeforeCursor = input.value.substring(0, cursorPos);
+    const textAfterCursor = input.value.substring(cursorPos);
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtIndex === -1) return;
+    
+    // Substituir @query por @nick
+    const newText = 
+      textBeforeCursor.substring(0, lastAtIndex) + 
+      '@' + selectedNick + ' ' + 
+      textAfterCursor;
+    
+    input.value = newText;
+    this.inputValue = newText;
+    
+    // Posicionar cursor após o nick
+    const newCursorPos = lastAtIndex + selectedNick.length + 2;
+    input.setSelectionRange(newCursorPos, newCursorPos);
+    
+    this.autocompleteVisible = false;
+    this.render();
+    
+    // Focar no input novamente
+    setTimeout(() => {
+      input.focus();
+    }, 0);
   }
 
   /**
@@ -771,11 +1005,43 @@ export class ChatUI {
 
         <!-- Input -->
         <div style="
+          position: relative;
           display: flex;
           gap: 5px;
           padding: 5px;
           border-top: 1px solid #4a5568;
         ">
+          ${this.autocompleteVisible ? `
+            <div style="
+              position: absolute;
+              bottom: 100%;
+              left: 5px;
+              right: 85px;
+              max-height: 150px;
+              overflow-y: auto;
+              background: rgba(20, 20, 40, 0.98);
+              border: 1px solid #4a5568;
+              border-radius: 4px;
+              box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+              z-index: 10001;
+              margin-bottom: 2px;
+            ">
+              ${this.autocompleteSuggestions.map((nick, index) => `
+                <div class="autocomplete-item" data-index="${index}" style="
+                  padding: 8px 10px;
+                  cursor: pointer;
+                  background: ${index === this.autocompleteSelectedIndex ? 'rgba(74, 85, 104, 0.8)' : 'transparent'};
+                  color: ${index === this.autocompleteSelectedIndex ? '#4FD1C7' : '#fff'};
+                  border-left: 3px solid ${index === this.autocompleteSelectedIndex ? '#4FD1C7' : 'transparent'};
+                  font-weight: ${index === this.autocompleteSelectedIndex ? 'bold' : 'normal'};
+                  font-family: monospace;
+                  font-size: 12px;
+                ">
+                  @${this.escapeHtml(nick)}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
           <input type="text" class="chat-input" placeholder="Digite sua mensagem... (/w usuário msg)" style="
             flex: 1;
             background: rgba(0, 0, 0, 0.5);

@@ -25,6 +25,7 @@ import { AuthUI } from './ui/auth-ui';
 import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { ChatUI } from './ui/chat-ui';
+import { FriendsUI } from './ui/friends-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge } from './systems/beast';
@@ -92,6 +93,7 @@ let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
 let ranch3DUI: Ranch3DUI | null = null;
 let chatUI: ChatUI | null = null;
+let friendsUI: FriendsUI | null = null;
 let inBattle = false;
 let inTemple = false;
 let inDialogue = false;
@@ -265,6 +267,15 @@ function startRenderLoop() {
       modalUI.draw();
     }
 
+    // Draw chat and friends UI (HTML overlay, always on top)
+    if (chatUI && isAuthenticated) {
+      // ChatUI renders via innerHTML, no draw() method needed
+    }
+    
+    if (friendsUI && isAuthenticated) {
+      // FriendsUI renders via innerHTML, already reactive
+    }
+
     // Auto-save periodically (only if authenticated and has game)
     if (isAuthenticated && gameState && time - lastSaveTime > AUTO_SAVE_INTERVAL) {
       saveGame(gameState).catch(err => {
@@ -330,6 +341,19 @@ async function init() {
       if (!chatUI) {
         chatUI = new ChatUI();
         chatUI.connect(token);
+        // Callback para atualizar status de amigos na UI de amigos
+        // onFriendOnline/onFriendOffline já chama isso internamente no ChatUI
+        chatUI.onFriendStatusChange = (username, isOnline) => {
+          friendsUI?.updateOnlineStatus(username, isOnline);
+        };
+      }
+      
+      // Inicializar friends UI
+      if (!friendsUI) {
+        friendsUI = new FriendsUI();
+        friendsUI.onWhisperFriend = (friendName) => {
+          chatUI?.createWhisperTab(friendName);
+        };
       }
       
       await loadGameFromServer();
@@ -348,6 +372,18 @@ async function init() {
       if (!chatUI) {
         chatUI = new ChatUI();
         chatUI.connect(token);
+        // Callback para atualizar status de amigos na UI de amigos
+        chatUI.onFriendStatusChange = (username, isOnline) => {
+          friendsUI?.updateOnlineStatus(username, isOnline);
+        };
+      }
+      
+      // Inicializar friends UI
+      if (!friendsUI) {
+        friendsUI = new FriendsUI();
+        friendsUI.onWhisperFriend = (friendName) => {
+          chatUI?.createWhisperTab(friendName);
+        };
       }
       
       // Reset game init UI to clear any previous data
@@ -386,6 +422,18 @@ async function init() {
             if (!chatUI && token) {
               chatUI = new ChatUI();
               chatUI.connect(token);
+              // Callback para atualizar status de amigos na UI de amigos
+              chatUI.onFriendStatusChange = (username, isOnline) => {
+                friendsUI?.updateOnlineStatus(username, isOnline);
+              };
+            }
+            
+            // Inicializar friends UI
+            if (!friendsUI && isAuthenticated) {
+              friendsUI = new FriendsUI();
+              friendsUI.onWhisperFriend = (friendName) => {
+                chatUI?.createWhisperTab(friendName);
+              };
             }
           }
           

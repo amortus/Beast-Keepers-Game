@@ -24,6 +24,8 @@ const messageCallbacks: ((msg: ChatMessage) => void)[] = [];
 const historyCallbacks: ((data: { channel: string; messages: ChatMessage[] }) => void)[] = [];
 const userJoinedCallbacks: ((data: { username: string; timestamp: number }) => void)[] = [];
 const userLeftCallbacks: ((data: { username: string; timestamp: number }) => void)[] = [];
+const friendOnlineCallbacks: ((data: { username: string }) => void)[] = [];
+const friendOfflineCallbacks: ((data: { username: string }) => void)[] = [];
 const errorCallbacks: ((error: { message: string }) => void)[] = [];
 const connectCallbacks: (() => void)[] = [];
 const disconnectCallbacks: (() => void)[] = [];
@@ -106,6 +108,14 @@ export function connect(token: string, serverUrl?: string): void {
 
   socket.on('chat:user-left', (data: { username: string; timestamp: number }) => {
     userLeftCallbacks.forEach(cb => cb(data));
+  });
+
+  socket.on('friend:online', (data: { username: string }) => {
+    friendOnlineCallbacks.forEach(cb => cb(data));
+  });
+
+  socket.on('friend:offline', (data: { username: string }) => {
+    friendOfflineCallbacks.forEach(cb => cb(data));
   });
 
   socket.on('chat:error', (error: { message: string }) => {
@@ -219,6 +229,22 @@ export function onDisconnect(callback: () => void): () => void {
   return () => {
     const index = disconnectCallbacks.indexOf(callback);
     if (index > -1) disconnectCallbacks.splice(index, 1);
+  };
+}
+
+export function onFriendOnline(callback: (data: { username: string }) => void): () => void {
+  friendOnlineCallbacks.push(callback);
+  return () => {
+    const index = friendOnlineCallbacks.indexOf(callback);
+    if (index > -1) friendOnlineCallbacks.splice(index, 1);
+  };
+}
+
+export function onFriendOffline(callback: (data: { username: string }) => void): () => void {
+  friendOfflineCallbacks.push(callback);
+  return () => {
+    const index = friendOfflineCallbacks.indexOf(callback);
+    if (index > -1) friendOfflineCallbacks.splice(index, 1);
   };
 }
 

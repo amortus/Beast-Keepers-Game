@@ -213,6 +213,51 @@ export function initializeChatService(server: HttpServer) {
       timestamp: Date.now(),
     });
 
+    // Notificar apenas amigos quando conecta
+    try {
+      const friendsResult = await query(
+        `SELECT u.id, u.display_name 
+         FROM friendships f 
+         JOIN users u ON (
+           CASE 
+             WHEN f.user_id = $1 THEN f.friend_id = u.id
+             ELSE f.user_id = u.id
+           END
+         )
+         WHERE (f.user_id = $1 OR f.friend_id = $1) 
+         AND f.status = 'accepted' 
+         AND u.id != $1`,
+        [userId]
+      );
+
+      // Notificar amigos online
+      friendsResult.rows.forEach((friend: any) => {
+        const friendSockets = userSockets.get(friend.id);
+        if (friendSockets && friendSockets.size > 0) {
+          friendSockets.forEach(socketId => {
+            io?.to(socketId).emit('friend:online', { username });
+          });
+        }
+      });
+
+      // Notificar usuário atual sobre amigos que já estão online
+      const onlineFriendSockets = Array.from(userSockets.entries())
+        .filter(([id, sockets]) => {
+          if (id === userId) return false;
+          const friendRow = friendsResult.rows.find((f: any) => f.id === id);
+          return friendRow && sockets.size > 0;
+        });
+
+      onlineFriendSockets.forEach(([friendId, sockets]) => {
+        const friendRow = friendsResult.rows.find((f: any) => f.id === friendId);
+        if (friendRow) {
+          socket.emit('friend:online', { username: friendRow.display_name });
+        }
+      });
+    } catch (error) {
+      console.error('[ChatService] Error notifying friends:', error);
+    }
+
     // Enviar mensagem de boas-vindas
     const welcomeMessage: ChatMessage = {
       id: `sys-${Date.now()}`,
@@ -345,7 +390,7 @@ export function initializeChatService(server: HttpServer) {
     });
 
     // Event: Disconnect
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`[ChatService] User disconnected: ${username} (${socket.id})`);
 
       // Remover de connectedUsers
@@ -355,7 +400,39 @@ export function initializeChatService(server: HttpServer) {
       const sockets = userSockets.get(userId);
       if (sockets) {
         sockets.delete(socket.id);
+        
+        // Se foi o último socket do usuário, notificar amigos que ficou offline
         if (sockets.size === 0) {
+          try {
+            const friendsResult = await query(
+              `SELECT u.id, u.display_name 
+               FROM friendships f 
+               JOIN users u ON (
+                 CASE 
+                   WHEN f.user_id = $1 THEN f.friend_id = u.id
+                   ELSE f.user_id = u.id
+                 END
+               )
+               WHERE (f.user_id = $1 OR f.friend_id = $1) 
+               AND f.status = 'accepted' 
+               AND u.id != $1`,
+              [userId]
+            );
+
+            // Notificar amigos online
+            friendsResult.rows.forEach((friend: any) => {
+              const friendSockets = userSockets.get(friend.id);
+              if (friendSockets && friendSockets.size > 0) {
+                friendSockets.forEach(friendSocketId => {
+                  io?.to(friendSocketId).emit('friend:offline', { username });
+                });
+              }
+            });
+          } catch (error) {
+            console.error('[ChatService] Error notifying friends offline:', error);
+          }
+          
+          // Remover entry se não há mais sockets
           userSockets.delete(userId);
         }
       }

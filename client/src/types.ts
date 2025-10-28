@@ -194,6 +194,28 @@ export interface ChatTab {
   messages: ChatMessage[];
 }
 
+export interface Friend {
+  id: number;
+  userId: number;
+  friendId: number;
+  friendName: string;
+  status: 'pending' | 'accepted' | 'blocked';
+  requestedAt: number;
+  acceptedAt?: number;
+  isOnline?: boolean;
+}
+
+export interface FriendRequest {
+  id: number;
+  fromUserId: number;
+  fromUsername: string;
+  toUserId: number;
+  toUsername: string;
+  status: 'pending';
+  requestedAt: number;
+  direction: 'sent' | 'received';
+}
+
 // ===== CRESCIMENTO =====
 
 export interface GrowthCurve {
