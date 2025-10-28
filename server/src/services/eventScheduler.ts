@@ -330,6 +330,15 @@ function scheduleNextMidnight() {
       // Processar eventos de calendário
       await processCalendarEvents();
       
+      // Limpar mensagens antigas do chat (manter apenas últimas 100 por canal)
+      try {
+        const { cleanupOldChatMessages } = await import('./chatService');
+        await cleanupOldChatMessages();
+      } catch (error: any) {
+        // Se o módulo não estiver disponível, apenas logar
+        console.warn('[EventScheduler] Chat cleanup not available:', error?.message);
+      }
+      
       lastProcessedMidnight = currentMidnight;
       
       // Agendar próxima meia-noite
