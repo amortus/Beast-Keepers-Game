@@ -185,18 +185,33 @@ export class ChatUI {
     // Adicionar novo listener
     this.container.addEventListener('click', this.clickHandler);
 
-    // Input de mensagem
+    // Input de mensagem - reanexar sempre que renderizar
     const input = this.container.querySelector('.chat-input') as HTMLInputElement;
     if (input) {
+      // Limpar listeners anteriores se existirem
+      input.onkeypress = null;
+      input.oninput = null;
+      
+      // Event listener para Enter
       input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
           this.handleSendMessage();
         }
       });
 
+      // Event listener para atualizar valor
       input.addEventListener('input', (e) => {
         this.inputValue = (e.target as HTMLInputElement).value;
       });
+      
+      // Focar no input quando expandir
+      if (this.isExpanded) {
+        setTimeout(() => {
+          input.focus();
+        }, 50);
+      }
     }
 
     // Scroll das mensagens
@@ -243,8 +258,16 @@ export class ChatUI {
     onHistory((data) => {
       const tab = this.tabs.find(t => t.channel === data.channel);
       if (tab) {
-        tab.messages = data.messages;
-        this.render();
+        tab.messages = data.messages.reverse(); // Reverter para ordem cronológica (mais antiga primeiro)
+        // Se é a aba ativa, garantir renderização e scroll
+        if (tab.id === this.activeTabId) {
+          this.render();
+          setTimeout(() => {
+            this.scrollToBottom();
+          }, 50);
+        } else {
+          this.render();
+        }
       }
     });
 
@@ -270,14 +293,32 @@ export class ChatUI {
   public connect(token: string): void {
     connect(token);
     
-    // Entrar nos canais padrão após conectar (com delay)
-    setTimeout(() => {
+    // Entrar nos canais padrão após conectar
+    const setupChannels = () => {
       if (getConnectionStatus()) {
+        // Entrar em todos os canais padrão
         joinChannel('global');
         joinChannel('group');
         joinChannel('trade');
+        
+        // Carregar histórico da aba ativa imediatamente
+        const activeTab = this.tabs.find(t => t.id === this.activeTabId);
+        if (activeTab && activeTab.channel !== 'whisper') {
+          joinChannel(activeTab.channel);
+        }
+      } else {
+        // Tentar novamente em 500ms
+        setTimeout(setupChannels, 500);
       }
-    }, 500);
+    };
+    
+    // Tentar após 500ms
+    setTimeout(setupChannels, 500);
+    
+    // Também tentar quando conectar
+    onConnect(() => {
+      setupChannels();
+    });
   }
 
   /**

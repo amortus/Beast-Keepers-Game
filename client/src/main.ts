@@ -2234,10 +2234,10 @@ document.addEventListener('visibilitychange', async () => {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
-  // S = Save
+  // S = Save (salva silenciosamente, sem mostrar mensagem)
   if (e.key === 's' && gameState) {
-    saveGame(gameState).then(() => {
-      showMessage('Jogo salvo!');
+    saveGame(gameState).catch(err => {
+      console.error('[Save] Erro ao salvar:', err);
     });
   }
   
