@@ -391,7 +391,7 @@ export async function cleanupOldChatMessages() {
 /**
  * Notifica todos os usuários online sobre eventos
  */
-export function notifyOnlineUsers(message: { channel?: string; message: string; color?: string }) {
+export function notifyOnlineUsers(message: { channel?: 'global' | 'group' | 'trade' | 'whisper' | 'system'; message: string; color?: string }) {
   if (!io) {
     console.warn('[ChatService] Socket.IO not initialized, cannot notify users');
     return;
