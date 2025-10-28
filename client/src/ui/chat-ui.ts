@@ -5,7 +5,7 @@
  */
 
 import type { ChatMessage, ChatTab } from '../types';
-import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, getConnectionStatus } from '../services/chatClient';
+import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, onConnect, getConnectionStatus } from '../services/chatClient';
 
 // Cores de mensagem (padrão WoW)
 const CHAT_COLORS = {
