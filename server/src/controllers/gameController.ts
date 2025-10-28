@@ -66,9 +66,21 @@ export async function initializeGame(req: AuthRequest, res: Response) {
     const now = Date.now();
     
     // Calcular meia-noite de hoje (Brasília) para inicializar lastDayProcessed
-    const brasiliaNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    brasiliaNow.setHours(0, 0, 0, 0);
-    const midnightTimestamp = brasiliaNow.getTime();
+    const brasiliaFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+    const parts = brasiliaFormatter.formatToParts(new Date(now));
+    const year = parseInt(parts.find(p => p.type === 'year')!.value);
+    const month = parseInt(parts.find(p => p.type === 'month')!.value) - 1;
+    const day = parseInt(parts.find(p => p.type === 'day')!.value);
+    const brasiliaMidnight = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+    // Ajustar para o timezone correto
+    const utcTime = new Date(now).getTime();
+    const brasiliaTime = new Date(brasiliaFormatter.format(new Date(now))).getTime();
+    const offset = utcTime - brasiliaTime;
+    const midnightTimestamp = brasiliaMidnight.getTime() + offset;
     
     // Verificar se as colunas de ciclo diário existem antes de inserir
     console.log('[Game] Checking for age columns...');
