@@ -69,12 +69,34 @@ async function processDailyCycle() {
   try {
     console.log('[EventScheduler] Processing daily cycle...');
     
+    // Verificar se as colunas necessárias existem
+    const columnCheck = await query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'beasts' 
+      AND column_name IN ('age_in_days', 'last_day_processed', 'last_update', 'max_age_weeks')
+    `);
+    
+    const availableColumns = columnCheck.rows.map(r => r.column_name);
+    const hasAgeInDays = availableColumns.includes('age_in_days');
+    const hasLastDayProcessed = availableColumns.includes('last_day_processed');
+    const hasLastUpdate = availableColumns.includes('last_update');
+    const hasMaxAge = availableColumns.includes('max_age_weeks');
+    
+    console.log('[EventScheduler] Available columns:', { hasAgeInDays, hasLastDayProcessed, hasLastUpdate, hasMaxAge });
+    
+    // Se não tem as colunas necessárias, pular processamento
+    if (!hasAgeInDays || !hasLastDayProcessed) {
+      console.log('[EventScheduler] Daily cycle columns not available, skipping...');
+      return;
+    }
+    
     const midnightTimestamp = getMidnightTimestamp();
     const now = Date.now();
     
     // Buscar todas as bestas ativas que ainda não foram processadas hoje
     const beastsResult = await query(
-      `SELECT id, age_in_days, last_day_processed, max_age
+      `SELECT id, age_in_days, last_day_processed, ${hasMaxAge ? 'max_age_weeks' : 'NULL as max_age_weeks'}
        FROM beasts
        WHERE is_active = true
        AND (last_day_processed IS NULL OR last_day_processed < $1)`,
@@ -93,37 +115,42 @@ async function processDailyCycle() {
     
     for (const beast of beastsResult.rows) {
       const currentAgeInDays = beast.age_in_days || 0;
-      const maxAge = beast.max_age || 365;
+      // max_age_weeks está em semanas, converter para dias (365 dias padrão se não tiver)
+      const maxAgeWeeks = beast.max_age_weeks || 52;
+      const maxAgeDays = maxAgeWeeks * 7;
       const newAgeInDays = currentAgeInDays + 1;
-      const isAlive = newAgeInDays < maxAge;
+      const isAlive = newAgeInDays < maxAgeDays;
+      
+      // Construir UPDATE dinamicamente
+      const updateFields: string[] = [];
+      const updateValues: any[] = [];
+      let paramIndex = 2;
+      
+      updateFields.push(`age_in_days = $${paramIndex++}`);
+      updateValues.push(newAgeInDays);
+      
+      updateFields.push(`last_day_processed = $${paramIndex++}`);
+      updateValues.push(midnightTimestamp);
+      
+      if (hasLastUpdate) {
+        updateFields.push(`last_update = $${paramIndex++}`);
+        updateValues.push(now);
+      }
       
       if (!isAlive) {
-        // Besta morreu
-        await query(
-          `UPDATE beasts
-           SET age_in_days = $2,
-               last_day_processed = $3,
-               is_active = false,
-               last_update = $4
-           WHERE id = $1`,
-          [beast.id, newAgeInDays, midnightTimestamp, now]
-        );
-        
-        console.log(`[EventScheduler] Beast ${beast.id} died at age ${newAgeInDays} (max: ${maxAge})`);
+        updateFields.push('is_active = false');
+        console.log(`[EventScheduler] Beast ${beast.id} died at age ${newAgeInDays} (max: ${maxAgeDays})`);
         diedCount++;
       } else {
-        // Incrementar idade
-        await query(
-          `UPDATE beasts
-           SET age_in_days = $2,
-               last_day_processed = $3,
-               last_update = $4
-           WHERE id = $1`,
-          [beast.id, newAgeInDays, midnightTimestamp, now]
-        );
-        
         processedCount++;
       }
+      
+      await query(
+        `UPDATE beasts
+         SET ${updateFields.join(', ')}
+         WHERE id = $1`,
+        [beast.id, ...updateValues]
+      );
     }
     
     console.log(`[EventScheduler] Daily cycle complete: ${processedCount} aged, ${diedCount} died`);
