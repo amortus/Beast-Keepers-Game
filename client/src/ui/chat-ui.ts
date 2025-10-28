@@ -246,21 +246,17 @@ export class ChatUI {
       const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
       if (friendId) {
         const request = this.friendRequests.find(r => r.id === friendId);
-        if (request && request.direction === 'received' && confirm('Rejeitar este pedido de amizade?')) {
-          this.removeOrRejectFriend(friendId);
-        } else if (confirm('Remover este amigo?')) {
-          this.removeOrRejectFriend(friendId);
-        } else if (!request) {
-          this.removeOrRejectFriend(friendId);
-        }
+        // Sem confirmação - ação direta com mensagem no chat
+        this.removeOrRejectFriend(friendId, request?.direction === 'received' ? 'reject' : 'cancel');
       }
       return;
     }
 
     if (target.classList.contains('friends-remove-btn')) {
       const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
-      if (friendId && confirm('Remover este amigo?')) {
-        this.removeOrRejectFriend(friendId);
+      if (friendId) {
+        // Sem confirmação - ação direta com mensagem no chat
+        this.removeOrRejectFriend(friendId, 'remove');
       }
       return;
     }
@@ -842,6 +838,19 @@ export class ChatUI {
    * Adiciona mensagem do sistema
    */
   private addSystemMessage(message: string, isError: boolean = false): void {
+    // Garantir que chat esteja expandido para mostrar mensagens importantes
+    if (isError && !this.isExpanded) {
+      this.toggleExpanded();
+    }
+    
+    // Se não estiver na aba de Global, mudar para ela para mostrar mensagens do sistema
+    if (this.activeTabId !== 'global') {
+      const globalTab = this.tabs.find(t => t.id === 'global');
+      if (globalTab) {
+        this.activeTabId = 'global';
+      }
+    }
+    
     const systemMsg: ChatMessage = {
       id: `sys-${Date.now()}`,
       channel: 'system',
@@ -1328,12 +1337,14 @@ export class ChatUI {
         await this.loadFriendRequests();
         this.addFriendInput = '';
         this.render();
+        // Mensagem de sucesso no chat
+        this.addSystemMessage(`Pedido de amizade enviado para ${username}`, false);
       } else {
-        alert(response.error || 'Erro ao enviar pedido');
+        this.addSystemMessage(`Erro: ${response.error || 'Erro ao enviar pedido'}`, true);
       }
     } catch (error: any) {
       console.error('[ChatUI] Error sending friend request:', error);
-      alert(error.message || 'Erro ao enviar pedido');
+      this.addSystemMessage(`Erro: ${error.message || 'Erro ao enviar pedido'}`, true);
     }
   }
 
@@ -1342,32 +1353,57 @@ export class ChatUI {
    */
   private async acceptFriendRequest(friendId: number): Promise<void> {
     try {
+      const request = this.friendRequests.find(r => r.id === friendId);
+      const friendName = request?.fromUsername || request?.toUsername || 'usuário';
+      
       const response = await friendsApi.acceptRequest(friendId);
       if (response.success) {
         await this.loadFriends();
         await this.loadFriendRequests();
         this.render();
+        // Mensagem de sucesso no chat
+        this.addSystemMessage(`Agora você é amigo de ${friendName}!`, false);
+      } else {
+        this.addSystemMessage('Erro: Erro ao aceitar pedido', true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ChatUI] Error accepting request:', error);
-      alert('Erro ao aceitar pedido');
+      this.addSystemMessage(`Erro: ${error.message || 'Erro ao aceitar pedido'}`, true);
     }
   }
 
   /**
    * Remove amigo ou rejeita pedido
    */
-  private async removeOrRejectFriend(friendId: number): Promise<void> {
+  private async removeOrRejectFriend(friendId: number, action: 'remove' | 'reject' | 'cancel' = 'remove'): Promise<void> {
     try {
+      // Buscar nome antes de remover
+      const friend = this.friends.find(f => f.friendId === friendId);
+      const request = this.friendRequests.find(r => r.id === friendId);
+      const targetName = friend?.friendName || request?.fromUsername || request?.toUsername || 'usuário';
+      
       const response = await friendsApi.removeFriend(friendId);
       if (response.success) {
         await this.loadFriends();
         await this.loadFriendRequests();
         this.render();
+        
+        // Mensagem de sucesso no chat baseada na ação
+        if (action === 'reject') {
+          this.addSystemMessage(`Pedido de amizade de ${targetName} rejeitado`, false);
+        } else if (action === 'cancel') {
+          this.addSystemMessage(`Pedido de amizade para ${targetName} cancelado`, false);
+        } else {
+          this.addSystemMessage(`${targetName} foi removido da lista de amigos`, false);
+        }
+      } else {
+        const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
+        this.addSystemMessage(`Erro: ${errorMsg}`, true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ChatUI] Error removing/rejecting friend:', error);
-      alert('Erro ao remover/rejeitar');
+      const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
+      this.addSystemMessage(`Erro: ${error.message || errorMsg}`, true);
     }
   }
 
