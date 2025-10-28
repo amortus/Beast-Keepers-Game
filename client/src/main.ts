@@ -464,13 +464,6 @@ function handleLogout() {
     gameUI.hide3DViewer();
   }
 
-  // Disconnect chat before logout
-  if (chatUI) {
-    chatUI.disconnect();
-    chatUI = null;
-  }
-  }
-
   // Confirm logout
   modalUI.show({
     type: 'choice',
