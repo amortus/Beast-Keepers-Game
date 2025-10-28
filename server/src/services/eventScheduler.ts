@@ -217,6 +217,18 @@ async function handleChristmasEvent() {
       console.log(`[EventScheduler] Gift given to ${player.player_name}`);
     }
     
+    // Notificar jogadores online sobre o evento
+    try {
+      const { notifyOnlineUsers } = await import('./chatService');
+      notifyOnlineUsers({
+        channel: 'system',
+        message: '🎄 Feliz Natal! Todos os jogadores receberam 1000 coronas como presente especial!',
+        color: '#FFD700',
+      });
+    } catch (error: any) {
+      console.warn('[EventScheduler] Could not notify online users:', error?.message);
+    }
+    
     // Registrar evento como processado
     await query(
       `INSERT INTO calendar_events_log (event_name, event_date, processed_at)

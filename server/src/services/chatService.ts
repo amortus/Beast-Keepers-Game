@@ -388,3 +388,27 @@ export async function cleanupOldChatMessages() {
   }
 }
 
+/**
+ * Notifica todos os usuários online sobre eventos
+ */
+export function notifyOnlineUsers(message: { channel?: string; message: string; color?: string }) {
+  if (!io) {
+    console.warn('[ChatService] Socket.IO not initialized, cannot notify users');
+    return;
+  }
+
+  const systemMessage: ChatMessage = {
+    id: `sys-${Date.now()}`,
+    channel: message.channel || 'system',
+    sender: 'Sistema',
+    senderUserId: 0,
+    message: message.message,
+    timestamp: Date.now(),
+    color: message.color || CHAT_COLORS.system,
+  };
+
+  // Enviar para todos os usuários conectados
+  io.emit('chat:message', systemMessage);
+  console.log(`[ChatService] Notification sent to all online users: ${message.message.substring(0, 50)}...`);
+}
+

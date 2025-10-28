@@ -30,6 +30,43 @@ export class ChatUI {
   public onMessageReceived?: (msg: ChatMessage) => void;
 
   constructor() {
+    // Adicionar estilos CSS para animações
+    if (!document.getElementById('chat-ui-styles')) {
+      const style = document.createElement('style');
+      style.id = 'chat-ui-styles';
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+        .chat-username:hover {
+          opacity: 0.8;
+          text-decoration: underline !important;
+        }
+        .chat-tab {
+          transition: background-color 0.2s ease;
+        }
+        .chat-messages {
+          scrollbar-width: thin;
+          scrollbar-color: #4a5568 rgba(0, 0, 0, 0.3);
+        }
+        .chat-messages::-webkit-scrollbar {
+          width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.3);
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+          background: #4a5568;
+          border-radius: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+          background: #5a6578;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     // Criar container HTML
     this.container = document.createElement('div');
     this.container.id = 'chat-ui-container';
@@ -44,7 +81,7 @@ export class ChatUI {
       border-radius: 8px;
       z-index: 10000;
       overflow: hidden;
-      transition: height 0.3s ease;
+      transition: height 0.3s ease, box-shadow 0.3s ease;
       font-family: monospace;
       font-size: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -54,6 +91,9 @@ export class ChatUI {
     // Criar abas iniciais
     this.createDefaultTabs();
     this.activeTabId = this.tabs[0].id;
+
+    // Verificar se há mensagens não lidas para notificar
+    this.checkUnreadMessages();
 
     // Renderizar
     this.render();
@@ -147,6 +187,28 @@ export class ChatUI {
         this.scrollPosition = messagesContainer.scrollTop;
       });
     }
+
+    // Clique em nomes de usuário para criar whisper
+    const usernameElements = this.container.querySelectorAll('.chat-username');
+    usernameElements.forEach((elem) => {
+      elem.addEventListener('click', (e) => {
+        const username = (e.target as HTMLElement).getAttribute('data-username');
+        if (username) {
+          const currentUsername = localStorage.getItem('username') || '';
+          if (username !== currentUsername) {
+            this.createWhisperTab(username);
+            // Focar no input após criar aba
+            setTimeout(() => {
+              const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+              if (input) {
+                input.focus();
+                input.placeholder = `Enviar whisper para ${username}...`;
+              }
+            }, 100);
+          }
+        }
+      });
+    });
   }
 
   private setupChatCallbacks(): void {
@@ -266,6 +328,10 @@ export class ChatUI {
     const existing = this.tabs.find(t => t.channel === 'whisper' && t.target === targetUsername);
     if (existing) {
       this.selectTab(existing.id);
+      // Expandir se estiver retraído
+      if (!this.isExpanded) {
+        this.toggleExpanded();
+      }
       return;
     }
 
@@ -281,6 +347,19 @@ export class ChatUI {
 
     this.tabs.push(newTab);
     this.selectTab(newTab.id);
+    
+    // Expandir se estiver retraído
+    if (!this.isExpanded) {
+      this.toggleExpanded();
+    }
+    
+    // Resetar placeholder após um momento
+    setTimeout(() => {
+      const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+      if (input && this.activeTabId === newTab.id) {
+        input.placeholder = 'Digite sua mensagem... (/w usuário msg)';
+      }
+    }, 2000);
   }
 
   /**
@@ -331,6 +410,18 @@ export class ChatUI {
       // Incrementar contador não lidas se não é a aba ativa
       if (targetTab.id !== this.activeTabId) {
         targetTab.unreadCount++;
+        this.checkUnreadMessages();
+        
+        // Adicionar animação visual na aba (piscar)
+        if (!this.isExpanded) {
+          const header = this.container.querySelector('div:first-child') as HTMLElement;
+          if (header) {
+            header.style.animation = 'pulse 0.5s ease';
+            setTimeout(() => {
+              header.style.animation = '';
+            }, 500);
+          }
+        }
       }
 
       this.render();
@@ -519,7 +610,7 @@ export class ChatUI {
         border-bottom: 1px solid #4a5568;
         cursor: pointer;
         user-select: none;
-      ">
+      " class="chat-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="color: #fff; font-weight: bold;">💬 Chat</span>
           ${this.isExpanded ? `<span style="color: #888; font-size: 10px;">${activeTab?.name || ''}</span>` : ''}
@@ -609,7 +700,7 @@ export class ChatUI {
               ">
                 ${isSystem ? '' : `<span style="color: #888; font-size: 10px;">[${time}]</span> `}
                 ${whisperPrefix}
-                ${!isSystem ? `<span style="color: ${isWhisper ? CHAT_COLORS.whisper : '#4FD1C7'}; font-weight: bold;">${msg.sender}:</span> ` : ''}
+                ${!isSystem ? `<span class="chat-username" data-username="${this.escapeHtml(msg.sender)}" style="color: ${isWhisper ? CHAT_COLORS.whisper : '#4FD1C7'}; font-weight: bold; cursor: pointer; text-decoration: underline;" title="Clique para enviar whisper">${this.escapeHtml(msg.sender)}</span>: ` : ''}
                 <span style="color: ${msg.color};">${this.escapeHtml(msg.message)}</span>
               </div>
             `;
@@ -660,6 +751,20 @@ export class ChatUI {
   }
 
   /**
+   * Verifica mensagens não lidas e atualiza badge
+   */
+  private checkUnreadMessages(): void {
+    const totalUnread = this.tabs.reduce((sum, tab) => sum + tab.unreadCount, 0);
+    
+    // Atualizar título da aba do navegador se houver mensagens não lidas
+    if (totalUnread > 0 && !this.isExpanded) {
+      document.title = `(${totalUnread}) Beast Keepers`;
+    } else {
+      document.title = 'Beast Keepers';
+    }
+  }
+
+  /**
    * Cleanup
    */
   public dispose(): void {
@@ -667,6 +772,7 @@ export class ChatUI {
     if (this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }
+    document.title = 'Beast Keepers'; // Resetar título
   }
 }
 
