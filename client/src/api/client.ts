@@ -42,15 +42,19 @@ export class ApiClient {
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
+    const headers = this.getHeaders();
+    console.log('[ApiClient] POST', endpoint, 'with token:', !!headers['Authorization']);
+    
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || `HTTP ${response.status}`);
+      console.error('[ApiClient] POST error:', response.status, error);
+      throw new Error(error.error || error.details || `HTTP ${response.status}`);
     }
 
     return response.json();

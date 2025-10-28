@@ -16,17 +16,23 @@ export async function initializeGame(req: AuthRequest, res: Response) {
   const client = await getClient();
   
   try {
+    console.log('[Game] Initialize request received');
     const userId = req.user?.id;
+    console.log('[Game] User ID:', userId);
+    
     if (!userId) {
+      console.error('[Game] No user ID found in request');
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
 
     const { playerName } = req.body;
+    console.log('[Game] Player name:', playerName);
 
     if (!playerName || playerName.trim().length === 0) {
       return res.status(400).json({ success: false, error: 'Player name is required' } as ApiResponse);
     }
 
+    console.log('[Game] Starting transaction...');
     await client.query('BEGIN');
 
     // Check if user already has a game save
@@ -65,15 +71,26 @@ export async function initializeGame(req: AuthRequest, res: Response) {
     const midnightTimestamp = brasiliaNow.getTime();
     
     // Verificar se as colunas de ciclo diário existem antes de inserir
-    const columnCheck = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'beasts' 
-      AND column_name IN ('age_in_days', 'last_day_processed')
-    `);
+    console.log('[Game] Checking for age columns...');
+    let hasAgeInDays = false;
+    let hasLastDayProcessed = false;
     
-    const hasAgeInDays = columnCheck.rows.some(r => r.column_name === 'age_in_days');
-    const hasLastDayProcessed = columnCheck.rows.some(r => r.column_name === 'last_day_processed');
+    try {
+      const columnCheck = await client.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'beasts' 
+        AND column_name IN ('age_in_days', 'last_day_processed')
+      `);
+      
+      hasAgeInDays = columnCheck.rows.some(r => r.column_name === 'age_in_days');
+      hasLastDayProcessed = columnCheck.rows.some(r => r.column_name === 'last_day_processed');
+      console.log('[Game] Age columns check:', { hasAgeInDays, hasLastDayProcessed });
+    } catch (columnError: any) {
+      console.warn('[Game] Error checking columns, assuming they dont exist:', columnError.message);
+      hasAgeInDays = false;
+      hasLastDayProcessed = false;
+    }
     
     let insertQuery: string;
     let insertValues: any[];
@@ -159,8 +176,13 @@ export async function initializeGame(req: AuthRequest, res: Response) {
       ];
     }
     
+    console.log('[Game] Inserting beast with query:', insertQuery.substring(0, 100) + '...');
+    console.log('[Game] Insert values count:', insertValues.length);
+    
     const beastResult = await client.query(insertQuery, insertValues);
+    console.log('[Game] Beast inserted successfully, ID:', beastResult.rows[0]?.id);
 
+    console.log('[Game] Committing transaction...');
     await client.query('COMMIT');
 
     console.log(`[Game] Initialized game for user ${userId}: ${playerName} with ${randomBeast.line} (${randomBeast.blood})`);
