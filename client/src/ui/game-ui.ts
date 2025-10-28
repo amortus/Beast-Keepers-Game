@@ -275,16 +275,12 @@ export class GameUI {
 
     drawPanel(this.ctx, x, y, width, height);
 
-    // Beast name and line
+    // Beast name and line (formatted as "Nome (Linhagem)")
     const lineData = getBeastLineData(beast.line);
-    drawText(this.ctx, beast.name, x + 10, y + 10, {
-      font: 'bold 24px monospace',
+    const formattedName = `${beast.name} (${lineData.name})`;
+    drawText(this.ctx, formattedName, x + 10, y + 10, {
+      font: 'bold 20px monospace',
       color: COLORS.primary.green,
-    });
-
-    drawText(this.ctx, lineData.name, x + 10, y + 38, {
-      font: '16px monospace',
-      color: COLORS.ui.textDim,
     });
 
     // Beast "sprite" (placeholder)

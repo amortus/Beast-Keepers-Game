@@ -9,39 +9,64 @@ import { query } from '../db/connection';
 // ===== UTILITÁRIOS DE TEMPO =====
 
 /**
+ * Busca a hora atual de Brasília via API externa (WorldTimeAPI)
+ * Fallback para hora local se a API estiver indisponível
+ */
+async function getBrasiliaTimeFromAPI(): Promise<Date> {
+  try {
+    const response = await fetch('https://worldtimeapi.org/api/timezone/America/Sao_Paulo');
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+    const data = await response.json() as { datetime: string };
+    const brasiliaTime = new Date(data.datetime);
+    console.log(`[EventScheduler] Got Brasilia time from API: ${brasiliaTime.toISOString()}`);
+    return brasiliaTime;
+  } catch (error: any) {
+    console.warn('[EventScheduler] Failed to get time from API, using local time calculation:', error.message);
+    // Fallback: usar cálculo local se API falhar
+    const now = new Date();
+    return now;
+  }
+}
+
+/**
  * Calcula o timestamp da meia-noite de hoje (timezone de Brasília)
  * Retorna timestamp UTC da meia-noite (00:00:00) em Brasília
+ * Usa API externa para garantir precisão
  */
-function getMidnightTimestamp(): number {
-  const now = new Date();
+async function getMidnightTimestamp(): Promise<number> {
+  const now = await getBrasiliaTimeFromAPI();
   
-  // Obter componentes de data em Brasília
-  const brasiliaFormatter = new Intl.DateTimeFormat('en-US', {
+  // Obter data em Brasília usando formatação com timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Sao_Paulo',
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+    day: '2-digit'
   });
   
-  const parts = brasiliaFormatter.formatToParts(now);
-  const year = parseInt(parts.find(p => p.type === 'year')!.value);
-  const month = parseInt(parts.find(p => p.type === 'month')!.value) - 1;
-  const day = parseInt(parts.find(p => p.type === 'day')!.value);
+  const dateStr = formatter.format(now);
+  const [year, month, day] = dateStr.split('-').map(Number);
   
-  // Calcular offset de Brasília (em ms)
-  const utcTime = now.getTime();
-  const brasiliaTime = new Date(brasiliaFormatter.format(now)).getTime();
-  const offset = utcTime - brasiliaTime;
+  // Método mais confiável: usar Intl para obter offset exato de Brasília
+  // Criar uma data de teste para calcular offset
+  const testDate = new Date();
+  const utcStr = testDate.toLocaleString('en-US', { timeZone: 'UTC' });
+  const brasiliaStr = testDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
   
-  // Criar meia-noite em Brasília (em tempo local, depois converter para UTC)
-  const midnightBrasiliaLocal = new Date(year, month, day, 0, 0, 0, 0);
-  const midnightBrasiliaUTC = midnightBrasiliaLocal.getTime() + offset;
+  // Converter para Date objects e calcular diferença em ms
+  const utcDate = new Date(utcStr);
+  const brasiliaDate = new Date(brasiliaStr);
+  const offsetMs = utcDate.getTime() - brasiliaDate.getTime();
   
-  return midnightBrasiliaUTC;
+  // Criar meia-noite em Brasília (00:00:00 local)
+  const midnightBrasilia = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`);
+  
+  // Converter para UTC aplicando o offset
+  const midnightUTC = midnightBrasilia.getTime() - offsetMs;
+  
+  return midnightUTC;
 }
 
 /**
@@ -91,7 +116,7 @@ async function processDailyCycle() {
       return;
     }
     
-    const midnightTimestamp = getMidnightTimestamp();
+    const midnightTimestamp = await getMidnightTimestamp();
     const now = Date.now();
     
     // Buscar todas as bestas ativas que ainda não foram processadas hoje
@@ -303,9 +328,9 @@ export function stopEventScheduler() {
 /**
  * Calcula o timestamp da próxima meia-noite (Brasília)
  */
-function getNextMidnightTimestamp(): number {
+async function getNextMidnightTimestamp(): Promise<number> {
   const now = Date.now();
-  const todayMidnight = getMidnightTimestamp();
+  const todayMidnight = await getMidnightTimestamp();
   
   // Se já passou a meia-noite de hoje, retornar meia-noite de amanhã
   if (now >= todayMidnight) {
@@ -319,14 +344,14 @@ function getNextMidnightTimestamp(): number {
 /**
  * Agenda o próximo processamento de ciclo diário
  */
-function scheduleNextMidnight() {
+async function scheduleNextMidnight() {
   // Limpar timeout anterior se existir
   if (midnightTimeout) {
     clearTimeout(midnightTimeout);
     midnightTimeout = null;
   }
   
-  const nextMidnight = getNextMidnightTimestamp();
+  const nextMidnight = await getNextMidnightTimestamp();
   const now = Date.now();
   const msUntilMidnight = nextMidnight - now;
   
@@ -334,7 +359,7 @@ function scheduleNextMidnight() {
   
   midnightTimeout = setTimeout(async () => {
     try {
-      const currentMidnight = getMidnightTimestamp();
+      const currentMidnight = await getMidnightTimestamp();
       
       // Processar ciclo diário de todas as bestas
       await processDailyCycle();
@@ -354,39 +379,39 @@ function scheduleNextMidnight() {
       lastProcessedMidnight = currentMidnight;
       
       // Agendar próxima meia-noite
-      scheduleNextMidnight();
+      await scheduleNextMidnight();
       
     } catch (error) {
       console.error('[EventScheduler] Midnight processing error:', error);
       // Reagendar mesmo em caso de erro
-      scheduleNextMidnight();
+      await scheduleNextMidnight();
     }
-  }, msUntilMidnight);
+  }, Math.max(msUntilMidnight, 0)); // Garantir que não seja negativo
 }
 
 /**
  * Inicia o scheduler de eventos
  * Usa alarmes baseados em timeout ao invés de polling
  */
-export function startEventScheduler() {
+export async function startEventScheduler() {
   console.log('[EventScheduler] Starting event scheduler (alarm-based)...');
   
   // Processar imediatamente se já passou meia-noite e ainda não processamos hoje
   const now = Date.now();
-  const todayMidnight = getMidnightTimestamp();
+  const todayMidnight = await getMidnightTimestamp();
   
   if (now >= todayMidnight && lastProcessedMidnight < todayMidnight) {
     console.log('[EventScheduler] Processing missed daily cycle...');
-    processDailyCycle().then(() => {
+    processDailyCycle().then(async () => {
       lastProcessedMidnight = todayMidnight;
-      scheduleNextMidnight();
-    }).catch((error) => {
+      await scheduleNextMidnight();
+    }).catch(async (error) => {
       console.error('[EventScheduler] Initial processing error:', error);
-      scheduleNextMidnight();
+      await scheduleNextMidnight();
     });
   } else {
     // Agendar próxima meia-noite
-    scheduleNextMidnight();
+    await scheduleNextMidnight();
   }
   
   // Processar eventos de calendário imediatamente ao iniciar

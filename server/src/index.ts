@@ -139,7 +139,9 @@ async function startServer() {
       console.log('='.repeat(50));
       
       // Start event scheduler (daily cycles, calendar events)
-      startEventScheduler();
+      startEventScheduler().catch(error => {
+        console.error('[Server] Failed to start event scheduler:', error);
+      });
     });
 
   } catch (error) {
