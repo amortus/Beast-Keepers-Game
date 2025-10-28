@@ -132,63 +132,58 @@ export class ChatUI {
     ];
   }
 
-  private setupEventListeners(): void {
-    // Remover listeners anteriores
-    const oldContainer = this.container;
+  private clickHandler = (e: MouseEvent) => {
+    e.stopPropagation();
+    const target = e.target as HTMLElement;
     
-    // Event delegation simplificado
-    this.container.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const target = e.target as HTMLElement;
+    // Toggle expand/collapse - clicar no header (mas não em tabs ou input)
+    const header = target.closest('.chat-header');
+    if (header) {
+      const isInput = target.tagName === 'INPUT' || target.classList.contains('chat-input');
+      const isInTabs = target.closest('.chat-tabs-container');
       
-      console.log('[Chat] Click detected:', target.className, target.tagName);
-      
-      // Toggle expand/collapse - qualquer clique no header (exceto dentro de tabs ou input)
-      if (target.closest('.chat-header')) {
-        const clickedInTabs = target.closest('.chat-tabs-container');
-        const isInput = target.classList.contains('chat-input') || target.tagName === 'INPUT';
-        
-        if (!clickedInTabs && !isInput) {
-          console.log('[Chat] Toggling from header click');
-          this.toggleExpanded();
-          return;
-        }
-      }
-
-      // Toggle via botão
-      if (target.classList.contains('chat-toggle-btn') || target.closest('.chat-toggle-btn')) {
-        console.log('[Chat] Toggling from button click');
+      if (!isInput && !isInTabs) {
         this.toggleExpanded();
         return;
       }
+    }
 
-      // Selecionar aba (não disparar se clicou no X de fechar)
-      if (target.classList.contains('chat-tab-close')) {
-        const tabId = target.getAttribute('data-tab-id');
-        if (tabId) {
-          console.log('[Chat] Closing tab:', tabId);
-          this.closeTab(tabId);
-        }
-        return;
-      }
+    // Toggle via botão
+    if (target.classList.contains('chat-toggle-btn') || target.closest('.chat-toggle-btn')) {
+      this.toggleExpanded();
+      return;
+    }
 
-      const tabElement = target.closest('.chat-tab');
-      if (tabElement && !target.classList.contains('chat-tab-close')) {
-        const tabId = tabElement.getAttribute('data-tab-id');
-        if (tabId) {
-          console.log('[Chat] Selecting tab:', tabId);
-          this.selectTab(tabId);
-        }
-        return;
+    // Selecionar aba (não disparar se clicou no X de fechar)
+    if (target.classList.contains('chat-tab-close')) {
+      const tabId = target.getAttribute('data-tab-id');
+      if (tabId) {
+        this.closeTab(tabId);
       }
+      return;
+    }
 
-      // Enviar mensagem
-      if (target.classList.contains('chat-send-btn') || target.closest('.chat-send-btn')) {
-        console.log('[Chat] Sending message');
-        this.handleSendMessage();
-        return;
+    const tabElement = target.closest('.chat-tab');
+    if (tabElement && !target.classList.contains('chat-tab-close')) {
+      const tabId = tabElement.getAttribute('data-tab-id');
+      if (tabId) {
+        this.selectTab(tabId);
       }
-    }, true); // Usar capture phase
+      return;
+    }
+
+    // Enviar mensagem
+    if (target.classList.contains('chat-send-btn') || target.closest('.chat-send-btn')) {
+      this.handleSendMessage();
+      return;
+    }
+  };
+
+  private setupEventListeners(): void {
+    // Remover listener anterior se existir
+    this.container.removeEventListener('click', this.clickHandler);
+    // Adicionar novo listener
+    this.container.addEventListener('click', this.clickHandler);
 
     // Input de mensagem
     const input = this.container.querySelector('.chat-input') as HTMLInputElement;
@@ -794,6 +789,7 @@ export class ChatUI {
    * Cleanup
    */
   public dispose(): void {
+    this.container.removeEventListener('click', this.clickHandler);
     this.disconnect();
     if (this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
