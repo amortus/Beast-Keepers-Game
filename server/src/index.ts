@@ -4,6 +4,7 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
@@ -11,6 +12,8 @@ import passport from './config/passport';
 import authRoutes from './routes/auth';
 import gameRoutes from './routes/game';
 import { pool } from './db/connection';
+import { startEventScheduler } from './services/eventScheduler';
+import { initializeChatService } from './services/chatService';
 
 // Load environment variables
 dotenv.config();
@@ -113,16 +116,26 @@ async function startServer() {
     await pool.query('SELECT NOW()');
     console.log('[DB] Database connection established');
 
+    // Create HTTP server for Socket.IO
+    const server = createServer(app);
+
+    // Initialize Chat Service (Socket.IO)
+    initializeChatService(server);
+
     // Start listening on all interfaces (required for Railway/Docker)
-    app.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log('='.repeat(50));
       console.log('🎮 Beast Keepers Server');
       console.log('='.repeat(50));
       console.log(`📍 Server: http://0.0.0.0:${PORT}`);
       console.log(`🔗 Frontend: ${FRONTEND_URL}`);
       console.log(`🗄️  Database: Connected`);
+      console.log(`💬 Chat: Socket.IO initialized`);
       console.log(`⚙️  Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log('='.repeat(50));
+      
+      // Start event scheduler (daily cycles, calendar events)
+      startEventScheduler();
     });
 
   } catch (error) {

@@ -73,5 +73,17 @@ export const gameApi = {
   async cancelBeastAction(beastId: string): Promise<ApiResponse<any>> {
     return apiClient.post(`/game/beast/${beastId}/action/cancel`, {});
   },
+
+  /**
+   * Process daily cycle for a beast (increment age at midnight)
+   */
+  async processDailyCycle(beastId: string): Promise<ApiResponse<{
+    ageInDays: number;
+    isAlive: boolean;
+    processed: boolean;
+    died?: boolean;
+  }>> {
+    return apiClient.post(`/game/beast/${beastId}/daily-cycle`, {});
+  },
 };
 

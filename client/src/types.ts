@@ -158,6 +158,10 @@ export interface Beast {
   birthDate?: number;           // timestamp de nascimento
   lastUpdate?: number;          // timestamp da última atualização
   
+  // Sistema de ciclo diário
+  ageInDays?: number;           // idade atual em dias (processado a meia-noite)
+  lastDayProcessed?: number;    // timestamp da última meia-noite processada
+  
   // Bônus de trabalho (limite 10 vezes)
   workBonusCount?: number;      // 0-10 bônus recebidos
 }
@@ -166,6 +170,28 @@ export interface LifeEvent {
   week: number;
   type: 'birth' | 'tournament' | 'training' | 'work' | 'rest' | 'exploration' | 'special';
   description: string;
+}
+
+// ===== CHAT SYSTEM =====
+
+export interface ChatMessage {
+  id: string;
+  channel: 'global' | 'group' | 'trade' | 'whisper' | 'system';
+  sender: string; // username
+  senderUserId: number;
+  recipient?: string; // para whispers
+  message: string;
+  timestamp: number;
+  color: string; // cor da mensagem
+}
+
+export interface ChatTab {
+  id: string;
+  name: string;
+  channel: 'global' | 'group' | 'trade' | 'whisper' | 'custom';
+  target?: string; // para whispers - nome do outro usuário
+  unreadCount: number;
+  messages: ChatMessage[];
 }
 
 // ===== CRESCIMENTO =====

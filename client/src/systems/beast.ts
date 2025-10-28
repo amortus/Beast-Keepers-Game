@@ -145,18 +145,30 @@ export function ageBeast(beast: Beast) {
 
 /**
  * Calcula idade da besta em dias reais
+ * Usa ageInDays (processado no servidor a meia-noite) ao invés de calcular por timestamp
  */
 export function calculateBeastAge(
   beast: Beast,
-  currentTime: number
+  currentTime?: number
 ): {
   ageInDays: number;
   isAlive: boolean;
   daysRemaining: number;
 } {
-  const birthDate = beast.birthDate || currentTime;
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const ageInDays = Math.floor((currentTime - birthDate) / msPerDay);
+  // Usar ageInDays se disponível (sistema de ciclo diário)
+  // Caso contrário, calcular baseado no timestamp (fallback para compatibilidade)
+  let ageInDays: number;
+  
+  if (beast.ageInDays !== undefined) {
+    ageInDays = beast.ageInDays;
+  } else if (beast.birthDate && currentTime) {
+    // Fallback: calcular baseado em timestamp (compatibilidade com saves antigos)
+    const msPerDay = 24 * 60 * 60 * 1000;
+    ageInDays = Math.floor((currentTime - beast.birthDate) / msPerDay);
+  } else {
+    ageInDays = 0;
+  }
+  
   const lifespan = beast.secondaryStats.maxAge || 365; // dias (padrão 1 ano)
   
   return {

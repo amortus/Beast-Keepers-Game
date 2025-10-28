@@ -117,6 +117,15 @@ export class GameInitUI {
     this.isLoading = true;
 
     try {
+      // Verificar se token existe antes de tentar inicializar
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        this.errorMessage = 'Erro: Token de autenticação não encontrado. Por favor, faça login novamente.';
+        this.isLoading = false;
+        return;
+      }
+      
+      console.log('[GameInit] Attempting to initialize game for:', this.playerName.trim());
       const response = await gameApi.initializeGame(this.playerName.trim());
       
       if (response.success && response.data) {

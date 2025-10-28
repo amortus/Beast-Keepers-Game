@@ -20,6 +20,8 @@ export class ApiClient {
     const token = localStorage.getItem('auth_token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.warn('[ApiClient] No auth token found in localStorage');
     }
 
     return headers;

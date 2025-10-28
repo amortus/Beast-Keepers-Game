@@ -15,7 +15,8 @@ import {
   getServerTime,
   startBeastAction,
   completeBeastAction,
-  cancelBeastAction
+  cancelBeastAction,
+  processDailyCycle
 } from '../controllers/timeController';
 
 const router = Router();
@@ -38,6 +39,7 @@ router.get('/time', getServerTime);
 router.post('/beast/:beastId/action/start', startBeastAction);
 router.post('/beast/:beastId/action/complete', completeBeastAction);
 router.post('/beast/:beastId/action/cancel', cancelBeastAction);
+router.post('/beast/:beastId/daily-cycle', processDailyCycle);
 
 export default router;
 

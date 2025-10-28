@@ -24,6 +24,7 @@ import { ExplorationUI } from './ui/exploration-ui';
 import { AuthUI } from './ui/auth-ui';
 import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
+import { ChatUI } from './ui/chat-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge } from './systems/beast';
@@ -90,6 +91,7 @@ let achievementsUI: AchievementsUI | null = null;
 let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
 let ranch3DUI: Ranch3DUI | null = null;
+let chatUI: ChatUI | null = null;
 let inBattle = false;
 let inTemple = false;
 let inDialogue = false;
@@ -156,11 +158,14 @@ function startRealtimeSync() {
         }
       }
       
-      // Verificar se besta ainda está viva
+      // Verificar se besta ainda está viva (servidor processa ciclo diário automaticamente)
+      // Ao carregar o jogo ou sincronizar, verificamos se morreu
       if (!isBeastAlive(gameState.activeBeast, now)) {
         const beastName = gameState.activeBeast.name;
+        const ageInfo = calculateBeastAge(gameState.activeBeast, now);
+        
         showMessage(
-          `${beastName} chegou ao fim de sua jornada... 😢\n\nVocê pode criar uma nova besta no Templo dos Ecos.`,
+          `${beastName} chegou ao fim de sua jornada após ${ageInfo.ageInDays} dias... 😢\n\nVocê pode criar uma nova besta no Templo dos Ecos.`,
           '💔 Fim da Jornada'
         );
         
@@ -175,6 +180,9 @@ function startRealtimeSync() {
         if (gameUI) {
           gameUI.updateGameState(gameState);
         }
+        
+        // Parar sync se não há mais besta ativa
+        return;
       }
       
     } catch (error) {
@@ -314,6 +322,16 @@ async function init() {
       console.log('[Auth] Login success:', user.displayName);
       isAuthenticated = true;
       inAuth = false;
+      
+      // Salvar username no localStorage para o chat
+      localStorage.setItem('username', user.displayName);
+      
+      // Inicializar chat
+      if (!chatUI) {
+        chatUI = new ChatUI();
+        chatUI.connect(token);
+      }
+      
       await loadGameFromServer();
     };
 
@@ -322,6 +340,16 @@ async function init() {
       isAuthenticated = true;
       inAuth = false;
       needsGameInit = true;
+      
+      // Salvar username no localStorage para o chat
+      localStorage.setItem('username', user.displayName);
+      
+      // Inicializar chat mesmo sem jogo ainda
+      if (!chatUI) {
+        chatUI = new ChatUI();
+        chatUI.connect(token);
+      }
+      
       // Reset game init UI to clear any previous data
       if (gameInitUI) {
         gameInitUI.reset();
@@ -349,6 +377,18 @@ async function init() {
           console.log('[Auth] Already logged in');
           isAuthenticated = true;
           inAuth = false;
+          
+          // Obter username e inicializar chat
+          if (meResponse.data?.displayName) {
+            localStorage.setItem('username', meResponse.data.displayName);
+            
+            // Inicializar chat
+            if (!chatUI && token) {
+              chatUI = new ChatUI();
+              chatUI.connect(token);
+            }
+          }
+          
           await loadGameFromServer();
         } else {
           // Invalid token
@@ -511,10 +551,33 @@ async function loadGameFromServer() {
           explorationCount: serverBeast.exploration_count || 0,
           birthDate: serverBeast.birth_date || Date.now(),
           lastUpdate: serverBeast.last_update || Date.now(),
-          workBonusCount: serverBeast.work_bonus_count || 0
+          workBonusCount: serverBeast.work_bonus_count || 0,
+          
+          // Sistema de ciclo diário
+          ageInDays: serverBeast.age_in_days || 0,
+          lastDayProcessed: serverBeast.last_day_processed || 0
         };
         
         console.log('[Game] Loaded Beast from server:', gameState.activeBeast.name, `(${gameState.activeBeast.line})`);
+        
+        // Verificar se a besta morreu (servidor já processou ciclo diário)
+        const now = Date.now();
+        if (!isBeastAlive(gameState.activeBeast, now)) {
+          const beastName = gameState.activeBeast.name;
+          const ageInfo = calculateBeastAge(gameState.activeBeast, now);
+          
+          showMessage(
+            `${beastName} chegou ao fim de sua jornada após ${ageInfo.ageInDays} dias... 😢\n\nVocê pode criar uma nova besta no Templo dos Ecos.`,
+            '💔 Fim da Jornada'
+          );
+          
+          // Mover para bestas falecidas
+          gameState.deceasedBeasts.push(gameState.activeBeast);
+          gameState.activeBeast = null;
+          
+          // Salvar
+          await saveGame(gameState);
+        }
       }
       
       console.log('[Game] Loaded from server:', gameState.guardian.name);

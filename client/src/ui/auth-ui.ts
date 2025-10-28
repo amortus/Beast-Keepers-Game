@@ -352,7 +352,9 @@ export class AuthUI {
       y: googleBtnY,
       width: 450,
       height: 60,
-      action: () => authApi.googleLogin()
+      action: () => {
+        authApi.googleLogin();
+      }
     });
 
     // Note
@@ -633,7 +635,21 @@ export class AuthUI {
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (error) {
-      this.errorMessage = 'Erro na autenticação com Google';
+      let errorMsg = 'Erro na autenticação';
+      switch (error) {
+        case 'oauth_not_configured':
+          errorMsg = 'Autenticação Google não está configurada no servidor';
+          break;
+        case 'auth_failed':
+          errorMsg = 'Falha na autenticação com Google';
+          break;
+        case 'server_error':
+          errorMsg = 'Erro no servidor durante autenticação';
+          break;
+        default:
+          errorMsg = 'Erro na autenticação com Google';
+      }
+      this.errorMessage = errorMsg;
       window.history.replaceState({}, '', window.location.pathname);
     }
   }

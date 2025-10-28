@@ -40,6 +40,8 @@ export const authApi = {
    */
   googleLogin(): void {
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    // Redirecionar diretamente - o servidor retornará erro 503 se não configurado
+    // e o callback tratará o erro via URL parameter
     window.location.href = `${API_BASE_URL}/auth/google`;
   },
 };

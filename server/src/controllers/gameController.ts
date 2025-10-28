@@ -58,22 +58,44 @@ export async function initializeGame(req: AuthRequest, res: Response) {
 
     // Create initial beast with randomized stats
     const now = Date.now();
-    const beastResult = await client.query(
-      `INSERT INTO beasts (
+    
+    // Calcular meia-noite de hoje (Brasília) para inicializar lastDayProcessed
+    const brasiliaNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    brasiliaNow.setHours(0, 0, 0, 0);
+    const midnightTimestamp = brasiliaNow.getTime();
+    
+    // Verificar se as colunas de ciclo diário existem antes de inserir
+    const columnCheck = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'beasts' 
+      AND column_name IN ('age_in_days', 'last_day_processed')
+    `);
+    
+    const hasAgeInDays = columnCheck.rows.some(r => r.column_name === 'age_in_days');
+    const hasLastDayProcessed = columnCheck.rows.some(r => r.column_name === 'last_day_processed');
+    
+    let insertQuery: string;
+    let insertValues: any[];
+    
+    if (hasAgeInDays && hasLastDayProcessed) {
+      // Inserir com todos os campos incluindo ciclo diário
+      insertQuery = `INSERT INTO beasts (
         game_save_id, name, line, blood, affinity, is_active,
         current_hp, max_hp, essence, max_essence,
         might, wit, focus, agility, ward, vitality,
         loyalty, stress, fatigue, techniques, traits, level, experience,
-        birth_date, last_update
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
-      RETURNING *`,
-      [
+        birth_date, last_update, age_in_days, last_day_processed
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+      RETURNING *`;
+      
+      insertValues = [
         gameSave.id,
         randomBeast.name,
         randomBeast.line,
         randomBeast.blood,
         randomBeast.affinity,
-        true, // is_active
+        true,
         randomBeast.currentHp,
         randomBeast.maxHp,
         randomBeast.essence,
@@ -91,10 +113,53 @@ export async function initializeGame(req: AuthRequest, res: Response) {
         JSON.stringify(randomBeast.traits),
         randomBeast.level,
         randomBeast.experience,
-        now, // birth_date
-        now  // last_update
-      ]
-    );
+        now,
+        now,
+        0,
+        midnightTimestamp
+      ];
+    } else {
+      // Inserir sem campos de ciclo diário (fallback para bancos antigos)
+      console.warn('[Game] Age columns not found, using fallback INSERT');
+      insertQuery = `INSERT INTO beasts (
+        game_save_id, name, line, blood, affinity, is_active,
+        current_hp, max_hp, essence, max_essence,
+        might, wit, focus, agility, ward, vitality,
+        loyalty, stress, fatigue, techniques, traits, level, experience,
+        birth_date, last_update
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+      RETURNING *`;
+      
+      insertValues = [
+        gameSave.id,
+        randomBeast.name,
+        randomBeast.line,
+        randomBeast.blood,
+        randomBeast.affinity,
+        true,
+        randomBeast.currentHp,
+        randomBeast.maxHp,
+        randomBeast.essence,
+        randomBeast.maxEssence,
+        randomBeast.attributes.might,
+        randomBeast.attributes.wit,
+        randomBeast.attributes.focus,
+        randomBeast.attributes.agility,
+        randomBeast.attributes.ward,
+        randomBeast.attributes.vitality,
+        randomBeast.secondaryStats.loyalty,
+        randomBeast.secondaryStats.stress,
+        randomBeast.secondaryStats.fatigue,
+        JSON.stringify(randomBeast.techniques),
+        JSON.stringify(randomBeast.traits),
+        randomBeast.level,
+        randomBeast.experience,
+        now,
+        now
+      ];
+    }
+    
+    const beastResult = await client.query(insertQuery, insertValues);
 
     await client.query('COMMIT');
 
@@ -118,10 +183,22 @@ export async function initializeGame(req: AuthRequest, res: Response) {
       }
     } as ApiResponse);
 
-  } catch (error) {
-    await client.query('ROLLBACK');
+  } catch (error: any) {
+    await client.query('ROLLBACK').catch(() => {
+      // Ignore rollback errors
+    });
     console.error('[Game] Initialize error:', error);
-    return res.status(500).json({ success: false, error: 'Failed to initialize game' } as ApiResponse);
+    console.error('[Game] Error stack:', error?.stack);
+    console.error('[Game] Error details:', {
+      message: error?.message,
+      name: error?.name,
+      code: error?.code,
+    });
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to initialize game',
+      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+    } as ApiResponse);
   } finally {
     client.release();
   }
@@ -293,6 +370,8 @@ export async function updateBeast(req: AuthRequest, res: Response) {
          birth_date = COALESCE($26, birth_date),
          last_update = COALESCE($27, last_update),
          work_bonus_count = COALESCE($28, work_bonus_count),
+         age_in_days = COALESCE($29, age_in_days),
+         last_day_processed = COALESCE($30, last_day_processed),
          updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -324,7 +403,9 @@ export async function updateBeast(req: AuthRequest, res: Response) {
         beastData.explorationCount,
         beastData.birthDate,
         beastData.lastUpdate,
-        beastData.workBonusCount
+        beastData.workBonusCount,
+        beastData.ageInDays,
+        beastData.lastDayProcessed
       ]
     );
 

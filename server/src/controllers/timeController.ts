@@ -280,3 +280,144 @@ export async function cancelBeastAction(req: AuthRequest, res: Response) {
   }
 }
 
+/**
+ * Calcula o timestamp da meia-noite de hoje (timezone de Brasília)
+ * Retorna o timestamp UTC da meia-noite (00:00:00) no timezone de Brasília
+ */
+function getMidnightTimestamp(): number {
+  const now = new Date();
+  
+  // Obter data/hora atual em Brasília como string ISO-like
+  const brasiliaStr = now.toLocaleString('en-CA', { 
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  // brasiliaStr está no formato "YYYY-MM-DD"
+  const [year, month, day] = brasiliaStr.split('-').map(Number);
+  
+  // Criar string ISO para meia-noite em Brasília
+  // Assumir que Brasília está UTC-3 (pode variar com horário de verão, mas funciona bem para comparar)
+  // Criar data UTC assumindo meia-noite Brasília = 03:00 UTC (UTC-3)
+  const midnightUtc = Date.UTC(year, month - 1, day, 3, 0, 0, 0);
+  
+  // Obter offset real de Brasília agora
+  const formatter = new Intl.DateTimeFormat('en', {
+    timeZone: 'America/Sao_Paulo',
+    timeZoneName: 'longOffset'
+  });
+  
+  // Calcular offset atual (simplificado: usar diferença entre UTC e Brasília)
+  const utcHours = now.getUTCHours();
+  const brasiliaHours = parseInt(now.toLocaleString('en-US', { 
+    timeZone: 'America/Sao_Paulo', 
+    hour: '2-digit', 
+    hour12: false 
+  }));
+  
+  let offsetHours = brasiliaHours - utcHours;
+  if (offsetHours > 12) offsetHours -= 24; // Ajustar se cruzar meia-noite
+  if (offsetHours < -12) offsetHours += 24;
+  
+  // Ajustar meia-noite para o offset correto
+  return midnightUtc - (offsetHours * 60 * 60 * 1000);
+}
+
+/**
+ * Processa o ciclo diário para uma besta (incrementa idade a meia-noite)
+ */
+export async function processDailyCycle(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Not authenticated',
+      } as ApiResponse);
+    }
+    
+    const { beastId } = req.params;
+    
+    // Verificar ownership
+    const beastResult = await query(
+      `SELECT b.*, gs.user_id 
+       FROM beasts b
+       JOIN game_saves gs ON b.game_save_id = gs.id
+       WHERE b.id = $1 AND gs.user_id = $2 AND b.is_active = true`,
+      [beastId, userId]
+    );
+    
+    if (beastResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Active beast not found',
+      } as ApiResponse);
+    }
+    
+    const beast = beastResult.rows[0];
+    const now = Date.now();
+    const midnightTimestamp = getMidnightTimestamp();
+    
+    // Pegar maxAge do banco (campo max_age)
+    const maxAge = beast.max_age || 365; // padrão 1 ano
+    const currentAgeInDays = beast.age_in_days || 0;
+    const lastDayProcessed = beast.last_day_processed || 0;
+    
+    // Verificar se já processamos hoje (se lastDayProcessed >= midnightTimestamp)
+    if (lastDayProcessed >= midnightTimestamp) {
+      // Já processado hoje, retornar dados atuais
+      return res.status(200).json({
+        success: true,
+        data: {
+          ageInDays: currentAgeInDays,
+          isAlive: currentAgeInDays < maxAge,
+          processed: false, // Já estava processado
+        },
+      } as ApiResponse);
+    }
+    
+    // Incrementar idade em 1 dia
+    const newAgeInDays = currentAgeInDays + 1;
+    const isAlive = newAgeInDays < maxAge;
+    
+    // Se morreu, desativar a besta
+    let isActive = true;
+    if (!isAlive) {
+      isActive = false;
+      console.log(`[DailyCycle] Beast ${beastId} died at age ${newAgeInDays} (max: ${maxAge})`);
+    }
+    
+    // Atualizar no banco
+    await query(
+      `UPDATE beasts
+       SET age_in_days = $2,
+           last_day_processed = $3,
+           is_active = $4,
+           last_update = $5
+       WHERE id = $1`,
+      [beastId, newAgeInDays, midnightTimestamp, isActive, now]
+    );
+    
+    console.log(`[DailyCycle] Beast ${beastId} aged from ${currentAgeInDays} to ${newAgeInDays} days. Alive: ${isAlive}`);
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        ageInDays: newAgeInDays,
+        isAlive,
+        processed: true, // Processado agora
+        died: !isAlive, // Morreu nesta atualização
+      },
+    } as ApiResponse);
+    
+  } catch (error) {
+    console.error('[Time] Process daily cycle error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process daily cycle',
+    } as ApiResponse);
+  }
+}
+

@@ -125,7 +125,9 @@ export async function saveGame(state: GameState): Promise<void> {
           explorationCount: beast.explorationCount,
           birthDate: beast.birthDate,
           lastUpdate: beast.lastUpdate,
-          workBonusCount: beast.workBonusCount
+          workBonusCount: beast.workBonusCount,
+          ageInDays: beast.ageInDays,
+          lastDayProcessed: beast.lastDayProcessed
         });
       }
       
