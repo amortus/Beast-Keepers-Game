@@ -215,7 +215,7 @@ export class ChatUI {
           e.stopPropagation();
           this.autocompleteSelectedIndex = 
             (this.autocompleteSelectedIndex + 1) % this.autocompleteSuggestions.length;
-          this.render();
+          this.updateAutocompleteDropdown();
           return;
         }
         
@@ -225,7 +225,7 @@ export class ChatUI {
           this.autocompleteSelectedIndex = 
             (this.autocompleteSelectedIndex - 1 + this.autocompleteSuggestions.length) 
             % this.autocompleteSuggestions.length;
-          this.render();
+          this.updateAutocompleteDropdown();
           return;
         }
         
@@ -266,6 +266,8 @@ export class ChatUI {
       const textBeforeCursor = input.value.substring(0, cursorPos);
       const lastAtIndex = textBeforeCursor.lastIndexOf('@');
       
+      const wasAutocompleteVisible = this.autocompleteVisible;
+      
       if (lastAtIndex !== -1) {
         const query = textBeforeCursor.substring(lastAtIndex + 1);
         
@@ -276,23 +278,79 @@ export class ChatUI {
             .filter(nick => nick.toLowerCase().startsWith(query.toLowerCase()));
           this.autocompleteVisible = this.autocompleteSuggestions.length > 0;
           this.autocompleteSelectedIndex = 0;
-          this.render();
           
-          // Focar no input novamente para manter cursor
-          setTimeout(() => {
-            input.focus();
-            input.setSelectionRange(cursorPos, cursorPos);
-          }, 0);
+          // Só renderizar se o estado do autocomplete mudou (apareceu/desapareceu)
+          // ou se há sugestões para atualizar o dropdown
+          if (wasAutocompleteVisible !== this.autocompleteVisible || this.autocompleteVisible) {
+            this.render();
+            // Preservar foco e cursor após render
+            setTimeout(() => {
+              const newInput = this.container.querySelector('.chat-input') as HTMLInputElement;
+              if (newInput) {
+                newInput.focus();
+                newInput.setSelectionRange(cursorPos, cursorPos);
+              }
+            }, 0);
+          } else {
+            // Apenas atualizar o dropdown sem recriar tudo
+            this.updateAutocompleteDropdown();
+          }
         } else {
-          this.autocompleteVisible = false;
-          this.render();
+          // Espaço após @ - fechar autocomplete
+          if (this.autocompleteVisible) {
+            this.autocompleteVisible = false;
+            this.render();
+            // Preservar foco
+            setTimeout(() => {
+              const newInput = this.container.querySelector('.chat-input') as HTMLInputElement;
+              if (newInput) {
+                newInput.focus();
+                newInput.setSelectionRange(cursorPos, cursorPos);
+              }
+            }, 0);
+          }
         }
       } else {
-        this.autocompleteVisible = false;
-        this.render();
+        // Sem @ - fechar autocomplete se estava aberto
+        if (this.autocompleteVisible) {
+          this.autocompleteVisible = false;
+          this.render();
+          // Preservar foco
+          setTimeout(() => {
+            const newInput = this.container.querySelector('.chat-input') as HTMLInputElement;
+            if (newInput) {
+              newInput.focus();
+              newInput.setSelectionRange(cursorPos, cursorPos);
+            }
+          }, 0);
+        }
+        // Se autocomplete já estava fechado, não fazer nada (não renderizar)
       }
     }
   };
+  
+  /**
+   * Atualiza apenas o dropdown de autocomplete sem recriar todo o HTML
+   */
+  private updateAutocompleteDropdown(): void {
+    const dropdown = this.container.querySelector('[data-autocomplete-dropdown]') as HTMLDivElement;
+    if (dropdown && this.autocompleteVisible) {
+      dropdown.innerHTML = this.autocompleteSuggestions.map((nick, index) => `
+        <div class="autocomplete-item" data-index="${index}" style="
+          padding: 8px 10px;
+          cursor: pointer;
+          background: ${index === this.autocompleteSelectedIndex ? 'rgba(74, 85, 104, 0.8)' : 'transparent'};
+          color: ${index === this.autocompleteSelectedIndex ? '#4FD1C7' : '#fff'};
+          border-left: 3px solid ${index === this.autocompleteSelectedIndex ? '#4FD1C7' : 'transparent'};
+          font-weight: ${index === this.autocompleteSelectedIndex ? 'bold' : 'normal'};
+          font-family: monospace;
+          font-size: 12px;
+        ">
+          @${this.escapeHtml(nick)}
+        </div>
+      `).join('');
+    }
+  }
 
   private blurHandler = (e: FocusEvent) => {
     // Fechar autocomplete quando perder foco (mas não se clicou no autocomplete)
@@ -1012,7 +1070,7 @@ export class ChatUI {
           border-top: 1px solid #4a5568;
         ">
           ${this.autocompleteVisible ? `
-            <div style="
+            <div data-autocomplete-dropdown style="
               position: absolute;
               bottom: 100%;
               left: 5px;
