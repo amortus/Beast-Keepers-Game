@@ -348,7 +348,6 @@ async function init() {
       console.log('[Auth] Register success:', user.displayName);
       isAuthenticated = true;
       inAuth = false;
-      needsGameInit = true;
       
       // Salvar username no localStorage para o chat
       localStorage.setItem('username', user.displayName);
@@ -357,13 +356,38 @@ async function init() {
       if (!chatUI) {
         chatUI = new ChatUI();
         chatUI.connect(token);
-        // Callback para atualizar status de amigos na UI de amigos
-        // Friends agora está integrado no ChatUI
       }
       
-      // Reset game init UI to clear any previous data
-      if (gameInitUI) {
-        gameInitUI.reset();
+      // Inicializar o jogo automaticamente com o nome informado no registro
+      // Não precisa mostrar a tela de gameInitUI, pois o usuário já informou o nome
+      try {
+        loadingEl.textContent = 'Inicializando seu jogo...';
+        loadingEl.style.display = 'block';
+        
+        console.log('[GameInit] Auto-initializing game for:', user.displayName);
+        const response = await gameApi.initializeGame(user.displayName);
+        
+        if (response.success && response.data) {
+          console.log('[GameInit] Game initialized successfully');
+          // Carregar o jogo do servidor após inicialização
+          await loadGameFromServer();
+        } else {
+          // Se falhar, mostrar tela de init como fallback
+          needsGameInit = true;
+          if (gameInitUI) {
+            gameInitUI.reset();
+          }
+          loadingEl.style.display = 'none';
+          console.error('[GameInit] Failed to auto-initialize:', response.error);
+        }
+      } catch (error: any) {
+        console.error('[GameInit] Auto-initialization error:', error);
+        // Se falhar, mostrar tela de init como fallback
+        needsGameInit = true;
+        if (gameInitUI) {
+          gameInitUI.reset();
+        }
+        loadingEl.style.display = 'none';
       }
     };
 
@@ -397,23 +421,31 @@ async function init() {
             if (!chatUI && token) {
               chatUI = new ChatUI();
               chatUI.connect(token);
-              // Friends agora está integrado no ChatUI
             }
           }
           
           await loadGameFromServer();
         } else {
-          // Invalid token
+          // Invalid token - clear it
           localStorage.removeItem('auth_token');
+          localStorage.removeItem('username');
+          // Hide loading to show auth screen
+          loadingEl.style.display = 'none';
         }
       } catch (error) {
-        // Invalid token
+        // Invalid token - clear it
+        console.error('[Auth] Token validation error:', error);
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('username');
+        // Hide loading to show auth screen
+        loadingEl.style.display = 'none';
       }
+    } else {
+      // No token - hide loading immediately to show auth screen
+      loadingEl.style.display = 'none';
     }
 
-    // Hide loading, show game
-    loadingEl.style.display = 'none';
+    // Show game canvas (will show auth screen if not authenticated)
     canvas.style.display = 'block';
 
   } catch (err) {
@@ -432,6 +464,13 @@ function handleLogout() {
     gameUI.hide3DViewer();
   }
 
+  // Disconnect chat before logout
+  if (chatUI) {
+    chatUI.disconnect();
+    chatUI = null;
+  }
+  }
+
   // Confirm logout
   modalUI.show({
     type: 'choice',
@@ -440,17 +479,37 @@ function handleLogout() {
     choices: ['Sim, sair', 'Cancelar'],
     onConfirm: (choice) => {
       if (choice === 'Sim, sair') {
-        // Clear token
+        // Disconnect chat
+        if (chatUI) {
+          chatUI.disconnect();
+          chatUI = null;
+        }
+        
+        // Clear token and username
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('username');
         
         // Clear game state
         gameState = null;
         gameUI = null;
+        battleUI = null;
+        templeUI = null;
+        dialogueUI = null;
+        shopUI = null;
+        inventoryUI = null;
+        craftUI = null;
+        questsUI = null;
+        achievementsUI = null;
+        explorationUI = null;
+        ranch3DUI = null;
         
         // Show auth screen
         isAuthenticated = false;
         inAuth = true;
         needsGameInit = false;
+        
+        // Hide loading to prevent stuck screen
+        loadingEl.style.display = 'none';
         
         console.log('[Auth] Logged out');
         
