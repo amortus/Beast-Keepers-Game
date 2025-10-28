@@ -245,7 +245,11 @@ export class ChatUI {
     if (target.classList.contains('friends-reject-btn') || target.classList.contains('friends-cancel-btn')) {
       const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
       if (friendId) {
-        const request = this.friendRequests.find(r => r.id === friendId);
+        // Buscar requisição pelo friendId (não pelo id da requisição)
+        const request = this.friendRequests.find(r => 
+          (r.direction === 'received' && r.fromUserId === friendId) ||
+          (r.direction === 'sent' && r.toUserId === friendId)
+        );
         // Sem confirmação - ação direta com mensagem no chat
         this.removeOrRejectFriend(friendId, request?.direction === 'received' ? 'reject' : 'cancel');
       }
@@ -1217,7 +1221,7 @@ export class ChatUI {
               cursor: pointer;
               font-size: 10px;
             ">Aceitar</button>
-            <button class="friends-reject-btn" data-friend-id="${req.id}" style="
+            <button class="friends-reject-btn" data-friend-id="${req.fromUserId}" style="
               padding: 4px 12px;
               background: #f56565;
               border: none;
@@ -1227,7 +1231,7 @@ export class ChatUI {
               font-size: 10px;
             ">Rejeitar</button>
           ` : `
-            <button class="friends-cancel-btn" data-friend-id="${req.id}" style="
+            <button class="friends-cancel-btn" data-friend-id="${req.toUserId}" style="
               padding: 4px 12px;
               background: #f56565;
               border: none;
@@ -1376,18 +1380,23 @@ export class ChatUI {
    * Remove amigo ou rejeita pedido
    */
   private async removeOrRejectFriend(friendId: number, action: 'remove' | 'reject' | 'cancel' = 'remove'): Promise<void> {
+    // Buscar nome ANTES de fazer qualquer chamada (para usar depois)
+    const friend = this.friends.find(f => f.friendId === friendId);
+    const request = this.friendRequests.find(r => 
+      (r.direction === 'received' && r.fromUserId === friendId) ||
+      (r.direction === 'sent' && r.toUserId === friendId)
+    );
+    const targetName = friend?.friendName || request?.fromUsername || request?.toUsername || 'usuário';
+    
     try {
-      // Buscar nome antes de remover
-      const friend = this.friends.find(f => f.friendId === friendId);
-      const request = this.friendRequests.find(r => r.id === friendId);
-      const targetName = friend?.friendName || request?.fromUsername || request?.toUsername || 'usuário';
-      
       const response = await friendsApi.removeFriend(friendId);
+      
+      // Sempre recarregar lista, mesmo em caso de erro (pode ter sido processado por outro lado)
+      await this.loadFriends();
+      await this.loadFriendRequests();
+      this.render();
+      
       if (response.success) {
-        await this.loadFriends();
-        await this.loadFriendRequests();
-        this.render();
-        
         // Mensagem de sucesso no chat baseada na ação
         if (action === 'reject') {
           this.addSystemMessage(`Pedido de amizade de ${targetName} rejeitado`, false);
@@ -1397,11 +1406,32 @@ export class ChatUI {
           this.addSystemMessage(`${targetName} foi removido da lista de amigos`, false);
         }
       } else {
-        const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
-        this.addSystemMessage(`Erro: ${errorMsg}`, true);
+        // Se retornou erro mas não é 404, é um erro real
+        // Se for 404, provavelmente já foi processado (via notificação em tempo real)
+        if (response.error?.includes('not found') || response.error?.includes('Friendship not found')) {
+          // Já foi removido (provavelmente via notificação em tempo real), apenas recarregar sem erro
+          // A lista já foi recarregada acima, então não precisa fazer nada
+        } else {
+          const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
+          this.addSystemMessage(`Erro: ${response.error || errorMsg}`, true);
+        }
       }
     } catch (error: any) {
       console.error('[ChatUI] Error removing/rejecting friend:', error);
+      
+      // Sempre recarregar mesmo em caso de erro (dados podem estar desatualizados)
+      await this.loadFriends();
+      await this.loadFriendRequests();
+      this.render();
+      
+      // Se for erro 404, tratar como "já foi processado" (silenciosamente)
+      if (error.message?.includes('404') || error.message?.includes('not found') || error.message?.includes('Friendship not found')) {
+        // Não mostrar erro - provavelmente já foi removido via notificação em tempo real
+        // A lista já foi recarregada acima
+        return;
+      }
+      
+      // Outros erros mostrar mensagem
       const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
       this.addSystemMessage(`Erro: ${error.message || errorMsg}`, true);
     }

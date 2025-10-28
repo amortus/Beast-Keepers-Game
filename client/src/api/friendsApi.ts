@@ -39,7 +39,20 @@ export const friendsApi = {
    * Remover amigo ou rejeitar pedido
    */
   async removeFriend(friendId: number): Promise<ApiResponse<void>> {
-    return apiClient.delete<void>(`/friends/${friendId}`);
+    try {
+      return await apiClient.delete<void>(`/friends/${friendId}`);
+    } catch (error: any) {
+      // Se for 404, retornar resposta de erro ao invés de lançar exceção
+      // Isso permite que o código cliente trate como "já foi processado"
+      if (error.message?.includes('404') || error.message?.includes('not found') || error.message?.includes('Friendship not found')) {
+        return {
+          success: false,
+          error: 'Friendship not found'
+        } as ApiResponse<void>;
+      }
+      // Re-lançar outros erros
+      throw error;
+    }
   },
 
   /**
