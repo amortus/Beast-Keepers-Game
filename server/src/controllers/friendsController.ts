@@ -180,21 +180,36 @@ export async function sendFriendRequest(req: AuthRequest, res: Response) {
     }
 
     // Criar pedido
-    await query(
-      `INSERT INTO friendships (user_id, friend_id, status) 
-       VALUES ($1, $2, 'pending')`,
-      [userId, friendId]
-    );
+    try {
+      await query(
+        `INSERT INTO friendships (user_id, friend_id, status) 
+         VALUES ($1, $2, 'pending')`,
+        [userId, friendId]
+      );
 
-    return res.status(200).json({
-      success: true,
-      message: 'Friend request sent'
-    } as ApiResponse);
+      return res.status(200).json({
+        success: true,
+        message: 'Friend request sent'
+      } as ApiResponse);
+    } catch (dbError: any) {
+      // Verificar se é erro de constraint (tabela não existe, etc)
+      if (dbError.code === '42P01') {
+        console.error('[Friends] Table friendships does not exist. Migration needs to be run.');
+        return res.status(500).json({ 
+          success: false, 
+          error: 'Sistema de amigos não está configurado. Contate o administrador.' 
+        } as ApiResponse);
+      }
+      
+      // Re-lançar se for outro erro
+      throw dbError;
+    }
   } catch (error: any) {
     console.error('[Friends] Send request error:', error);
+    console.error('[Friends] Error details:', JSON.stringify(error, null, 2));
     return res.status(500).json({ 
       success: false, 
-      error: 'Failed to send friend request' 
+      error: error.message || 'Failed to send friend request' 
     } as ApiResponse);
   }
 }

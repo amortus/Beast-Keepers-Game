@@ -4,8 +4,9 @@
  * Beast Keepers Client
  */
 
-import type { ChatMessage, ChatTab } from '../types';
+import type { ChatMessage, ChatTab, Friend, FriendRequest } from '../types';
 import { connect, disconnect, joinChannel, sendMessage, sendWhisper, onMessage, onHistory, onUserJoined, onUserLeft, onError, onConnect, onFriendOnline, onFriendOffline, getConnectionStatus } from '../services/chatClient';
+import { friendsApi } from '../api/friendsApi';
 
 // Cores de mensagem (padrão WoW)
 const CHAT_COLORS = {
@@ -35,6 +36,13 @@ export class ChatUI {
   
   // Friends integration
   public onFriendStatusChange?: (username: string, isOnline: boolean) => void;
+  
+  // Friends state
+  private friends: Friend[] = [];
+  private onlineFriends: Set<string> = new Set();
+  private friendRequests: FriendRequest[] = [];
+  private friendsActiveTab: 'list' | 'requests' | 'add' = 'list';
+  private addFriendInput: string = '';
 
   // Callbacks
   public onMessageReceived?: (msg: ChatMessage) => void;
@@ -114,6 +122,10 @@ export class ChatUI {
 
     // Setup chat client callbacks
     this.setupChatCallbacks();
+    
+    // Carregar amigos
+    this.loadFriends();
+    this.loadFriendRequests();
   }
 
   private createDefaultTabs(): void {
@@ -136,6 +148,13 @@ export class ChatUI {
         id: 'trade',
         name: 'Comércio',
         channel: 'trade',
+        unreadCount: 0,
+        messages: [],
+      },
+      {
+        id: 'friends',
+        name: 'Amigos',
+        channel: 'custom',
         unreadCount: 0,
         messages: [],
       },
@@ -195,6 +214,66 @@ export class ChatUI {
       this.handleSendMessage();
       return;
     }
+
+    // Friends subtab
+    if (target.classList.contains('friends-subtab')) {
+      const subtab = target.getAttribute('data-subtab') as 'list' | 'requests' | 'add';
+      if (subtab) {
+        this.friendsActiveTab = subtab;
+        this.render();
+      }
+      return;
+    }
+
+    // Friends buttons
+    if (target.classList.contains('friends-whisper-btn')) {
+      const friendName = target.getAttribute('data-friend');
+      if (friendName) {
+        this.createWhisperTab(friendName);
+      }
+      return;
+    }
+
+    if (target.classList.contains('friends-accept-btn')) {
+      const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
+      if (friendId) {
+        this.acceptFriendRequest(friendId);
+      }
+      return;
+    }
+
+    if (target.classList.contains('friends-reject-btn') || target.classList.contains('friends-cancel-btn')) {
+      const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
+      if (friendId) {
+        const request = this.friendRequests.find(r => r.id === friendId);
+        if (request && request.direction === 'received' && confirm('Rejeitar este pedido de amizade?')) {
+          this.removeOrRejectFriend(friendId);
+        } else if (confirm('Remover este amigo?')) {
+          this.removeOrRejectFriend(friendId);
+        } else if (!request) {
+          this.removeOrRejectFriend(friendId);
+        }
+      }
+      return;
+    }
+
+    if (target.classList.contains('friends-remove-btn')) {
+      const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
+      if (friendId && confirm('Remover este amigo?')) {
+        this.removeOrRejectFriend(friendId);
+      }
+      return;
+    }
+
+    if (target.classList.contains('friends-add-btn')) {
+      const input = this.container.querySelector('.friends-add-input') as HTMLInputElement;
+      if (input && input.value.trim()) {
+        this.sendFriendRequest(input.value.trim());
+        input.value = '';
+        this.addFriendInput = '';
+      }
+      return;
+    }
   };
 
   private keydownHandler = (e: KeyboardEvent) => {
@@ -251,6 +330,18 @@ export class ChatUI {
         e.stopPropagation();
         this.handleSendMessage();
         return;
+      }
+    }
+
+    // Enter no input de adicionar amigo
+    if (target.classList.contains('friends-add-input')) {
+      const input = target as HTMLInputElement;
+      if (e.key === 'Enter' && input.value.trim()) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.sendFriendRequest(input.value.trim());
+        input.value = '';
+        this.addFriendInput = '';
       }
     }
   };
@@ -326,6 +417,11 @@ export class ChatUI {
         }
         // Se autocomplete já estava fechado, não fazer nada (não renderizar)
       }
+    }
+
+    // Atualizar input de adicionar amigo
+    if (target.classList.contains('friends-add-input')) {
+      this.addFriendInput = (target as HTMLInputElement).value;
     }
   };
   
@@ -459,17 +555,21 @@ export class ChatUI {
       // Apenas o servidor (via friend:online/offline) deve notificar sobre amigos
     });
 
-    // Amigo ficou online - mostrar mensagem de sistema
+    // Amigo ficou online - mostrar mensagem de sistema e atualizar lista
     onFriendOnline((data) => {
       this.addSystemMessage(`${data.username} está online`, false);
+      this.onlineFriends.add(data.username);
+      this.updateFriendOnlineStatus(data.username, true);
       if (this.onFriendStatusChange) {
         this.onFriendStatusChange(data.username, true);
       }
     });
 
-    // Amigo ficou offline - mostrar mensagem de sistema
+    // Amigo ficou offline - mostrar mensagem de sistema e atualizar lista
     onFriendOffline((data) => {
       this.addSystemMessage(`${data.username} ficou offline`, false);
+      this.onlineFriends.delete(data.username);
+      this.updateFriendOnlineStatus(data.username, false);
       if (this.onFriendStatusChange) {
         this.onFriendStatusChange(data.username, false);
       }
@@ -555,26 +655,35 @@ export class ChatUI {
     const tab = this.tabs.find(t => t.id === tabId);
     if (tab) {
       tab.unreadCount = 0; // Limpar contador não lidas
-      // NUNCA tentar carregar histórico para whispers via joinChannel
+      // NUNCA tentar carregar histórico para whispers ou friends via joinChannel
       // Whispers não são canais - são conexões diretas entre usuários
-      if (!tab.messages.length && getConnectionStatus() && tab.channel !== 'whisper') {
+      // Friends é uma interface de gerenciamento, não um canal
+      if (!tab.messages.length && getConnectionStatus() && tab.channel !== 'whisper' && tab.id !== 'friends') {
         // Validar que o canal é válido antes de fazer join
         const validChannels = ['global', 'group', 'trade'];
         if (validChannels.includes(tab.channel)) {
           joinChannel(tab.channel);
         }
       }
+      
+      // Recarregar amigos se selecionou aba de amigos
+      if (tab.id === 'friends') {
+        this.loadFriends();
+        this.loadFriendRequests();
+      }
     }
     this.render();
     this.scrollToBottom();
     
-    // Focar no input após selecionar aba
-    setTimeout(() => {
-      const input = this.container.querySelector('.chat-input') as HTMLInputElement;
-      if (input) {
-        input.focus();
-      }
-    }, 50);
+    // Focar no input após selecionar aba (mas não se for aba de amigos)
+    if (tabId !== 'friends') {
+      setTimeout(() => {
+        const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+        if (input) {
+          input.focus();
+        }
+      }, 50);
+    }
   }
 
   /**
@@ -946,6 +1055,306 @@ export class ChatUI {
   }
 
   /**
+   * Renderiza conteúdo da aba de amigos
+   */
+  private renderFriendsContent(): string {
+    return `
+      <div style="
+        height: 180px;
+        overflow-y: auto;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+      ">
+        <!-- Friends tabs -->
+        <div style="
+          display: flex;
+          gap: 2px;
+          margin-bottom: 10px;
+        ">
+          <div class="friends-subtab" data-subtab="list" style="
+            padding: 5px 10px;
+            background: ${this.friendsActiveTab === 'list' ? 'rgba(74, 85, 104, 0.8)' : 'rgba(45, 55, 72, 0.6)'};
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+          ">Lista</div>
+          <div class="friends-subtab" data-subtab="requests" style="
+            padding: 5px 10px;
+            background: ${this.friendsActiveTab === 'requests' ? 'rgba(74, 85, 104, 0.8)' : 'rgba(45, 55, 72, 0.6)'};
+            color: ${this.friendRequests.length > 0 ? '#ff6b6b' : '#fff'};
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+          ">Pedidos${this.friendRequests.length > 0 ? ` (${this.friendRequests.length})` : ''}</div>
+          <div class="friends-subtab" data-subtab="add" style="
+            padding: 5px 10px;
+            background: ${this.friendsActiveTab === 'add' ? 'rgba(74, 85, 104, 0.8)' : 'rgba(45, 55, 72, 0.6)'};
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+          ">Adicionar</div>
+        </div>
+
+        <!-- Friends content -->
+        ${this.friendsActiveTab === 'list' ? this.renderFriendsList() : ''}
+        ${this.friendsActiveTab === 'requests' ? this.renderFriendsRequests() : ''}
+        ${this.friendsActiveTab === 'add' ? this.renderAddFriend() : ''}
+      </div>
+    `;
+  }
+
+  /**
+   * Renderiza lista de amigos
+   */
+  private renderFriendsList(): string {
+    if (this.friends.length === 0) {
+      return '<div style="color: #888; text-align: center; padding: 20px;">Nenhum amigo ainda</div>';
+    }
+
+    return this.friends.map(friend => `
+      <div style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        margin-bottom: 5px;
+        background: rgba(45, 55, 72, 0.6);
+        border-radius: 4px;
+      ">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: ${friend.isOnline ? '#48bb78' : '#888'};
+          "></div>
+          <span style="color: #fff;">${this.escapeHtml(friend.friendName)}</span>
+        </div>
+        <div style="display: flex; gap: 5px;">
+          ${friend.isOnline ? `
+            <button class="friends-whisper-btn" data-friend="${this.escapeHtml(friend.friendName)}" style="
+              padding: 4px 8px;
+              background: #4299e1;
+              border: none;
+              border-radius: 4px;
+              color: #fff;
+              cursor: pointer;
+              font-size: 10px;
+            ">💬</button>
+          ` : ''}
+          <button class="friends-remove-btn" data-friend-id="${friend.friendId}" style="
+            padding: 4px 8px;
+            background: #f56565;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 10px;
+          ">×</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  /**
+   * Renderiza pedidos de amizade
+   */
+  private renderFriendsRequests(): string {
+    if (this.friendRequests.length === 0) {
+      return '<div style="color: #888; text-align: center; padding: 20px;">Nenhum pedido pendente</div>';
+    }
+
+    return this.friendRequests.map(req => `
+      <div style="
+        padding: 10px;
+        margin-bottom: 5px;
+        background: rgba(45, 55, 72, 0.6);
+        border-radius: 4px;
+      ">
+        <div style="color: #fff; margin-bottom: 5px;">
+          ${req.direction === 'received' ? '📩' : '📤'} 
+          ${req.direction === 'received' 
+            ? `${this.escapeHtml(req.fromUsername)} quer ser seu amigo`
+            : `Pedido enviado para ${this.escapeHtml(req.toUsername)}`
+          }
+        </div>
+        <div style="display: flex; gap: 5px;">
+          ${req.direction === 'received' ? `
+            <button class="friends-accept-btn" data-friend-id="${req.fromUserId}" style="
+              padding: 4px 12px;
+              background: #48bb78;
+              border: none;
+              border-radius: 4px;
+              color: #fff;
+              cursor: pointer;
+              font-size: 10px;
+            ">Aceitar</button>
+            <button class="friends-reject-btn" data-friend-id="${req.id}" style="
+              padding: 4px 12px;
+              background: #f56565;
+              border: none;
+              border-radius: 4px;
+              color: #fff;
+              cursor: pointer;
+              font-size: 10px;
+            ">Rejeitar</button>
+          ` : `
+            <button class="friends-cancel-btn" data-friend-id="${req.id}" style="
+              padding: 4px 12px;
+              background: #f56565;
+              border: none;
+              border-radius: 4px;
+              color: #fff;
+              cursor: pointer;
+              font-size: 10px;
+            ">Cancelar</button>
+          `}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  /**
+   * Renderiza formulário de adicionar amigo
+   */
+  private renderAddFriend(): string {
+    return `
+      <div style="padding: 10px;">
+        <div style="color: #fff; margin-bottom: 10px; font-weight: bold;">
+          Adicionar novo amigo
+        </div>
+        <div style="display: flex; gap: 5px;">
+          <input type="text" class="friends-add-input" placeholder="Nome do usuário..." style="
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            padding: 5px 10px;
+            color: #fff;
+            font-family: monospace;
+            font-size: 12px;
+          " value="${this.addFriendInput}">
+          <button class="friends-add-btn" style="
+            background: #4299e1;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 15px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+          ">Adicionar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Carrega lista de amigos
+   */
+  private async loadFriends(): Promise<void> {
+    try {
+      const response = await friendsApi.getFriends();
+      if (response.success && response.data) {
+        this.friends = response.data.map(f => ({
+          ...f,
+          isOnline: this.onlineFriends.has(f.friendName),
+        }));
+        if (this.activeTabId === 'friends') {
+          this.render();
+        }
+      }
+    } catch (error) {
+      console.error('[ChatUI] Error loading friends:', error);
+    }
+  }
+
+  /**
+   * Carrega pedidos de amizade
+   */
+  private async loadFriendRequests(): Promise<void> {
+    try {
+      const response = await friendsApi.getRequests();
+      if (response.success && response.data) {
+        this.friendRequests = response.data;
+        if (this.activeTabId === 'friends') {
+          this.render();
+        }
+      }
+    } catch (error) {
+      console.error('[ChatUI] Error loading friend requests:', error);
+    }
+  }
+
+  /**
+   * Atualiza status online de um amigo
+   */
+  private updateFriendOnlineStatus(username: string, isOnline: boolean): void {
+    this.friends.forEach(friend => {
+      if (friend.friendName === username) {
+        friend.isOnline = isOnline;
+      }
+    });
+    if (this.activeTabId === 'friends') {
+      this.render();
+    }
+  }
+
+  /**
+   * Envia pedido de amizade
+   */
+  private async sendFriendRequest(username: string): Promise<void> {
+    try {
+      const response = await friendsApi.sendRequest(username);
+      if (response.success) {
+        await this.loadFriendRequests();
+        this.addFriendInput = '';
+        this.render();
+      } else {
+        alert(response.error || 'Erro ao enviar pedido');
+      }
+    } catch (error: any) {
+      console.error('[ChatUI] Error sending friend request:', error);
+      alert(error.message || 'Erro ao enviar pedido');
+    }
+  }
+
+  /**
+   * Aceita pedido de amizade
+   */
+  private async acceptFriendRequest(friendId: number): Promise<void> {
+    try {
+      const response = await friendsApi.acceptRequest(friendId);
+      if (response.success) {
+        await this.loadFriends();
+        await this.loadFriendRequests();
+        this.render();
+      }
+    } catch (error) {
+      console.error('[ChatUI] Error accepting request:', error);
+      alert('Erro ao aceitar pedido');
+    }
+  }
+
+  /**
+   * Remove amigo ou rejeita pedido
+   */
+  private async removeOrRejectFriend(friendId: number): Promise<void> {
+    try {
+      const response = await friendsApi.removeFriend(friendId);
+      if (response.success) {
+        await this.loadFriends();
+        await this.loadFriendRequests();
+        this.render();
+      }
+    } catch (error) {
+      console.error('[ChatUI] Error removing/rejecting friend:', error);
+      alert('Erro ao remover/rejeitar');
+    }
+  }
+
+  /**
    * Renderiza a UI
    */
   private render(): void {
@@ -1021,6 +1430,8 @@ export class ChatUI {
           `).join('')}
         </div>
 
+        <!-- Content (Messages or Friends) -->
+        ${this.activeTabId === 'friends' ? this.renderFriendsContent() : `
         <!-- Messages -->
         <div class="chat-messages" style="
           height: 180px;
@@ -1060,8 +1471,10 @@ export class ChatUI {
             `;
           }).join('') || '<div style="color: #888; text-align: center; padding: 20px;">Nenhuma mensagem ainda</div>'}
         </div>
+        `}
 
-        <!-- Input -->
+        <!-- Input (only show for non-friends tabs) -->
+        ${this.activeTabId !== 'friends' ? `
         <div style="
           position: relative;
           display: flex;
@@ -1120,6 +1533,7 @@ export class ChatUI {
             font-weight: bold;
           ">Enviar</button>
         </div>
+        ` : ''}
       ` : ''}
     `;
 
