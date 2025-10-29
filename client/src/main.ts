@@ -2227,32 +2227,42 @@ function startTournamentBattle(rank: TournamentRank) {
 }
 
 function resizeCanvas() {
-  // Fixed logical resolution
-  const logicalWidth = 1400;
-  const logicalHeight = 800;
-  const aspectRatio = logicalWidth / logicalHeight;
-
-  // Available space
+  // CORREÇÃO: Usar toda a largura e altura disponíveis da janela
   const containerWidth = window.innerWidth;
   const containerHeight = window.innerHeight;
-  const containerAspect = containerWidth / containerHeight;
 
-  let renderWidth = containerWidth;
-  let renderHeight = containerHeight;
+  // Tamanho lógico do canvas (resolução interna)
+  // Ajustar dinamicamente baseado no tamanho da janela, mas manter proporção razoável
+  const targetAspectRatio = containerWidth / containerHeight;
+  
+  // Usar toda a largura como base
+  const logicalWidth = Math.max(800, Math.floor(containerWidth));
+  // Calcular altura proporcional, mas mínimo de 600px
+  const logicalHeight = Math.max(600, Math.floor(logicalWidth / targetAspectRatio));
+  
+  // Canvas deve preencher toda a janela
+  canvas.style.width = `${containerWidth}px`;
+  canvas.style.height = `${containerHeight}px`;
+  canvas.style.position = 'absolute';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.margin = '0';
+  canvas.style.padding = '0';
 
-  // Maintain aspect ratio
-  if (containerAspect > aspectRatio) {
-    renderWidth = containerHeight * aspectRatio;
-  } else {
-    renderHeight = containerWidth / aspectRatio;
+  // Tamanho interno do canvas (usando devicePixelRatio para alta DPI)
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = logicalWidth * dpr;
+  canvas.height = logicalHeight * dpr;
+  
+  // Escalar o contexto para compensar o devicePixelRatio
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.scale(dpr, dpr);
   }
-
-  canvas.style.width = `${renderWidth}px`;
-  canvas.style.height = `${renderHeight}px`;
-
-  // Keep logical resolution
-  canvas.width = logicalWidth;
-  canvas.height = logicalHeight;
+  
+  // Ajustar o tamanho físico do canvas para corresponder ao tamanho lógico
+  canvas.style.width = `${logicalWidth}px`;
+  canvas.style.height = `${logicalHeight}px`;
 }
 
 function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {
