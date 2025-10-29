@@ -83,7 +83,6 @@ export class PS1Water {
         }
       `,
       side: THREE.DoubleSide,
-      flatShading: false, // Water can have slight smoothing
     });
     
     this.mesh = new THREE.Mesh(geometry, this.material);
