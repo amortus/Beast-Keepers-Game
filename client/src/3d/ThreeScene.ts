@@ -37,7 +37,10 @@ export class ThreeScene {
       alpha: false,
       powerPreference: 'high-performance'
     });
-    this.renderer.setSize(canvas.width, canvas.height);
+    
+    // ✅ Usa tamanho REAL do CSS, não o lógico do canvas
+    const rect = canvas.getBoundingClientRect();
+    this.renderer.setSize(rect.width, rect.height, false); // false = não atualiza style
     this.renderer.setPixelRatio(1.0);     // Resolução normal (PS1 smooth, não Minecraft)
     this.renderer.shadowMap.enabled = false; // Disable shadows for performance
     
