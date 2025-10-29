@@ -268,9 +268,16 @@ export class GameUI {
 
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
+    // CORREÇÃO: Layout responsivo baseado no tamanho do canvas
+    const availableWidth = this.canvas.width - 40; // Margem de 20px de cada lado
+    const panelSpacing = 20;
+    
+    // Largura adaptativa: se tela grande, usar proporção, senão usar toda largura disponível
+    const isWideScreen = this.canvas.width >= 1400;
+    const leftPanelWidth = isWideScreen ? Math.min(450, availableWidth * 0.3) : Math.min(450, availableWidth);
     const x = 20;
     const y = 100;
-    const width = 450;
+    const width = leftPanelWidth;
     const height = 450;
 
     drawPanel(this.ctx, x, y, width, height);
@@ -517,9 +524,17 @@ export class GameUI {
 
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
-    const x = 490;
-    const y = 100;
-    const width = 890;
+    // CORREÇÃO: Layout responsivo baseado no tamanho do canvas
+    const availableWidth = this.canvas.width - 40; // Margem de 20px de cada lado
+    const panelSpacing = 20;
+    const leftPanelWidth = this.canvas.width >= 1400 ? Math.min(450, availableWidth * 0.3) : Math.min(450, availableWidth);
+    
+    // Painel direito começa após o painel esquerdo + spacing
+    // Se tela pequena, painel direito vai abaixo
+    const isWideScreen = this.canvas.width >= 1400;
+    const x = isWideScreen ? 20 + leftPanelWidth + panelSpacing : 20;
+    const y = isWideScreen ? 100 : 560; // Se não cabe lado a lado, coloca abaixo
+    const width = isWideScreen ? availableWidth - leftPanelWidth - panelSpacing : availableWidth;
     const height = 450;
 
     drawPanel(this.ctx, x, y, width, height);
@@ -599,8 +614,15 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
+    // CORREÇÃO: Menu de ações responsivo - sempre na parte inferior
+    const isWideScreen = this.canvas.width >= 1400;
+    const leftPanelHeight = 450;
+    const rightPanelY = isWideScreen ? 100 : 560;
+    const rightPanelHeight = 450;
+    const bottomPanelY = isWideScreen ? Math.max(560, rightPanelY + rightPanelHeight + 20) : rightPanelY + rightPanelHeight + 20;
+    
     const x = 20;
-    const y = 570;
+    const y = bottomPanelY;
     const width = this.canvas.width - 40;
     const height = 170;
 
@@ -823,12 +845,15 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // CORREÇÃO: Posicionar no canto inferior direito, mas acima dos botões de ação
-    // Para evitar sobreposição com "Selecione uma categoria acima"
-    const width = 500;
+    // CORREÇÃO: Posicionar no canto inferior direito, responsivo ao tamanho da janela
+    const isWideScreen = this.canvas.width >= 1400;
+    const actionMenuHeight = 170;
+    const actionMenuY = isWideScreen ? 560 : (this.canvas.width >= 1400 ? 560 : 1010);
+    
+    const width = Math.min(500, this.canvas.width - 40); // Não ultrapassar largura da janela
     const height = 50;
     const x = this.canvas.width - width - 20; // 20px de margem da borda
-    const y = this.canvas.height - height - 150; // 150px acima da parte inferior para não sobrepor ações
+    const y = Math.max(actionMenuY - height - 10, 100); // Acima do menu de ações ou mínimo 100px do topo
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: COLORS.bg.medium,
