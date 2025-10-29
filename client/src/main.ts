@@ -2232,6 +2232,7 @@ function resizeCanvas() {
   const containerHeight = window.innerHeight;
 
   // Canvas deve preencher toda a janela
+  // CORREÇÃO: Garantir que canvas não tenha estilos conflitantes do AuthUI
   canvas.style.position = 'fixed';
   canvas.style.top = '0';
   canvas.style.left = '0';
@@ -2239,6 +2240,8 @@ function resizeCanvas() {
   canvas.style.padding = '0';
   canvas.style.width = `${containerWidth}px`;
   canvas.style.height = `${containerHeight}px`;
+  canvas.style.zIndex = '1'; // Z-index baixo para ficar atrás de modais/chats
+  canvas.style.transform = ''; // Remover transformações do AuthUI
 
   // Tamanho lógico do canvas (resolução interna)
   // Usar o tamanho real da janela para coordenadas de desenho

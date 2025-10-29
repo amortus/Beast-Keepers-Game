@@ -465,8 +465,12 @@ export class AuthUI {
   }
 
   private setupEventListeners() {
-    this.canvas.addEventListener('click', (e) => this.handleClick(e));
+    // CORREÇÃO: Guardar referência do handler para poder remover depois
+    this.clickHandler = (e: MouseEvent) => this.handleClick(e);
+    this.canvas.addEventListener('click', this.clickHandler);
   }
+  
+  private clickHandler?: (e: MouseEvent) => void;
 
   private handleClick(e: MouseEvent) {
     // CORREÇÃO: Proteção menos restritiva - apenas se estiver calculando escala (crítico)
@@ -673,29 +677,48 @@ export class AuthUI {
   // CORREÇÃO: Método para esconder completamente o AuthUI após login
   // IMPORTANTE: NÃO esconder o canvas, pois ele é compartilhado com GameUI!
   public hide() {
-    // CORREÇÃO: Não esconder o canvas - ele é usado pelo GameUI
-    // Apenas limpar os elementos do AuthUI
+    // CORREÇÃO: Remover completamente todos os elementos do AuthUI do DOM
     
-    // Esconder container de inputs
-    if (this.inputsContainer) {
-      this.inputsContainer.style.display = 'none';
+    // Remover container de inputs completamente do DOM (não apenas esconder)
+    if (this.inputsContainer && this.inputsContainer.parentElement) {
+      this.inputsContainer.parentElement.removeChild(this.inputsContainer);
     }
     
-    // Limpar todos os inputs
+    // Limpar referências
     this.clearInputs();
+    this.emailInput = null;
+    this.passwordInput = null;
+    this.displayNameInput = null;
+    this.confirmPasswordInput = null;
+    this.inputsContainer = null as any;
     
     // Limpar botões
     this.buttons.clear();
     
-    // Limpar canvas (apenas o conteúdo do AuthUI, não esconder)
-    // O canvas será usado pelo GameUI para renderizar o jogo
+    // CORREÇÃO: Resetar z-index e posicionamento do canvas para não interferir
     if (this.canvas) {
+      // Remover z-index específico do AuthUI
+      this.canvas.style.zIndex = '';
+      // Resetar posicionamento para o GameUI controlar
+      this.canvas.style.position = '';
+      this.canvas.style.top = '';
+      this.canvas.style.left = '';
+      this.canvas.style.transform = '';
+      
+      // Limpar canvas (apenas o conteúdo do AuthUI, não esconder)
+      // O canvas será usado pelo GameUI para renderizar o jogo
       const ctx = this.canvas.getContext('2d');
       if (ctx) {
-        // Limpar apenas o canvas sem escondê-lo
         ctx.fillStyle = '#0f0f1e';
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       }
+    }
+    
+    // Remover event listeners do canvas relacionados ao AuthUI
+    // O canvas será reutilizado pelo GameUI
+    if (this.clickHandler && this.canvas) {
+      this.canvas.removeEventListener('click', this.clickHandler);
+      this.clickHandler = undefined;
     }
   }
 
