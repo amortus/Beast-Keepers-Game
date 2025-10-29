@@ -264,6 +264,16 @@ export class GameUI {
     });
   }
 
+  /**
+   * Força recriação do container 3D ao redimensionar janela
+   */
+  public forceRedraw() {
+    // Remove container 3D para forçar recriação com novo tamanho
+    this.cleanupRanchScene3D();
+    this.cleanup3DMiniViewer();
+    // Próximo draw() vai recriar tudo com tamanho correto
+  }
+
   public draw() {
     this.buttons.clear();
     
