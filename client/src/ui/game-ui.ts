@@ -163,6 +163,16 @@ export class GameUI {
       this.ranchScene3D.startLoop();
       
       this.currentBeastForViewer = beast;
+      
+      // ✅ FORÇA resize APÓS criação para garantir tamanho final correto
+      requestAnimationFrame(() => {
+        if (this.ranchScene3D) {
+          const finalRect = canvas.getBoundingClientRect();
+          this.ranchScene3D.resize(finalRect.width, finalRect.height);
+          console.log('[GameUI] 🔧 Forced resize to:', Math.round(finalRect.width), 'x', Math.round(finalRect.height));
+        }
+      });
+      
       console.log('[GameUI] ✓ Ranch Scene 3D created successfully');
     }
     
