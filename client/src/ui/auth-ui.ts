@@ -68,9 +68,28 @@ export class AuthUI {
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      pointer-events: none;
+      pointer-events: auto;
       z-index: 100;
     `;
+    
+    // CORREÇÃO CRÍTICA: Passar cliques através do container para o canvas
+    // Mas permitir cliques em inputs e seus filhos
+    this.inputsContainer.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      // Se clicou em um input ou suas labels/divs, permitir
+      if (target.tagName === 'INPUT' || target.closest('input')) {
+        return; // Deixar o input processar
+      }
+      // Caso contrário, passar o clique para o canvas abaixo
+      e.stopPropagation();
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const clickX = e.clientX - canvasRect.left;
+      const clickY = e.clientY - canvasRect.top;
+      
+      // Simular clique no canvas
+      this.handleClick({ clientX: e.clientX, clientY: e.clientY } as MouseEvent);
+    });
+    
     document.body.appendChild(this.inputsContainer);
     
     // Garantir que canvas fique acima dos inputs quando necessário
