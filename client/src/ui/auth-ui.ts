@@ -68,12 +68,12 @@ export class AuthUI {
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      pointer-events: auto;
-      z-index: 98;
+      pointer-events: none;
+      z-index: 100;
     `;
     document.body.appendChild(this.inputsContainer);
     
-    // Canvas fica ACIMA do container, inputs ficam ACIMA do canvas
+    // Garantir que canvas fique acima dos inputs quando necessário
     this.canvas.style.zIndex = '99';
     
     this.setupEventListeners();
@@ -180,22 +180,6 @@ export class AuthUI {
     input.placeholder = placeholder;
     input.autocomplete = type === 'email' ? 'email' : type === 'password' ? 'current-password' : 'off';
     
-    // SOLUÇÃO EXPLÍCITA: Definir tabIndex baseado na tela e campo
-    // Garantir ordem correta independente de quando o campo é criado
-    if (this.currentScreen === 'login') {
-      // Login: email → password
-      if (name === 'email') input.tabIndex = 1;
-      else if (name === 'password') input.tabIndex = 2;
-    } else if (this.currentScreen === 'register') {
-      // Cadastro: email → displayName → password → confirmPassword
-      if (name === 'email') input.tabIndex = 1;
-      else if (name === 'displayName') input.tabIndex = 2;
-      else if (name === 'password') input.tabIndex = 3;
-      else if (name === 'confirmPassword') input.tabIndex = 4;
-    }
-    
-    console.log(`[AuthUI] Created "${name}" on ${this.currentScreen} with tabIndex ${input.tabIndex}`);
-    
     // Posicionamento absoluto no container
     input.style.cssText = `
       position: absolute;
@@ -216,12 +200,7 @@ export class AuthUI {
       box-sizing: border-box;
       transition: border-color 0.2s, box-shadow 0.2s;
       z-index: 101;
-      isolation: isolate;
     `;
-    
-    // SOLUÇÃO SIMPLES: Garantir que input seja focável via Tab
-    // Mesmo com container pai tendo pointer-events: none
-    input.setAttribute('tabindex', input.tabIndex.toString());
 
     // Event listeners para validação em tempo real
     input.addEventListener('input', () => {
@@ -241,10 +220,6 @@ export class AuthUI {
       if (e.key === 'Enter') {
         e.preventDefault();
         this.handleEnterKey(name);
-      } else if (e.key === 'Tab') {
-        // CORREÇÃO: Suporte nativo ao Tab - não prevenir comportamento padrão
-        // O browser já lida com Tab naturalmente entre elementos focáveis
-        // Apenas garantir que os campos estão na ordem correta no DOM
       }
     });
 
