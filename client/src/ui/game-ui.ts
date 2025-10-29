@@ -114,12 +114,6 @@ export class GameUI {
       const realWidth = width * scaleX;
       const realHeight = height * scaleY;
       
-      console.log('[GameUI] 3D Container DEBUG:');
-      console.log('  Lógico:', width, 'x', height);
-      console.log('  Escalado (REAL):', Math.round(realWidth), 'x', Math.round(realHeight));
-      console.log('  Posição:', Math.round(realLeft), ',', Math.round(realTop));
-      console.log('  Scale:', scaleX.toFixed(2), 'x', scaleY.toFixed(2));
-      
       // Create container for Ranch Scene 3D
       this.ranchScene3DContainer = document.createElement('div');
       this.ranchScene3DContainer.id = 'ranch-scene-3d-container';
@@ -387,11 +381,11 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === 3D Ranch: preenche MÁXIMO possível ===
+    // === 3D Ranch: preenche até os painéis direitos ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = 890; // FIXO para testar se preenche visualmente
-    const scene3DHeight = 710; // FIXO para testar
+    const scene3DWidth = this.canvas.width - 510; // Até os painéis (gap mínimo)
+    const scene3DHeight = this.canvas.height - 90; // Até o fundo
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
