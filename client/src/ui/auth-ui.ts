@@ -23,7 +23,7 @@ export class AuthUI {
   private displayNameInput: HTMLInputElement | null = null;
   private confirmPasswordInput: HTMLInputElement | null = null;
   private errorElements: Map<string, HTMLDivElement> = new Map();
-
+  
   // Form state
   private errorMessage: string = '';
   private isLoading: boolean = false;
@@ -112,6 +112,8 @@ export class AuthUI {
     this.inputsContainer.style.transform = 'translate(-50%, -50%)';
     
     // Redesenhar após mudança de escala
+    // IMPORTANTE: Sempre limpar botões antes de redesenhar para garantir que sejam recriados
+    this.buttons.clear();
     this.draw();
     // Atualizar posições após um pequeno delay para garantir que o canvas foi renderizado
     setTimeout(() => this.updateInputPositions(), 0);
@@ -323,7 +325,7 @@ export class AuthUI {
       this.fieldValid.delete('email');
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       this.fieldErrors.set('email', 'Email inválido');
@@ -348,11 +350,11 @@ export class AuthUI {
       }
       return;
     }
-    
+
     if (password.length < 6) {
       this.fieldErrors.set('password', 'Senha deve ter no mínimo 6 caracteres');
       this.fieldValid.set('password', false);
-    } else {
+      } else {
       this.fieldErrors.delete('password');
       this.fieldValid.set('password', true);
     }
@@ -374,7 +376,7 @@ export class AuthUI {
       this.fieldValid.delete('displayName');
       return;
     }
-    
+
     if (displayName.length < 3) {
       this.fieldErrors.set('displayName', 'Nome deve ter no mínimo 3 caracteres');
       this.fieldValid.set('displayName', false);
@@ -398,7 +400,7 @@ export class AuthUI {
       this.fieldValid.delete('confirmPassword');
       return;
     }
-    
+
     const password = this.passwordInput?.value || '';
     if (confirmPassword !== password) {
       this.fieldErrors.set('confirmPassword', 'As senhas não coincidem');
@@ -440,14 +442,24 @@ export class AuthUI {
 
   private handleClick(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
+    
+    // CORREÇÃO: O canvas.width/height são as dimensões internas (baseWidth/baseHeight)
+    // O rect.width/height são as dimensões visuais (escaladas)
+    // Para converter coordenadas de tela para coordenadas do canvas interno:
     const scaleX = this.canvas.width / rect.width;
     const scaleY = this.canvas.height / rect.height;
+    
+    // Coordenadas do mouse em pixels do canvas interno
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    // Check buttons
+    // Check buttons - usar coordenadas do canvas interno
     this.buttons.forEach((btn) => {
       if (isMouseOver(x, y, btn.x, btn.y, btn.width, btn.height)) {
+        // Parar propagação
+        e.stopPropagation();
+        e.preventDefault();
+        // Executar ação do botão
         btn.action();
       }
     });
@@ -799,6 +811,9 @@ export class AuthUI {
       height: 60,
       action: () => {
         this.currentScreen = 'login';
+        // Limpar inputs quando mudar para login
+        this.clearInputs();
+        // Limpar botões e redesenhar
         this.draw();
       }
     });
@@ -816,6 +831,9 @@ export class AuthUI {
       height: 60,
       action: () => {
         this.currentScreen = 'register';
+        // Limpar inputs quando mudar para register
+        this.clearInputs();
+        // Limpar botões e redesenhar
         this.draw();
       }
     });
