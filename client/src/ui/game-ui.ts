@@ -955,7 +955,8 @@ export class GameUI {
     return [];
   }
 
-  private drawWeekInfo() {
+  // REMOVIDO: Week Info agora está no header como "Explorações"
+  private drawWeekInfo_DEPRECATED() {
     if (!this.gameState.activeBeast) return;
     
     const beast = this.gameState.activeBeast;
