@@ -104,15 +104,17 @@ export class AuthUI {
     this.canvas.style.top = '50%';
     this.canvas.style.transform = 'translate(-50%, -50%)';
     
-    // Aplicar escala ao container de inputs
+    // Aplicar mesma escala e posição do canvas ao container de inputs
+    // O container deve ter o mesmo tamanho visual que o canvas
     this.inputsContainer.style.width = `${this.baseWidth * this.scale}px`;
     this.inputsContainer.style.height = `${this.baseHeight * this.scale}px`;
-    this.inputsContainer.style.transform = `translate(-50%, -50%) scale(${this.scale})`;
-    this.inputsContainer.style.transformOrigin = 'center center';
+    // Usar mesma transform do canvas para manter alinhamento
+    this.inputsContainer.style.transform = 'translate(-50%, -50%)';
     
     // Redesenhar após mudança de escala
     this.draw();
-    this.updateInputPositions();
+    // Atualizar posições após um pequeno delay para garantir que o canvas foi renderizado
+    setTimeout(() => this.updateInputPositions(), 0);
   }
 
   private createInputField(
@@ -146,10 +148,10 @@ export class AuthUI {
       background: linear-gradient(to bottom, #2a2a3e, #1a1a2e);
       border: 2px solid ${COLORS.ui.textDim};
       border-radius: 0;
-      padding: 0 45px 0 20px;
+      padding: 0 ${45 * this.scale}px 0 ${20 * this.scale}px;
       color: ${COLORS.ui.text};
       font-family: monospace;
-      font-size: 20px;
+      font-size: ${20 * this.scale}px;
       font-weight: bold;
       outline: none;
       pointer-events: all;
@@ -444,7 +446,7 @@ export class AuthUI {
     const y = (e.clientY - rect.top) * scaleY;
 
     // Check buttons
-    this.buttons.forEach((btn, key) => {
+    this.buttons.forEach((btn) => {
       if (isMouseOver(x, y, btn.x, btn.y, btn.width, btn.height)) {
         btn.action();
       }
@@ -545,8 +547,12 @@ export class AuthUI {
       this.drawWelcomeScreen();
     } else if (this.currentScreen === 'login') {
       this.drawLoginScreen();
+      // Atualizar posições após desenhar
+      setTimeout(() => this.updateInputPositions(), 0);
     } else if (this.currentScreen === 'register') {
       this.drawRegisterScreen();
+      // Atualizar posições após desenhar
+      setTimeout(() => this.updateInputPositions(), 0);
     }
   }
 
@@ -578,37 +584,48 @@ export class AuthUI {
     const fieldHeight = isMobile ? 50 : 60;
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
+    // Escalar coordenadas para corresponder ao container escalado
+    const scaledX = fieldX * this.scale;
+    const scaledEmailY = (panelY + 210) * this.scale;
+    let scaledPasswordY = (panelY + 330) * this.scale;
+    if (this.fieldErrors.get('email')) scaledPasswordY += 25 * this.scale;
+    
+    const scaledWidth = fieldWidth * this.scale;
+    const scaledHeight = fieldHeight * this.scale;
+
     // Email
     if (this.emailInput) {
-      const emailY = panelY + 210;
-      this.emailInput.style.left = `${fieldX}px`;
-      this.emailInput.style.top = `${emailY}px`;
-      this.emailInput.style.width = `${fieldWidth}px`;
-      this.emailInput.style.height = `${fieldHeight}px`;
+      this.emailInput.style.left = `${scaledX}px`;
+      this.emailInput.style.top = `${scaledEmailY}px`;
+      this.emailInput.style.width = `${scaledWidth}px`;
+      this.emailInput.style.height = `${scaledHeight}px`;
+      this.emailInput.style.fontSize = `${20 * this.scale}px`;
+      this.emailInput.style.padding = `0 ${45 * this.scale}px 0 ${20 * this.scale}px`;
       
       const errorEl = this.errorElements.get('email');
       if (errorEl) {
-        errorEl.style.left = `${fieldX}px`;
-        errorEl.style.top = `${emailY + fieldHeight + 5}px`;
-        errorEl.style.width = `${fieldWidth}px`;
+        errorEl.style.left = `${scaledX}px`;
+        errorEl.style.top = `${scaledEmailY + scaledHeight + 5 * this.scale}px`;
+        errorEl.style.width = `${scaledWidth}px`;
+        errorEl.style.fontSize = `${14 * this.scale}px`;
       }
     }
 
     // Password
     if (this.passwordInput) {
-      let passwordY = panelY + 330;
-      if (this.fieldErrors.get('email')) passwordY += 25;
-      
-      this.passwordInput.style.left = `${fieldX}px`;
-      this.passwordInput.style.top = `${passwordY}px`;
-      this.passwordInput.style.width = `${fieldWidth}px`;
-      this.passwordInput.style.height = `${fieldHeight}px`;
+      this.passwordInput.style.left = `${scaledX}px`;
+      this.passwordInput.style.top = `${scaledPasswordY}px`;
+      this.passwordInput.style.width = `${scaledWidth}px`;
+      this.passwordInput.style.height = `${scaledHeight}px`;
+      this.passwordInput.style.fontSize = `${20 * this.scale}px`;
+      this.passwordInput.style.padding = `0 ${45 * this.scale}px 0 ${20 * this.scale}px`;
       
       const errorEl = this.errorElements.get('password');
       if (errorEl) {
-        errorEl.style.left = `${fieldX}px`;
-        errorEl.style.top = `${passwordY + fieldHeight + 5}px`;
-        errorEl.style.width = `${fieldWidth}px`;
+        errorEl.style.left = `${scaledX}px`;
+        errorEl.style.top = `${scaledPasswordY + scaledHeight + 5 * this.scale}px`;
+        errorEl.style.width = `${scaledWidth}px`;
+        errorEl.style.fontSize = `${14 * this.scale}px`;
       }
     }
   }
@@ -624,20 +641,29 @@ export class AuthUI {
     const fieldHeight = isMobile ? 50 : 60;
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
+    // Escalar coordenadas
+    const scaledX = fieldX * this.scale;
+    const scaledWidth = fieldWidth * this.scale;
+    const scaledHeight = fieldHeight * this.scale;
+
     let currentY = panelY + 170;
 
     // Email
     if (this.emailInput) {
-      this.emailInput.style.left = `${fieldX}px`;
-      this.emailInput.style.top = `${currentY}px`;
-      this.emailInput.style.width = `${fieldWidth}px`;
-      this.emailInput.style.height = `${fieldHeight}px`;
+      const scaledY = currentY * this.scale;
+      this.emailInput.style.left = `${scaledX}px`;
+      this.emailInput.style.top = `${scaledY}px`;
+      this.emailInput.style.width = `${scaledWidth}px`;
+      this.emailInput.style.height = `${scaledHeight}px`;
+      this.emailInput.style.fontSize = `${20 * this.scale}px`;
+      this.emailInput.style.padding = `0 ${45 * this.scale}px 0 ${20 * this.scale}px`;
       
       const errorEl = this.errorElements.get('email');
       if (errorEl) {
-        errorEl.style.left = `${fieldX}px`;
-        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
-        errorEl.style.width = `${fieldWidth}px`;
+        errorEl.style.left = `${scaledX}px`;
+        errorEl.style.top = `${scaledY + scaledHeight + 5 * this.scale}px`;
+        errorEl.style.width = `${scaledWidth}px`;
+        errorEl.style.fontSize = `${14 * this.scale}px`;
       }
       
       if (this.fieldErrors.get('email')) currentY += 25;
@@ -646,16 +672,20 @@ export class AuthUI {
     // Display Name
     if (this.displayNameInput) {
       currentY += 110;
-      this.displayNameInput.style.left = `${fieldX}px`;
-      this.displayNameInput.style.top = `${currentY}px`;
-      this.displayNameInput.style.width = `${fieldWidth}px`;
-      this.displayNameInput.style.height = `${fieldHeight}px`;
+      const scaledY = currentY * this.scale;
+      this.displayNameInput.style.left = `${scaledX}px`;
+      this.displayNameInput.style.top = `${scaledY}px`;
+      this.displayNameInput.style.width = `${scaledWidth}px`;
+      this.displayNameInput.style.height = `${scaledHeight}px`;
+      this.displayNameInput.style.fontSize = `${20 * this.scale}px`;
+      this.displayNameInput.style.padding = `0 ${45 * this.scale}px 0 ${20 * this.scale}px`;
       
       const errorEl = this.errorElements.get('displayName');
       if (errorEl) {
-        errorEl.style.left = `${fieldX}px`;
-        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
-        errorEl.style.width = `${fieldWidth}px`;
+        errorEl.style.left = `${scaledX}px`;
+        errorEl.style.top = `${scaledY + scaledHeight + 5 * this.scale}px`;
+        errorEl.style.width = `${scaledWidth}px`;
+        errorEl.style.fontSize = `${14 * this.scale}px`;
       }
       
       if (this.fieldErrors.get('displayName')) currentY += 25;
@@ -664,16 +694,20 @@ export class AuthUI {
     // Password
     if (this.passwordInput) {
       currentY += 110;
-      this.passwordInput.style.left = `${fieldX}px`;
-      this.passwordInput.style.top = `${currentY}px`;
-      this.passwordInput.style.width = `${fieldWidth}px`;
-      this.passwordInput.style.height = `${fieldHeight}px`;
+      const scaledY = currentY * this.scale;
+      this.passwordInput.style.left = `${scaledX}px`;
+      this.passwordInput.style.top = `${scaledY}px`;
+      this.passwordInput.style.width = `${scaledWidth}px`;
+      this.passwordInput.style.height = `${scaledHeight}px`;
+      this.passwordInput.style.fontSize = `${20 * this.scale}px`;
+      this.passwordInput.style.padding = `0 ${45 * this.scale}px 0 ${20 * this.scale}px`;
       
       const errorEl = this.errorElements.get('password');
       if (errorEl) {
-        errorEl.style.left = `${fieldX}px`;
-        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
-        errorEl.style.width = `${fieldWidth}px`;
+        errorEl.style.left = `${scaledX}px`;
+        errorEl.style.top = `${scaledY + scaledHeight + 5 * this.scale}px`;
+        errorEl.style.width = `${scaledWidth}px`;
+        errorEl.style.fontSize = `${14 * this.scale}px`;
       }
       
       if (this.fieldErrors.get('password')) currentY += 25;
@@ -682,16 +716,20 @@ export class AuthUI {
     // Confirm Password
     if (this.confirmPasswordInput) {
       currentY += 110;
-      this.confirmPasswordInput.style.left = `${fieldX}px`;
-      this.confirmPasswordInput.style.top = `${currentY}px`;
-      this.confirmPasswordInput.style.width = `${fieldWidth}px`;
-      this.confirmPasswordInput.style.height = `${fieldHeight}px`;
+      const scaledY = currentY * this.scale;
+      this.confirmPasswordInput.style.left = `${scaledX}px`;
+      this.confirmPasswordInput.style.top = `${scaledY}px`;
+      this.confirmPasswordInput.style.width = `${scaledWidth}px`;
+      this.confirmPasswordInput.style.height = `${scaledHeight}px`;
+      this.confirmPasswordInput.style.fontSize = `${20 * this.scale}px`;
+      this.confirmPasswordInput.style.padding = `0 ${45 * this.scale}px 0 ${20 * this.scale}px`;
       
       const errorEl = this.errorElements.get('confirmPassword');
       if (errorEl) {
-        errorEl.style.left = `${fieldX}px`;
-        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
-        errorEl.style.width = `${fieldWidth}px`;
+        errorEl.style.left = `${scaledX}px`;
+        errorEl.style.top = `${scaledY + scaledHeight + 5 * this.scale}px`;
+        errorEl.style.width = `${scaledWidth}px`;
+        errorEl.style.fontSize = `${14 * this.scale}px`;
       }
     }
   }
@@ -847,10 +885,12 @@ export class AuthUI {
       color: COLORS.ui.text
     });
 
-    // Email input
+    // Email input - sempre atualizar posição
     if (!this.emailInput) {
       this.emailInput = this.createInputField('email', 'email', 'Digite seu email...', fieldX, panelY + 210, fieldWidth, fieldHeight);
       this.createErrorElement('email', fieldX, panelY + 210 + fieldHeight + 5, fieldWidth);
+    } else {
+      // Posição será atualizada pelo updateInputPositions()
     }
 
     // Password label
@@ -862,10 +902,12 @@ export class AuthUI {
       color: COLORS.ui.text
     });
 
-    // Password input
+    // Password input - sempre atualizar posição
     if (!this.passwordInput) {
       this.passwordInput = this.createInputField('password', 'password', 'Digite sua senha...', fieldX, passwordY, fieldWidth, fieldHeight);
       this.createErrorElement('password', fieldX, passwordY + fieldHeight + 5, fieldWidth);
+    } else {
+      // Posição será atualizada pelo updateInputPositions()
     }
 
     // Error message
