@@ -552,8 +552,9 @@ export class GameUI {
     const beast = this.gameState.activeBeast!;
     
     // Painel INFO + ATRIBUTOS + STATUS (lado direito - ajustado)
+    const headerHeight = 80; // Mesmo valor do drawHeader()
     const x = this.canvas.width - 510;
-    const y = 90;
+    const y = headerHeight; // Começa LOGO APÓS o header
     const width = 510;
     const height = 350;
 
@@ -724,8 +725,9 @@ export class GameUI {
     const serverTime = this.gameState.serverTime || Date.now();
     
     // Painel AÇÕES - lado direito, abaixo do STATUS
+    const headerHeight = 80;
     const x = this.canvas.width - 510;
-    const y = 445;
+    const y = headerHeight + 355; // Logo após STATUS (80 + 350 + 5 gap)
     const width = 510;
     const height = 290;
 
@@ -953,8 +955,9 @@ export class GameUI {
     const serverTime = this.gameState.serverTime || Date.now();
     
     // Week Info - embaixo de AÇÕES
+    const headerHeight = 80;
     const x = this.canvas.width - 510;
-    const y = 740;
+    const y = headerHeight + 355 + 295; // Logo após AÇÕES (80 + 350 + 5 + 290 + 5)
     const width = 510;
     const height = 60;
 
