@@ -956,11 +956,15 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Info compacta (canto inferior direito, abaixo do painel de STATUS)
-    const x = 1080;
-    const y = this.canvas.height - 60;
-    const width = 300;
-    const height = 50;
+    // Week Info - EMBAIXO do painel AÇÕES DISPONÍVEIS (lado direito)
+    const acoesPanelX = 910;
+    const acoesPanelY = 470;
+    const acoesPanelHeight = 310;
+    
+    const x = acoesPanelX;
+    const y = acoesPanelY + acoesPanelHeight; // Logo abaixo de AÇÕES
+    const width = 470;
+    const height = 20; // Bem compacto
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.90)',
@@ -968,19 +972,13 @@ export class GameUI {
       borderWidth: 2,
     });
 
-    // Mostrar idade da besta em dias (compacto)
+    // Info em uma linha só (bem compacto)
     const ageInfo = calculateBeastAge(beast, serverTime);
-    
-    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 10, y + 12, {
-      font: 'bold 14px monospace',
-      color: COLORS.primary.gold,
-    });
-
-    // Mostrar contador de explorações (compacto)
     const explorationCount = beast.explorationCount || 0;
-    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 10, y + 32, {
-      font: '13px monospace',
-      color: explorationCount >= 10 ? COLORS.ui.error : COLORS.ui.success,
+    
+    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias • Explorações: ${explorationCount}/10`, x + 10, y + 5, {
+      font: '12px monospace',
+      color: COLORS.primary.gold,
     });
     
     // Mostrar cooldown de torneio se ativo
