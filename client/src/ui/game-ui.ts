@@ -118,14 +118,6 @@ export class GameUI {
     
     // Recreate if: beast changes OR container doesn't exist OR real size changed
     if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line || realSizeChanged) {
-      if (realSizeChanged) {
-        console.log('[GameUI] 🔄 3D resized:', 
-          `${Math.round(this.lastRealRanchSceneWidth)}x${Math.round(this.lastRealRanchSceneHeight)}`, 
-          '→', 
-          `${Math.round(realWidth)}x${Math.round(realHeight)}`
-        );
-      }
-      console.log('[GameUI] ✨ Creating 3D Ranch:', beast.name, `${Math.round(realWidth)}x${Math.round(realHeight)}`);
       this.cleanupRanchScene3D();
       
       // Atualiza cache de tamanho REAL
