@@ -116,16 +116,28 @@ export class GameUI {
       Math.abs(realHeight - this.lastRealRanchSceneHeight) > 1
     );
     
+    // LOG DETALHADO PARA DEBUG
+    console.log('[GameUI] 3D Update Check:', {
+      'Logical Size': `${width}x${height}`,
+      'Real Size': `${Math.round(realWidth)}x${Math.round(realHeight)}`,
+      'Last Real': `${Math.round(this.lastRealRanchSceneWidth)}x${Math.round(this.lastRealRanchSceneHeight)}`,
+      'Scale': `${scaleX.toFixed(3)}x${scaleY.toFixed(3)}`,
+      'Diff': `${Math.abs(realWidth - this.lastRealRanchSceneWidth).toFixed(1)}x${Math.abs(realHeight - this.lastRealRanchSceneHeight).toFixed(1)}`,
+      'Size Changed?': realSizeChanged,
+      'Container Exists?': !!this.ranchScene3DContainer,
+      'Scene Exists?': !!this.ranchScene3D
+    });
+    
     // Recreate if: beast changes OR container doesn't exist OR real size changed
     if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line || realSizeChanged) {
       if (realSizeChanged) {
-        console.log('[GameUI] Ranch Scene 3D REAL size changed:', 
+        console.log('[GameUI] 🔄 Ranch Scene 3D REAL size changed:', 
           `${Math.round(this.lastRealRanchSceneWidth)}x${Math.round(this.lastRealRanchSceneHeight)}`, 
           '→', 
           `${Math.round(realWidth)}x${Math.round(realHeight)}`
         );
       }
-      console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line, `Logical: ${width}x${height} → Real: ${Math.round(realWidth)}x${Math.round(realHeight)}`);
+      console.log('[GameUI] ✨ Creating Ranch Scene 3D for:', beast.name, beast.line, `Logical: ${width}x${height} → Real: ${Math.round(realWidth)}x${Math.round(realHeight)}`);
       this.cleanupRanchScene3D();
       
       // Atualiza cache de tamanho REAL
