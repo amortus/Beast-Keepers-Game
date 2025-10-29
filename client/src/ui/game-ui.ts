@@ -113,8 +113,7 @@ export class GameUI {
         width: ${width}px;
         height: ${height}px;
         pointer-events: none;
-        z-index: 100;
-        border-radius: 8px;
+        z-index: 0;
         overflow: hidden;
       `;
       
@@ -360,49 +359,38 @@ export class GameUI {
 
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
-    // CORREÇÃO: Voltar para coordenadas fixas originais (1400x800)
-    const x = 20;
-    const y = 100;
-    const width = 450;
-    const height = 450;
-
-    drawPanel(this.ctx, x, y, width, height);
+    
+    // 3D Ranch Scene ocupa toda área de conteúdo (background)
+    // Área: do início até antes dos painéis de status (direita)
+    const scene3DX = 0;
+    const scene3DY = 90; // Abaixo do menu
+    const scene3DWidth = 900; // Largura do lado esquerdo
+    const scene3DHeight = 710; // Altura até o bottom menu
+    
+    // Criar/atualizar Ranch Scene 3D como background
+    if (this.is3DViewerVisible && this.useFullRanchScene) {
+      this.createOrUpdateRanchScene3D(scene3DX, scene3DY, scene3DWidth, scene3DHeight, beast);
+    }
+    
+    // Painel de info da besta (overlay 2D sobre o 3D, canto superior esquerdo)
+    const infoX = 20;
+    const infoY = 100;
+    const infoWidth = 420;
+    const infoHeight = 180;
+    
+    drawPanel(this.ctx, infoX, infoY, infoWidth, infoHeight, {
+      bgColor: 'rgba(20, 20, 40, 0.85)', // Semi-transparente para ver 3D atrás
+    });
 
     // Beast name and line (formatted as "Nome - Espécie (Tipo)")
     const lineData = getBeastLineData(beast.line);
     const formattedName = `${beast.name} - ${lineData.name}`;
-    drawText(this.ctx, formattedName, x + 10, y + 10, {
+    drawText(this.ctx, formattedName, infoX + 10, infoY + 10, {
       font: 'bold 20px monospace',
       color: COLORS.primary.green,
     });
 
-    // Beast "sprite" (placeholder)
-    console.log('[GameUI] About to call drawBeastSprite...');
-    this.drawBeastSprite(x + width / 2 - 60, y + 80, 120, 120, beast);
-    console.log('[GameUI] drawBeastSprite call completed');
-
-    // 3D View button (below sprite)
-    const view3DBtnX = x + width / 2 - 75;
-    const view3DBtnY = y + 205;
-    const view3DBtnWidth = 150;
-    const view3DBtnHeight = 30;
-    const isView3DHovered = isMouseOver(this.mouseX, this.mouseY, view3DBtnX, view3DBtnY, view3DBtnWidth, view3DBtnHeight);
-    
-    drawButton(this.ctx, view3DBtnX, view3DBtnY, view3DBtnWidth, view3DBtnHeight, '🎮 Ver em 3D', {
-      bgColor: COLORS.primary.blue,
-      hoverColor: '#2c5aa0',
-      isHovered: isView3DHovered,
-    });
-    
-    this.buttons.set('view3d', {
-      x: view3DBtnX,
-      y: view3DBtnY,
-      width: view3DBtnWidth,
-      height: view3DBtnHeight,
-      action: () => this.onView3D(),
-    });
-
-    // Age and phase
+    // Age and phase (no painel de info)
     const phase = getLifePhase(beast);
     const phaseNames = {
       infant: 'Filhote',
@@ -412,12 +400,12 @@ export class GameUI {
       elder: 'Idoso',
     };
 
-    drawText(this.ctx, `Idade: ${beast.secondaryStats.age} / ${beast.secondaryStats.maxAge} semanas`, x + 10, y + 250, {
+    drawText(this.ctx, `Idade: ${beast.secondaryStats.age} / ${beast.secondaryStats.maxAge} semanas`, infoX + 10, infoY + 40, {
       font: '14px monospace',
       color: COLORS.ui.text,
     });
 
-    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, x + 10, y + 270, {
+    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, infoX + 10, infoY + 60, {
       font: '14px monospace',
       color: COLORS.ui.info,
     });
@@ -435,18 +423,18 @@ export class GameUI {
     const mood = beast.mood || 'neutral';
     const moodDisplay = moodEmoji[mood] || moodEmoji.neutral;
 
-    drawText(this.ctx, `Humor: ${moodDisplay}`, x + 10, y + 290, {
+    drawText(this.ctx, `Humor: ${moodDisplay}`, infoX + 10, infoY + 80, {
       font: '14px monospace',
       color: COLORS.status[mood] || COLORS.status.neutral,
     });
 
-    // HP Bar
+    // HP Bar (compacta)
     drawBar(
       this.ctx,
-      x + 10,
-      y + 320,
-      width - 20,
-      25,
+      infoX + 10,
+      infoY + 105,
+      infoWidth - 20,
+      20,
       beast.currentHp,
       beast.maxHp,
       {
@@ -455,13 +443,13 @@ export class GameUI {
       }
     );
 
-    // Essence Bar
+    // Essence Bar (compacta)
     drawBar(
       this.ctx,
-      x + 10,
-      y + 355,
-      width - 20,
-      25,
+      infoX + 10,
+      infoY + 132,
+      infoWidth - 20,
+      20,
       beast.essence,
       beast.maxEssence,
       {
@@ -470,13 +458,13 @@ export class GameUI {
       }
     );
 
-    // Fatigue Bar
+    // Fatigue Bar (compacta)
     drawBar(
       this.ctx,
-      x + 10,
-      y + 390,
-      width - 20,
-      15,
+      infoX + 10,
+      infoY + 159,
+      infoWidth - 20,
+      12,
       beast.secondaryStats.fatigue,
       100,
       {
