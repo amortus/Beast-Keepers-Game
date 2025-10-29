@@ -301,7 +301,7 @@ export class GameUI {
     this.drawBeastDisplay();
     this.drawStatusPanel();
     this.drawActionMenu();
-    this.drawWeekInfo();
+    // Week Info removido - exploração vai para o header
   }
 
   private drawHeader() {
@@ -318,11 +318,12 @@ export class GameUI {
       color: COLORS.primary.gold,
     });
 
-    // Guardian info (center-left)
-    const guardian = this.gameState.guardian;
-    drawText(this.ctx, `Guardião: ${guardian.name} - ${guardian.title}`, 280, 22, {
-      font: '14px monospace',
-      color: COLORS.ui.textDim,
+    // Explorações (substituindo info do guardião)
+    const beast = this.gameState.activeBeast;
+    const explorationCount = beast?.explorationCount || 0;
+    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 280, 22, {
+      font: 'bold 16px monospace',
+      color: explorationCount >= 10 ? COLORS.ui.error : COLORS.primary.blue,
     });
 
     // Money (top right)
