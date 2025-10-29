@@ -19,25 +19,20 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #1a1a2e;
+      background: #000000; /* ✅ LETTERBOX: Fundo preto para barras */
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
     }
 
     #game {
       display: block;
-      width: 100vw;
-      height: 100vh;
       /* Previne scroll em mobile */
       touch-action: none;
-      /* Pixelated rendering para estética retro */
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      /* Garantir que canvas fique acima do 3D */
-      position: relative;
-      z-index: 10;
-      /* Melhor qualidade de renderização */
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: optimize-contrast;
+      /* Suavizar renderização (PS1 smooth, não Minecraft) */
+      image-rendering: auto;
+      /* Posicionamento controlado por JS em resizeCanvas() */
+      position: fixed;
     }
 
     #loading {
@@ -69,11 +64,6 @@
 
     /* Responsividade para telas muito pequenas */
     @media (max-width: 480px) {
-      #game {
-        width: 100vw;
-        height: 100vh;
-      }
-      
       #loading {
         font-size: 1rem;
         padding: 1rem;
@@ -83,22 +73,6 @@
         font-size: 0.8rem;
         padding: 1rem;
         max-width: 95%;
-      }
-    }
-
-    /* Responsividade para telas médias */
-    @media (min-width: 481px) and (max-width: 768px) {
-      #game {
-        width: 100vw;
-        height: 100vh;
-      }
-    }
-
-    /* Responsividade para telas grandes */
-    @media (min-width: 769px) {
-      #game {
-        width: 100vw;
-        height: 100vh;
       }
     }
   </style>
