@@ -23,6 +23,17 @@ export class AuthUI {
   private activeField: 'email' | 'password' | 'displayName' | 'confirmPassword' | null = null;
   private errorMessage: string = '';
   private isLoading: boolean = false;
+  
+  // Validação em tempo real
+  private fieldErrors: Map<string, string> = new Map();
+  private fieldValid: Map<string, boolean> = new Map();
+
+  // Responsividade
+  private scale: number = 1;
+  private baseWidth: number = 800;
+  private baseHeight: number = 700;
+  private minScale: number = 0.6;
+  private maxScale: number = 1.5;
 
   // Callbacks
   public onLoginSuccess: (token: string, user: any) => void = () => {};
@@ -32,6 +43,48 @@ export class AuthUI {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.setupEventListeners();
+    this.calculateScale();
+    window.addEventListener('resize', () => this.calculateScale());
+  }
+
+  private calculateScale() {
+    const containerWidth = window.innerWidth;
+    const containerHeight = window.innerHeight;
+    const isMobile = containerWidth < 768;
+    
+    // Para mobile, ajustar baseWidth/baseHeight para melhor experiência
+    if (isMobile) {
+      this.baseWidth = 600;
+      this.baseHeight = 800;
+      this.minScale = 0.5;
+    } else {
+      this.baseWidth = 800;
+      this.baseHeight = 700;
+      this.minScale = 0.6;
+    }
+    
+    // Calcular escala baseada na menor dimensão para manter proporção
+    const scaleX = containerWidth / this.baseWidth;
+    const scaleY = containerHeight / this.baseHeight;
+    this.scale = Math.min(scaleX, scaleY);
+    
+    // Limitar escala entre min e max
+    this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
+    
+    // Aplicar escala ao canvas
+    this.canvas.width = this.baseWidth;
+    this.canvas.height = this.baseHeight;
+    this.canvas.style.width = `${this.baseWidth * this.scale}px`;
+    this.canvas.style.height = `${this.baseHeight * this.scale}px`;
+    
+    // Centralizar canvas
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.left = '50%';
+    this.canvas.style.top = '50%';
+    this.canvas.style.transform = 'translate(-50%, -50%)';
+    
+    // Redesenhar após mudança de escala
+    this.draw();
   }
 
   private setupEventListeners() {
@@ -121,6 +174,32 @@ export class AuthUI {
 
     if (!this.activeField) return;
 
+    // Atalhos de teclado (Ctrl/Cmd)
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'a':
+          e.preventDefault();
+          this.selectAllText();
+          return;
+        case 'c':
+          e.preventDefault();
+          this.copyText();
+          return;
+        case 'v':
+          e.preventDefault();
+          this.pasteText();
+          return;
+        case 'x':
+          e.preventDefault();
+          this.cutText();
+          return;
+        case 'z':
+          e.preventDefault();
+          // Implementar undo se necessário
+          return;
+      }
+    }
+
     if (e.key === 'Escape') {
       this.activeField = null;
       return;
@@ -138,29 +217,217 @@ export class AuthUI {
       return;
     }
 
-    if (e.key === 'Backspace') {
-      if (this.activeField === 'email') {
-        this.email = this.email.slice(0, -1);
-      } else if (this.activeField === 'password') {
-        this.password = this.password.slice(0, -1);
-      } else if (this.activeField === 'displayName') {
-        this.displayName = this.displayName.slice(0, -1);
-      } else if (this.activeField === 'confirmPassword') {
-        this.confirmPassword = this.confirmPassword.slice(0, -1);
-      }
+    // Navegação melhorada
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      // Implementar navegação de cursor se necessário
       return;
     }
 
-    if (e.key.length === 1) {
-      if (this.activeField === 'email') {
-        this.email += e.key;
-      } else if (this.activeField === 'password') {
-        this.password += e.key;
-      } else if (this.activeField === 'displayName') {
-        this.displayName += e.key;
-      } else if (this.activeField === 'confirmPassword') {
-        this.confirmPassword += e.key;
-      }
+    if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      this.navigateToEdge(e.key === 'Home');
+      return;
+    }
+
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      this.deleteForward();
+      return;
+    }
+
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      this.deleteBackward();
+      return;
+    }
+
+    // Caracteres normais
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      this.insertText(e.key);
+    }
+  }
+
+  private selectAllText() {
+    // Implementar seleção de todo o texto no campo ativo
+    // Por enquanto, apenas limpar e selecionar
+    if (this.activeField === 'email') {
+      this.email = '';
+    } else if (this.activeField === 'password') {
+      this.password = '';
+    } else if (this.activeField === 'displayName') {
+      this.displayName = '';
+    } else if (this.activeField === 'confirmPassword') {
+      this.confirmPassword = '';
+    }
+  }
+
+  private copyText() {
+    const text = this.getCurrentFieldText();
+    if (text) {
+      navigator.clipboard.writeText(text).catch(() => {
+        // Fallback para navegadores mais antigos
+        console.log('Clipboard API não suportada');
+      });
+    }
+  }
+
+  private pasteText() {
+    navigator.clipboard.readText().then(text => {
+      this.insertText(text);
+    }).catch(() => {
+      // Fallback ou erro
+      console.log('Não foi possível colar texto');
+    });
+  }
+
+  private cutText() {
+    const text = this.getCurrentFieldText();
+    if (text) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.clearCurrentField();
+      }).catch(() => {
+        console.log('Clipboard API não suportada');
+      });
+    }
+  }
+
+  private navigateToEdge(isHome: boolean) {
+    // Implementar navegação para início/fim do texto
+    // Por enquanto, apenas limpar o campo
+    this.clearCurrentField();
+  }
+
+  private deleteForward() {
+    // Implementar delete forward (Delete key)
+    // Por enquanto, mesmo comportamento do Backspace
+    this.deleteBackward();
+  }
+
+  private deleteBackward() {
+    if (this.activeField === 'email') {
+      this.email = this.email.slice(0, -1);
+      this.validateEmail();
+    } else if (this.activeField === 'password') {
+      this.password = this.password.slice(0, -1);
+      this.validatePassword();
+    } else if (this.activeField === 'displayName') {
+      this.displayName = this.displayName.slice(0, -1);
+      this.validateDisplayName();
+    } else if (this.activeField === 'confirmPassword') {
+      this.confirmPassword = this.confirmPassword.slice(0, -1);
+      this.validateConfirmPassword();
+    }
+  }
+
+  private insertText(text: string) {
+    if (this.activeField === 'email') {
+      this.email += text;
+      this.validateEmail();
+    } else if (this.activeField === 'password') {
+      this.password += text;
+      this.validatePassword();
+    } else if (this.activeField === 'displayName') {
+      this.displayName += text;
+      this.validateDisplayName();
+    } else if (this.activeField === 'confirmPassword') {
+      this.confirmPassword += text;
+      this.validateConfirmPassword();
+    }
+  }
+  
+  private validateEmail() {
+    if (!this.email) {
+      this.fieldErrors.set('email', '');
+      this.fieldValid.set('email', false);
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.email)) {
+      this.fieldErrors.set('email', 'Email inválido');
+      this.fieldValid.set('email', false);
+    } else {
+      this.fieldErrors.delete('email');
+      this.fieldValid.set('email', true);
+    }
+  }
+  
+  private validatePassword() {
+    if (!this.password) {
+      this.fieldErrors.set('password', '');
+      this.fieldValid.set('password', false);
+      return;
+    }
+    
+    if (this.password.length < 6) {
+      this.fieldErrors.set('password', 'Senha deve ter no mínimo 6 caracteres');
+      this.fieldValid.set('password', false);
+    } else {
+      this.fieldErrors.delete('password');
+      this.fieldValid.set('password', true);
+    }
+    
+    // Revalidar confirmação de senha se existir
+    if (this.confirmPassword) {
+      this.validateConfirmPassword();
+    }
+  }
+  
+  private validateDisplayName() {
+    if (!this.displayName) {
+      this.fieldErrors.set('displayName', '');
+      this.fieldValid.set('displayName', false);
+      return;
+    }
+    
+    if (this.displayName.length < 3) {
+      this.fieldErrors.set('displayName', 'Nome deve ter no mínimo 3 caracteres');
+      this.fieldValid.set('displayName', false);
+    } else if (this.displayName.length > 20) {
+      this.fieldErrors.set('displayName', 'Nome deve ter no máximo 20 caracteres');
+      this.fieldValid.set('displayName', false);
+    } else {
+      this.fieldErrors.delete('displayName');
+      this.fieldValid.set('displayName', true);
+    }
+  }
+  
+  private validateConfirmPassword() {
+    if (!this.confirmPassword) {
+      this.fieldErrors.set('confirmPassword', '');
+      this.fieldValid.set('confirmPassword', false);
+      return;
+    }
+    
+    if (this.confirmPassword !== this.password) {
+      this.fieldErrors.set('confirmPassword', 'As senhas não coincidem');
+      this.fieldValid.set('confirmPassword', false);
+    } else {
+      this.fieldErrors.delete('confirmPassword');
+      this.fieldValid.set('confirmPassword', true);
+    }
+  }
+
+  private getCurrentFieldText(): string {
+    switch (this.activeField) {
+      case 'email': return this.email;
+      case 'password': return this.password;
+      case 'displayName': return this.displayName;
+      case 'confirmPassword': return this.confirmPassword;
+      default: return '';
+    }
+  }
+
+  private clearCurrentField() {
+    if (this.activeField === 'email') {
+      this.email = '';
+    } else if (this.activeField === 'password') {
+      this.password = '';
+    } else if (this.activeField === 'displayName') {
+      this.displayName = '';
+    } else if (this.activeField === 'confirmPassword') {
+      this.confirmPassword = '';
     }
   }
 
@@ -263,8 +530,10 @@ export class AuthUI {
   }
 
   private drawWelcomeScreen() {
-    const panelWidth = 700;
-    const panelHeight = 650;
+    // Ajustar tamanho do painel para mobile
+    const isMobile = window.innerWidth < 768;
+    const panelWidth = isMobile ? 550 : 700;
+    const panelHeight = isMobile ? 700 : 650;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
@@ -366,8 +635,10 @@ export class AuthUI {
   }
 
   private drawLoginScreen() {
-    const panelWidth = 700;
-    const panelHeight = 650;
+    // Ajustar tamanho do painel para mobile
+    const isMobile = window.innerWidth < 768;
+    const panelWidth = isMobile ? 550 : 700;
+    const panelHeight = isMobile ? 700 : 650;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
@@ -394,11 +665,12 @@ export class AuthUI {
       align: 'center'
     });
 
-    // Email field (more spacing)
+    // Email field (more spacing para acomodar mensagens de erro)
     this.drawInputField(panelX, panelY + 210, panelWidth, 'Email:', this.email, 'email');
 
-    // Password field (more spacing)
-    this.drawInputField(panelX, panelY + 330, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
+    // Password field (more spacing para acomodar mensagens de erro)
+    const passwordY = panelY + 340 + (this.fieldErrors.get('email') ? 25 : 0);
+    this.drawInputField(panelX, passwordY, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
 
     // Error message
     if (this.errorMessage) {
@@ -446,8 +718,10 @@ export class AuthUI {
   }
 
   private drawRegisterScreen() {
-    const panelWidth = 750;
-    const panelHeight = 750;
+    // Ajustar tamanho do painel para mobile
+    const isMobile = window.innerWidth < 768;
+    const panelWidth = isMobile ? 550 : 750;
+    const panelHeight = isMobile ? Math.min(850, this.canvas.height - 20) : 750;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
@@ -474,29 +748,38 @@ export class AuthUI {
       align: 'center'
     });
 
-    // Email field (with more spacing)
-    this.drawInputField(panelX, panelY + 170, panelWidth, 'Email:', this.email, 'email');
+    // Email field (with more spacing para acomodar mensagens de erro)
+    let currentY = panelY + 170;
+    this.drawInputField(panelX, currentY, panelWidth, 'Email:', this.email, 'email');
+    if (this.fieldErrors.get('email')) currentY += 25;
 
     // Display name field
-    this.drawInputField(panelX, panelY + 280, panelWidth, 'Nome do Guardião:', this.displayName, 'displayName');
+    currentY += 110;
+    this.drawInputField(panelX, currentY, panelWidth, 'Nome do Guardião:', this.displayName, 'displayName');
+    if (this.fieldErrors.get('displayName')) currentY += 25;
 
     // Password field
-    this.drawInputField(panelX, panelY + 390, panelWidth, 'Senha (mín. 6 caracteres):', '*'.repeat(this.password.length), 'password');
+    currentY += 110;
+    this.drawInputField(panelX, currentY, panelWidth, 'Senha (mín. 6 caracteres):', '*'.repeat(this.password.length), 'password');
+    if (this.fieldErrors.get('password')) currentY += 25;
 
     // Confirm password field
-    this.drawInputField(panelX, panelY + 500, panelWidth, 'Confirmar Senha:', '*'.repeat(this.confirmPassword.length), 'confirmPassword');
+    currentY += 110;
+    this.drawInputField(panelX, currentY, panelWidth, 'Confirmar Senha:', '*'.repeat(this.confirmPassword.length), 'confirmPassword');
+    if (this.fieldErrors.get('confirmPassword')) currentY += 25;
 
     // Error message
     if (this.errorMessage) {
-      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 610, {
+      currentY += 60;
+      drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, currentY, {
         font: 'bold 16px monospace',
         color: COLORS.ui.error,
         align: 'center'
       });
     }
 
-    // Register button (larger)
-    const registerBtnY = panelY + 640;
+    // Register button (larger) - posicionar dinamicamente
+    const registerBtnY = currentY + (this.errorMessage ? 80 : 50);
     const btnText = this.isLoading ? '⏳ Criando conta...' : '✓ Criar Conta';
     drawButton(this.ctx, panelX + 125, registerBtnY, 500, 60, btnText, {
       bgColor: COLORS.primary.green,
@@ -539,23 +822,49 @@ export class AuthUI {
     value: string,
     fieldName: string
   ) {
-    const fieldWidth = 600;
-    const fieldHeight = 60;
+    // Ajustar tamanho dos campos para mobile
+    const isMobile = window.innerWidth < 768;
+    const fieldWidth = isMobile ? panelWidth - 80 : 600;
+    const fieldHeight = isMobile ? 50 : 60;
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
-    // Label (bigger and bolder)
+    // Label (ajustar tamanho para mobile)
+    const isMobile = window.innerWidth < 768;
     drawText(this.ctx, label, fieldX, fieldY - 20, {
-      font: 'bold 18px monospace',
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
       color: COLORS.ui.text
     });
 
     const isActive = this.activeField === fieldName;
     const borderColor = this.currentScreen === 'login' ? COLORS.primary.purple : COLORS.primary.green;
     
+    // Validação do campo
+    const fieldError = this.fieldErrors.get(fieldName);
+    const isValid = this.fieldValid.get(fieldName);
+    const hasValue = value.length > 0;
+    
+    // Determinar cor da borda baseada em validação
+    let finalBorderColor = COLORS.ui.textDim;
+    if (isActive) {
+      finalBorderColor = borderColor;
+    } else if (hasValue) {
+      if (fieldError) {
+        finalBorderColor = COLORS.ui.error;
+      } else if (isValid) {
+        finalBorderColor = COLORS.primary.green;
+      }
+    }
+    
     // Field shadow when active
     if (isActive) {
       this.ctx.shadowColor = this.currentScreen === 'login' ? 'rgba(159, 122, 234, 0.4)' : 'rgba(72, 187, 120, 0.4)';
       this.ctx.shadowBlur = 15;
+    } else if (hasValue && isValid) {
+      this.ctx.shadowColor = 'rgba(72, 187, 120, 0.2)';
+      this.ctx.shadowBlur = 10;
+    } else if (fieldError) {
+      this.ctx.shadowColor = 'rgba(239, 68, 68, 0.2)';
+      this.ctx.shadowBlur = 10;
     }
 
     // Field background (gradient)
@@ -565,9 +874,9 @@ export class AuthUI {
     this.ctx.fillStyle = gradient;
     this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
-    // Field border (animated when active)
-    this.ctx.strokeStyle = isActive ? borderColor : COLORS.ui.textDim;
-    this.ctx.lineWidth = isActive ? 4 : 2;
+    // Field border (animated when active or validated)
+    this.ctx.strokeStyle = finalBorderColor;
+    this.ctx.lineWidth = isActive ? 4 : (hasValue && (isValid || fieldError) ? 3 : 2);
     this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
     this.ctx.shadowBlur = 0;
@@ -596,6 +905,31 @@ export class AuthUI {
       this.ctx.fillRect(fieldX + 20 + textWidth, fieldY + 18, 3, 30);
     }
 
+    // Indicador de validação (ícone à direita)
+    if (hasValue && !isActive) {
+      const iconX = fieldX + fieldWidth - 35;
+      const iconY = fieldY + 30;
+      if (isValid) {
+        // Check verde
+        this.ctx.fillStyle = COLORS.primary.green;
+        this.ctx.font = 'bold 24px monospace';
+        this.ctx.fillText('✓', iconX, iconY);
+      } else if (fieldError) {
+        // X vermelho
+        this.ctx.fillStyle = COLORS.ui.error;
+        this.ctx.font = 'bold 24px monospace';
+        this.ctx.fillText('✗', iconX, iconY);
+      }
+    }
+
+    // Mensagem de erro do campo (abaixo do campo)
+    if (fieldError && (isActive || hasValue)) {
+      drawText(this.ctx, fieldError, fieldX, fieldY + fieldHeight + 25, {
+        font: '14px monospace',
+        color: COLORS.ui.error
+      });
+    }
+
     // Tab hint
     if (isActive) {
       const isLastField = (this.currentScreen === 'login' && fieldName === 'password') ||
@@ -615,6 +949,8 @@ export class AuthUI {
     this.confirmPassword = '';
     this.activeField = null;
     this.errorMessage = '';
+    this.fieldErrors.clear();
+    this.fieldValid.clear();
   }
 
   public checkOAuthCallback() {

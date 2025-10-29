@@ -35,6 +35,9 @@
       /* Garantir que canvas fique acima do 3D */
       position: relative;
       z-index: 10;
+      /* Melhor qualidade de renderização */
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: optimize-contrast;
     }
 
     #loading {
@@ -43,8 +46,9 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: #fff;
-      font-size: 1.5rem;
+      font-size: clamp(1rem, 4vw, 1.5rem);
       text-align: center;
+      z-index: 1000;
     }
 
     #error {
@@ -54,12 +58,48 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: #ff4444;
-      font-size: 1rem;
+      font-size: clamp(0.8rem, 3vw, 1rem);
       text-align: center;
       padding: 2rem;
       background: rgba(0,0,0,0.8);
       border-radius: 8px;
-      max-width: 80%;
+      max-width: 90%;
+      z-index: 1000;
+    }
+
+    /* Responsividade para telas muito pequenas */
+    @media (max-width: 480px) {
+      #game {
+        width: 100vw;
+        height: 100vh;
+      }
+      
+      #loading {
+        font-size: 1rem;
+        padding: 1rem;
+      }
+      
+      #error {
+        font-size: 0.8rem;
+        padding: 1rem;
+        max-width: 95%;
+      }
+    }
+
+    /* Responsividade para telas médias */
+    @media (min-width: 481px) and (max-width: 768px) {
+      #game {
+        width: 100vw;
+        height: 100vh;
+      }
+    }
+
+    /* Responsividade para telas grandes */
+    @media (min-width: 769px) {
+      #game {
+        width: 100vw;
+        height: 100vh;
+      }
     }
   </style>
 </head>
