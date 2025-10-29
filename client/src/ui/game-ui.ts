@@ -871,12 +871,12 @@ export class GameUI {
   private drawActionList(x: number, y: number, beast: Beast, serverTime: number) {
     const actions = this.getActionsForCategory();
     
-    // Layout 2 colunas (botões MAIORES e mais legíveis)
-    const buttonWidth = 235; // Aumentado de 160 → 235px
-    const buttonHeight = 38; // Aumentado de 35 → 38px
-    const spacingX = 10;
-    const spacingY = 8;
-    const columns = 2; // 2 colunas ao invés de 4
+    // Layout 2 colunas (botões MAIORES para melhor leitura)
+    const buttonWidth = 238; // Aumentado de 235 → 238px (quase preenche)
+    const buttonHeight = 42; // Aumentado de 38 → 42px (mais alto)
+    const spacingX = 8; // Reduzido de 10 → 8px
+    const spacingY = 6; // Reduzido de 8 → 6px (mais compacto verticalmente)
+    const columns = 2; // 2 colunas
 
     actions.forEach((action, index) => {
       const col = index % columns;
@@ -893,7 +893,7 @@ export class GameUI {
         bgColor: isSelected ? COLORS.ui.success : COLORS.bg.light,
         isHovered,
         isDisabled: !canStart.can,
-        fontSize: 12, // ✅ Fonte 12px para botões menores (mais legível)
+        fontSize: 13, // ✅ Aumentado de 12 → 13px (mais legível)
       });
 
       this.buttons.set(`action_${action.id}`, {
