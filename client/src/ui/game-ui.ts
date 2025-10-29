@@ -265,8 +265,9 @@ export class GameUI {
   private drawHeader() {
     const headerHeight = 80;
     drawPanel(this.ctx, 0, 0, this.canvas.width, headerHeight, {
-      bgColor: COLORS.bg.medium,
+      bgColor: 'rgba(15, 15, 30, 0.92)', // Semi-transparente
       borderColor: COLORS.primary.purple,
+      borderWidth: 2,
     });
 
     // Title
@@ -605,20 +606,20 @@ export class GameUI {
 
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
-    // CORREÇÃO: Voltar para coordenadas fixas originais (1400x800)
-    const x = 490;
+    // Painel mais compacto à direita
+    const x = 920;
     const y = 100;
-    const width = 890;
-    const height = 450;
+    const width = 460;
+    const height = 400;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(15, 15, 30, 0.92)', // Mais opaco para legibilidade
+      bgColor: 'rgba(15, 15, 30, 0.88)', // Semi-transparente
       borderColor: COLORS.primary.gold,
-      borderWidth: 3,
+      borderWidth: 2,
     });
 
     drawText(this.ctx, 'ATRIBUTOS', x + 10, y + 10, {
-      font: 'bold 20px monospace',
+      font: 'bold 18px monospace',
       color: COLORS.primary.gold,
     });
 
@@ -631,21 +632,21 @@ export class GameUI {
       { key: 'vitality', name: 'Vitalidade', color: COLORS.attributes.vitality },
     ];
 
-    let yOffset = y + 45;
+    let yOffset = y + 38;
     attrs.forEach((attr) => {
       const value = beast.attributes[attr.key as keyof typeof beast.attributes];
       
       drawText(this.ctx, attr.name, x + 10, yOffset, {
-        font: '16px monospace',
+        font: '14px monospace',
         color: COLORS.ui.text,
       });
 
       drawBar(
         this.ctx,
-        x + 200,
-        yOffset,
-        650,
-        25,
+        x + 140,
+        yOffset - 5,
+        280,
+        20,
         value,
         150,
         {
@@ -654,33 +655,32 @@ export class GameUI {
         }
       );
 
-      yOffset += 35;
+      yOffset += 30;
     });
 
-    // Stats secundários
-    yOffset += 20;
-    drawText(this.ctx, 'STATUS', x + 10, yOffset, {
-      font: 'bold 18px monospace',
+    // Stats secundários (mais compacto)
+    const statusY = yOffset + 15;
+    
+    drawText(this.ctx, 'STATUS', x + 10, statusY, {
+      font: 'bold 16px monospace',
       color: COLORS.primary.gold,
     });
 
-    yOffset += 30;
-    drawText(this.ctx, `Stress: ${beast.secondaryStats.stress}`, x + 10, yOffset, {
+    drawText(this.ctx, `Stress: ${beast.secondaryStats.stress}`, x + 10, statusY + 25, {
       font: '14px monospace',
       color: beast.secondaryStats.stress > 70 ? COLORS.ui.error : COLORS.ui.text,
     });
 
-    yOffset += 25;
-    drawText(this.ctx, `Lealdade: ${beast.secondaryStats.loyalty}`, x + 10, yOffset, {
+    drawText(this.ctx, `Lealdade: ${beast.secondaryStats.loyalty}`, x + 10, statusY + 45, {
       font: '14px monospace',
       color: COLORS.ui.info,
     });
 
-    yOffset += 25;
     // CORREÇÃO: Tratar victories e defeats undefined
     const victories = beast.victories ?? 0;
     const defeats = beast.defeats ?? 0;
-    drawText(this.ctx, `Vitórias: ${victories} | Derrotas: ${defeats}`, x + 10, yOffset, {
+    
+    drawText(this.ctx, `Vitórias: ${victories} | Derrotas: ${defeats}`, x + 10, statusY + 65, {
       font: '14px monospace',
       color: COLORS.ui.textDim,
     });
@@ -692,16 +692,16 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // CORREÇÃO: Voltar para coordenadas fixas originais (1400x800)
+    // Painel de ações mais compacto e bem posicionado
     const x = 20;
-    const y = 570;
-    const width = this.canvas.width - 40;
-    const height = 170;
+    const y = 520;
+    const width = 880;
+    const height = 260;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(15, 15, 30, 0.92)', // Mais opaco para legibilidade
+      bgColor: 'rgba(15, 15, 30, 0.88)', // Semi-transparente
       borderColor: COLORS.primary.gold,
-      borderWidth: 3,
+      borderWidth: 2,
     });
 
     // Se tem ação em progresso, mostrar progresso
@@ -712,12 +712,12 @@ export class GameUI {
 
     // Se não tem ação, mostrar menu de ações
     drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 10, y + 10, {
-      font: 'bold 20px monospace',
+      font: 'bold 18px monospace',
       color: COLORS.primary.gold,
     });
 
-    // Category buttons
-    const buttonWidth = 155;
+    // Category buttons (mais compactos)
+    const buttonWidth = 140;
     const buttonHeight = 40;
     const buttonY = y + 45;
     const buttonSpacing = 165;
@@ -921,28 +921,30 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // CORREÇÃO: Voltar para coordenadas fixas originais (1400x800)
-    const x = this.canvas.width - 520;
+    // Info compacta e semi-transparente no canto
+    const x = this.canvas.width - 320;
     const y = this.canvas.height - 60;
-    const width = 500;
+    const width = 300;
     const height = 50;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
+      bgColor: 'rgba(15, 15, 30, 0.88)',
+      borderColor: COLORS.primary.gold,
+      borderWidth: 2,
     });
 
-    // Mostrar idade da besta em dias
+    // Mostrar idade da besta em dias (compacto)
     const ageInfo = calculateBeastAge(beast, serverTime);
     
-    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 10, y + 15, {
-      font: 'bold 16px monospace',
+    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 10, y + 12, {
+      font: 'bold 14px monospace',
       color: COLORS.primary.gold,
     });
 
-    // Mostrar contador de explorações
+    // Mostrar contador de explorações (compacto)
     const explorationCount = beast.explorationCount || 0;
-    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 10, y + 35, {
-      font: '14px monospace',
+    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 10, y + 32, {
+      font: '13px monospace',
       color: explorationCount >= 10 ? COLORS.ui.error : COLORS.ui.success,
     });
     
