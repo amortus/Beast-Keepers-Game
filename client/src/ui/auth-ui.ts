@@ -829,7 +829,6 @@ export class AuthUI {
     const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
     // Label (ajustar tamanho para mobile)
-    const isMobile = window.innerWidth < 768;
     drawText(this.ctx, label, fieldX, fieldY - 20, {
       font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
       color: COLORS.ui.text
