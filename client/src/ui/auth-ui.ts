@@ -68,7 +68,7 @@ export class AuthUI {
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      pointer-events: auto;
+      pointer-events: none;
       z-index: 100;
     `;
     document.body.appendChild(this.inputsContainer);
@@ -228,11 +228,6 @@ export class AuthUI {
     });
 
     this.inputsContainer.appendChild(input);
-    
-    // CORREÇÃO: Configurar tabIndex após adicionar ao DOM
-    requestAnimationFrame(() => {
-      this.setupTabOrder();
-    });
     
     return input;
   }
@@ -1184,6 +1179,9 @@ export class AuthUI {
     });
 
     this.updateInputPositions();
+    
+    // Configurar ordem do Tab após criar todos os inputs
+    this.setupTabOrder();
   }
 
   private drawRegisterScreen() {
@@ -1338,6 +1336,9 @@ export class AuthUI {
     });
 
     this.updateInputPositions();
+    
+    // Configurar ordem do Tab após criar todos os inputs
+    this.setupTabOrder();
   }
 
   private clearForm() {
