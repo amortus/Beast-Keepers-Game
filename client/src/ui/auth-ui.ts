@@ -212,10 +212,20 @@ export class AuthUI {
       if (e.key === 'Enter') {
         e.preventDefault();
         this.handleEnterKey(name);
+      } else if (e.key === 'Tab') {
+        // CORREÇÃO: Suporte nativo ao Tab - não prevenir comportamento padrão
+        // O browser já lida com Tab naturalmente entre elementos focáveis
+        // Apenas garantir que os campos estão na ordem correta no DOM
       }
     });
 
     this.inputsContainer.appendChild(input);
+    
+    // CORREÇÃO: Configurar tabIndex após adicionar ao DOM
+    requestAnimationFrame(() => {
+      this.setupTabOrder();
+    });
+    
     return input;
   }
 
@@ -279,48 +289,15 @@ export class AuthUI {
   }
 
   private updateValidationIcon(
-    input: HTMLInputElement,
-    fieldName: string,
-    isValid: boolean | undefined,
-    fieldError: string | undefined,
-    hasValue: boolean
+    _input: HTMLInputElement,
+    _fieldName: string,
+    _isValid: boolean | undefined,
+    _fieldError: string | undefined,
+    _hasValue: boolean
   ) {
-    // Criar ou atualizar elemento de ícone
-    let icon = input.parentElement?.querySelector(`[data-icon="${fieldName}"]`) as HTMLDivElement;
-    
-    if (!icon && hasValue && !input.matches(':focus')) {
-      icon = document.createElement('div');
-      icon.dataset.icon = fieldName;
-      icon.style.cssText = `
-        position: absolute;
-        right: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 24px;
-        font-weight: bold;
-        pointer-events: none;
-        z-index: 10;
-      `;
-      input.parentElement?.appendChild(icon);
-    }
-
-    if (icon) {
-      if (hasValue && !input.matches(':focus')) {
-        if (isValid) {
-          icon.textContent = '✓';
-          icon.style.color = COLORS.primary.green;
-          icon.style.display = 'block';
-        } else if (fieldError) {
-          icon.textContent = '✗';
-          icon.style.color = COLORS.ui.error;
-          icon.style.display = 'block';
-        } else {
-          icon.style.display = 'none';
-        }
-      } else {
-        icon.style.display = 'none';
-      }
-    }
+    // CORREÇÃO: Removido completamente - ícones de validação são desnecessários
+    // A validação visual é feita apenas através das bordas e mensagens de erro
+    // Parâmetros prefixados com _ para indicar intencionalmente não utilizados
   }
 
   private updateErrorMessage(fieldName: string, error: string | undefined) {
@@ -450,6 +427,7 @@ export class AuthUI {
   }
 
   private handleEnterKey(fieldName: string) {
+    // CORREÇÃO: Navegação melhorada com Tab suportado nativamente
     if (this.currentScreen === 'login') {
       if (fieldName === 'email') {
         this.passwordInput?.focus();
@@ -466,6 +444,23 @@ export class AuthUI {
       } else if (fieldName === 'confirmPassword') {
         this.handleRegister();
       }
+    }
+  }
+  
+  // CORREÇÃO: Garantir que os inputs estejam na ordem correta no DOM para Tab funcionar
+  private setupTabOrder() {
+    if (this.currentScreen === 'login') {
+      // Ordem: email -> password
+      if (this.emailInput && this.passwordInput) {
+        this.emailInput.tabIndex = 1;
+        this.passwordInput.tabIndex = 2;
+      }
+    } else if (this.currentScreen === 'register') {
+      // Ordem: email -> displayName -> password -> confirmPassword
+      if (this.emailInput) this.emailInput.tabIndex = 1;
+      if (this.displayNameInput) this.displayNameInput.tabIndex = 2;
+      if (this.passwordInput) this.passwordInput.tabIndex = 3;
+      if (this.confirmPasswordInput) this.confirmPasswordInput.tabIndex = 4;
     }
   }
 
@@ -673,6 +668,22 @@ export class AuthUI {
     this.displayNameInput = null;
     this.confirmPasswordInput = null;
     this.errorElements.clear();
+  }
+
+  // CORREÇÃO: Método para esconder completamente o AuthUI após login
+  public hide() {
+    // Esconder canvas
+    if (this.canvas) {
+      this.canvas.style.display = 'none';
+    }
+    // Esconder container de inputs
+    if (this.inputsContainer) {
+      this.inputsContainer.style.display = 'none';
+    }
+    // Limpar todos os inputs
+    this.clearInputs();
+    // Limpar botões
+    this.buttons.clear();
   }
 
   private updateInputPositions() {

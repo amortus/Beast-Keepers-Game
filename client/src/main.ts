@@ -329,6 +329,9 @@ async function init() {
       isAuthenticated = true;
       inAuth = false;
       
+      // CORREÇÃO: Esconder completamente o AuthUI após login
+      authUI.hide();
+      
       // Salvar username no localStorage para o chat
       localStorage.setItem('username', user.displayName);
       
@@ -348,6 +351,9 @@ async function init() {
       console.log('[Auth] Register success:', user.displayName);
       isAuthenticated = true;
       inAuth = false;
+      
+      // CORREÇÃO: Esconder completamente o AuthUI após registro
+      authUI.hide();
       
       // Salvar username no localStorage para o chat
       localStorage.setItem('username', user.displayName);
