@@ -230,8 +230,6 @@ export class GameUI {
 
   private drawGlobalMenu() {
     const menuY = 52;
-    const btnWidth = 130;
-    const btnHeight = 26;
     const btnSpacing = 10;
     let currentX = 30;
 
@@ -246,7 +244,24 @@ export class GameUI {
       { id: 'temple', label: '🏛️ Templo', color: COLORS.primary.purple, action: () => this.onOpenTemple() },
     ];
 
+    // CORREÇÃO: Calcular largura dos botões baseado no espaço disponível
+    const availableWidth = this.canvas.width - 60; // 30px de margem de cada lado
+    const totalSpacing = (menuItems.length - 1) * btnSpacing;
+    const maxBtnWidth = 130;
+    const minBtnWidth = 90;
+    
+    // Calcular largura que cabe todos os botões
+    let btnWidth = Math.floor((availableWidth - totalSpacing) / menuItems.length);
+    btnWidth = Math.max(minBtnWidth, Math.min(maxBtnWidth, btnWidth)); // Entre min e max
+    const btnHeight = 26;
+
     menuItems.forEach((item) => {
+      // CORREÇÃO: Verificar se botão ainda cabe na tela antes de desenhar
+      if (currentX + btnWidth > this.canvas.width - 30) {
+        // Se não cabe mais, não desenhar (ou criar segunda linha se necessário)
+        return;
+      }
+      
       const isHovered = isMouseOver(this.mouseX, this.mouseY, currentX, menuY, btnWidth, btnHeight);
 
       drawButton(this.ctx, currentX, menuY, btnWidth, btnHeight, item.label, {
@@ -847,13 +862,16 @@ export class GameUI {
     
     // CORREÇÃO: Posicionar no canto inferior direito, responsivo ao tamanho da janela
     const isWideScreen = this.canvas.width >= 1400;
+    const leftPanelHeight = 450;
+    const rightPanelY = isWideScreen ? 100 : 560;
+    const rightPanelHeight = 450;
+    const actionMenuY = isWideScreen ? Math.max(560, rightPanelY + rightPanelHeight + 20) : rightPanelY + rightPanelHeight + 20;
     const actionMenuHeight = 170;
-    const actionMenuY = isWideScreen ? 560 : (this.canvas.width >= 1400 ? 560 : 1010);
     
     const width = Math.min(500, this.canvas.width - 40); // Não ultrapassar largura da janela
     const height = 50;
     const x = this.canvas.width - width - 20; // 20px de margem da borda
-    const y = Math.max(actionMenuY - height - 10, 100); // Acima do menu de ações ou mínimo 100px do topo
+    const y = Math.max(actionMenuY - height - 10, this.canvas.height - height - 20); // Acima do menu de ações ou na parte inferior da tela
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: COLORS.bg.medium,
