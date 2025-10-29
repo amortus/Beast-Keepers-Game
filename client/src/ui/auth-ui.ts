@@ -180,10 +180,12 @@ export class AuthUI {
     input.placeholder = placeholder;
     input.autocomplete = type === 'email' ? 'email' : type === 'password' ? 'current-password' : 'off';
     
-    // SOLUÇÃO: tabIndex sequencial baseado na ordem de criação
+    // SOLUÇÃO ROBUSTA: tabIndex sequencial baseado na ordem de criação
     // Contar quantos inputs já existem no container + 1
     const existingInputs = this.inputsContainer.querySelectorAll('input');
     input.tabIndex = existingInputs.length + 1;
+    
+    console.log(`[AuthUI] Created input "${name}" with tabIndex ${input.tabIndex} (existing: ${existingInputs.length})`);
     
     // Posicionamento absoluto no container
     input.style.cssText = `
