@@ -223,6 +223,27 @@ export class ChatUI {
       return;
     }
 
+    // Confirmation dialog buttons
+    if (target.classList.contains('chat-confirm-btn')) {
+      if (this.confirmationDialog) {
+        const onConfirm = this.confirmationDialog.onConfirm;
+        this.closeConfirmationDialog();
+        onConfirm();
+      }
+      return;
+    }
+
+    if (target.classList.contains('chat-cancel-btn')) {
+      if (this.confirmationDialog) {
+        const onCancel = this.confirmationDialog.onCancel;
+        this.closeConfirmationDialog();
+        if (onCancel) {
+          onCancel();
+        }
+      }
+      return;
+    }
+
     // Friends subtab
     if (target.classList.contains('friends-subtab')) {
       const subtab = target.getAttribute('data-subtab') as 'list' | 'requests' | 'add';
