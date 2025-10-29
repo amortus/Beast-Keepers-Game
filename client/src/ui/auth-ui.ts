@@ -60,6 +60,9 @@ export class AuthUI {
     `;
     document.body.appendChild(this.inputsContainer);
     
+    // Garantir que canvas fique acima dos inputs quando necessário
+    this.canvas.style.zIndex = '99';
+    
     this.setupEventListeners();
     this.calculateScale();
     window.addEventListener('resize', () => {
@@ -159,6 +162,7 @@ export class AuthUI {
       pointer-events: all;
       box-sizing: border-box;
       transition: border-color 0.2s, box-shadow 0.2s;
+      z-index: 101;
     `;
 
     // Event listeners para validação em tempo real
@@ -441,6 +445,12 @@ export class AuthUI {
   }
 
   private handleClick(e: MouseEvent) {
+    // Ignorar cliques em inputs HTML
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.closest('#auth-inputs-container')) {
+      return;
+    }
+
     const rect = this.canvas.getBoundingClientRect();
     
     // CORREÇÃO: O canvas.width/height são as dimensões internas (baseWidth/baseHeight)
@@ -461,6 +471,7 @@ export class AuthUI {
         e.preventDefault();
         // Executar ação do botão
         btn.action();
+        return; // Parar após encontrar o botão clicado
       }
     });
   }
@@ -548,13 +559,15 @@ export class AuthUI {
   }
 
   draw() {
+    // IMPORTANTE: Sempre limpar botões antes de redesenhar para evitar botões órfãos
     this.buttons.clear();
 
-    // Limpar inputs existentes quando mudar de tela
+    // Limpar inputs existentes quando mudar de tela para welcome
     if (this.currentScreen === 'welcome') {
       this.clearInputs();
     }
 
+    // Redesenhar a tela atual
     if (this.currentScreen === 'welcome') {
       this.drawWelcomeScreen();
     } else if (this.currentScreen === 'login') {
@@ -798,16 +811,23 @@ export class AuthUI {
     this.ctx.lineTo(panelX + panelWidth - 150, panelY + 300);
     this.ctx.stroke();
 
+    // CORREÇÃO: Ajustar tamanho dos botões para não ultrapassar o painel
+    // panelWidth pode ser 700 (desktop) ou 550 (mobile)
+    // Usar largura dinâmica baseada no painel
+    const buttonPadding = isMobile ? 50 : 100;
+    const buttonWidth = panelWidth - (buttonPadding * 2);
+    const buttonX = panelX + buttonPadding;
+
     // Login button
     const loginBtnY = panelY + 340;
-    drawButton(this.ctx, panelX + 125, loginBtnY, 450, 60, '🔐 Entrar', {
+    drawButton(this.ctx, buttonX, loginBtnY, buttonWidth, 60, '🔐 Entrar', {
       bgColor: COLORS.primary.purple,
       hoverColor: COLORS.primary.purpleDark
     });
     this.buttons.set('login', {
-      x: panelX + 125,
+      x: buttonX,
       y: loginBtnY,
-      width: 450,
+      width: buttonWidth,
       height: 60,
       action: () => {
         this.currentScreen = 'login';
@@ -820,14 +840,14 @@ export class AuthUI {
 
     // Register button
     const registerBtnY = panelY + 420;
-    drawButton(this.ctx, panelX + 125, registerBtnY, 450, 60, '✨ Criar Conta', {
+    drawButton(this.ctx, buttonX, registerBtnY, buttonWidth, 60, '✨ Criar Conta', {
       bgColor: COLORS.primary.green,
       hoverColor: '#2d8659'
     });
     this.buttons.set('register', {
-      x: panelX + 125,
+      x: buttonX,
       y: registerBtnY,
-      width: 450,
+      width: buttonWidth,
       height: 60,
       action: () => {
         this.currentScreen = 'register';
@@ -838,16 +858,16 @@ export class AuthUI {
       }
     });
 
-    // Google button
+    // Google button - usar mesmo tamanho dos outros botões
     const googleBtnY = panelY + 520;
-    drawButton(this.ctx, panelX + 125, googleBtnY, 450, 60, '🔗 Entrar com Google', {
+    drawButton(this.ctx, buttonX, googleBtnY, buttonWidth, 60, '🔗 Entrar com Google', {
       bgColor: '#4285f4',
       hoverColor: '#357ae8'
     });
     this.buttons.set('google', {
-      x: panelX + 125,
+      x: buttonX,
       y: googleBtnY,
-      width: 450,
+      width: buttonWidth,
       height: 60,
       action: () => {
         authApi.googleLogin();
@@ -937,39 +957,47 @@ export class AuthUI {
       });
     }
 
+    // CORREÇÃO: Botões ajustados para não ultrapassar o painel
+    const buttonPadding = isMobile ? 50 : 75;
+    const buttonWidth = panelWidth - (buttonPadding * 2);
+    const buttonX = panelX + buttonPadding;
+
     // Login button
     const loginBtnY = panelY + 480;
     const btnText = this.isLoading ? '⏳ Entrando...' : '▶ Entrar';
-    drawButton(this.ctx, panelX + 100, loginBtnY, 500, 60, btnText, {
+    drawButton(this.ctx, buttonX, loginBtnY, buttonWidth, 60, btnText, {
       bgColor: COLORS.primary.purple,
       hoverColor: COLORS.primary.purpleDark,
       isDisabled: this.isLoading
     });
     if (!this.isLoading) {
       this.buttons.set('submit', {
-        x: panelX + 100,
+        x: buttonX,
         y: loginBtnY,
-        width: 500,
+        width: buttonWidth,
         height: 60,
         action: () => this.handleLogin()
       });
     }
 
-    // Back button
+    // Back button - centralizado e menor
     const backBtnY = panelY + 565;
-    drawButton(this.ctx, panelX + 200, backBtnY, 300, 50, '← Voltar', {
+    const backButtonWidth = Math.min(300, panelWidth - 100);
+    const backButtonX = panelX + (panelWidth - backButtonWidth) / 2;
+    drawButton(this.ctx, backButtonX, backBtnY, backButtonWidth, 50, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
     });
     this.buttons.set('back', {
-      x: panelX + 200,
+      x: backButtonX,
       y: backBtnY,
-      width: 300,
+      width: backButtonWidth,
       height: 50,
       action: () => {
         this.currentScreen = 'welcome';
         this.clearInputs();
         this.clearForm();
+        this.draw();
       }
     });
 
@@ -1076,39 +1104,47 @@ export class AuthUI {
       });
     }
 
+    // CORREÇÃO: Botões ajustados para não ultrapassar o painel
+    const buttonPadding = isMobile ? 50 : 75;
+    const buttonWidth = panelWidth - (buttonPadding * 2);
+    const buttonX = panelX + buttonPadding;
+
     // Register button
     const registerBtnY = currentY + (this.errorMessage ? 80 : 50);
     const btnText = this.isLoading ? '⏳ Criando conta...' : '✓ Criar Conta';
-    drawButton(this.ctx, panelX + 125, registerBtnY, 500, 60, btnText, {
+    drawButton(this.ctx, buttonX, registerBtnY, buttonWidth, 60, btnText, {
       bgColor: COLORS.primary.green,
       hoverColor: '#2d8659',
       isDisabled: this.isLoading
     });
     if (!this.isLoading) {
       this.buttons.set('submit', {
-        x: panelX + 125,
+        x: buttonX,
         y: registerBtnY,
-        width: 500,
+        width: buttonWidth,
         height: 60,
         action: () => this.handleRegister()
       });
     }
 
-    // Back button
+    // Back button - centralizado e menor
     const backBtnY = registerBtnY - 80;
-    drawButton(this.ctx, panelX + 225, backBtnY, 300, 45, '← Voltar', {
+    const backButtonWidth = Math.min(300, panelWidth - 100);
+    const backButtonX = panelX + (panelWidth - backButtonWidth) / 2;
+    drawButton(this.ctx, backButtonX, backBtnY, backButtonWidth, 45, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
     });
     this.buttons.set('back', {
-      x: panelX + 225,
+      x: backButtonX,
       y: backBtnY,
-      width: 300,
+      width: backButtonWidth,
       height: 45,
       action: () => {
         this.currentScreen = 'welcome';
         this.clearInputs();
         this.clearForm();
+        this.draw();
       }
     });
 
