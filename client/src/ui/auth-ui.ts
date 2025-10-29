@@ -151,6 +151,7 @@ export class AuthUI {
       // Atualizar posições após um pequeno delay
       requestAnimationFrame(() => {
         this.updateInputPositions();
+        this.setupTabOrder(); // Garantir que tabIndex é mantido após resize
         this.isCalculatingScale = false;
       });
     } catch (error) {
@@ -645,14 +646,20 @@ export class AuthUI {
       // Redesenhar a tela atual
       if (this.currentScreen === 'welcome') {
         this.drawWelcomeScreen();
-      } else if (this.currentScreen === 'login') {
+      } else       if (this.currentScreen === 'login') {
         this.drawLoginScreen();
         // Atualizar posições após desenhar
-        requestAnimationFrame(() => this.updateInputPositions());
+        requestAnimationFrame(() => {
+          this.updateInputPositions();
+          this.setupTabOrder(); // Garantir que tabIndex é setado após atualizar posições
+        });
       } else if (this.currentScreen === 'register') {
         this.drawRegisterScreen();
         // Atualizar posições após desenhar
-        requestAnimationFrame(() => this.updateInputPositions());
+        requestAnimationFrame(() => {
+          this.updateInputPositions();
+          this.setupTabOrder(); // Garantir que tabIndex é setado após atualizar posições
+        });
       }
     } catch (error) {
       console.error('[AuthUI] Error in draw():', error);
