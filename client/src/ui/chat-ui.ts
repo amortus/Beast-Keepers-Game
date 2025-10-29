@@ -617,9 +617,8 @@ export class ChatUI {
       // Apenas o servidor (via friend:online/offline) deve notificar sobre amigos
     });
 
-    // Amigo ficou online - mostrar mensagem de sistema e atualizar lista
+    // Amigo ficou online - atualizar lista silenciosamente (sem popup)
     onFriendOnline((data) => {
-      this.addSystemMessage(`${data.username} está online`, false);
       this.onlineFriends.add(data.username);
       this.updateFriendOnlineStatus(data.username, true);
       if (this.onFriendStatusChange) {
@@ -627,9 +626,8 @@ export class ChatUI {
       }
     });
 
-    // Amigo ficou offline - mostrar mensagem de sistema e atualizar lista
+    // Amigo ficou offline - atualizar lista silenciosamente (sem popup)
     onFriendOffline((data) => {
-      this.addSystemMessage(`${data.username} ficou offline`, false);
       this.onlineFriends.delete(data.username);
       this.updateFriendOnlineStatus(data.username, false);
       if (this.onFriendStatusChange) {
