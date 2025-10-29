@@ -114,6 +114,12 @@ export class GameUI {
       const realWidth = width * scaleX;
       const realHeight = height * scaleY;
       
+      console.log('[GameUI] 3D Container DEBUG:');
+      console.log('  Lógico:', width, 'x', height);
+      console.log('  Escalado (REAL):', Math.round(realWidth), 'x', Math.round(realHeight));
+      console.log('  Posição:', Math.round(realLeft), ',', Math.round(realTop));
+      console.log('  Scale:', scaleX.toFixed(2), 'x', scaleY.toFixed(2));
+      
       // Create container for Ranch Scene 3D
       this.ranchScene3DContainer = document.createElement('div');
       this.ranchScene3DContainer.id = 'ranch-scene-3d-container';
