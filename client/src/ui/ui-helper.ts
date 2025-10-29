@@ -27,8 +27,12 @@ export function drawPanel(
     alpha = 0.95,
   } = options;
 
-  // Fundo
-  ctx.fillStyle = hexToRgba(bgColor, alpha);
+  // Fundo - se já é rgba, usar direto, senão aplicar alpha
+  if (bgColor.startsWith('rgba')) {
+    ctx.fillStyle = bgColor;
+  } else {
+    ctx.fillStyle = hexToRgba(bgColor, alpha);
+  }
   ctx.fillRect(x, y, width, height);
 
   // Borda

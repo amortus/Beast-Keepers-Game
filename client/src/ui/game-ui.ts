@@ -265,7 +265,7 @@ export class GameUI {
   private drawHeader() {
     const headerHeight = 80;
     drawPanel(this.ctx, 0, 0, this.canvas.width, headerHeight, {
-      bgColor: 'rgba(15, 15, 30, 0.92)', // Semi-transparente
+      bgColor: 'rgba(10, 10, 25, 0.95)',
       borderColor: COLORS.primary.purple,
       borderWidth: 2,
     });
@@ -372,27 +372,32 @@ export class GameUI {
       this.createOrUpdateRanchScene3D(scene3DX, scene3DY, scene3DWidth, scene3DHeight, beast);
     }
     
-    // Painel de info da besta (overlay 2D sobre o 3D, canto superior esquerdo)
+    // Painel compacto de info (overlay sobre o 3D)
     const infoX = 20;
     const infoY = 100;
-    const infoWidth = 420;
-    const infoHeight = 180;
+    const infoWidth = 380;
+    const infoHeight = 170;
     
     drawPanel(this.ctx, infoX, infoY, infoWidth, infoHeight, {
-      bgColor: 'rgba(15, 15, 30, 0.92)', // Mais opaco para legibilidade
+      bgColor: 'rgba(10, 10, 25, 0.90)',
       borderColor: COLORS.primary.gold,
-      borderWidth: 3,
+      borderWidth: 2,
     });
 
-    // Beast name and line (formatted as "Nome - Espécie (Tipo)")
+    // Beast name and line
     const lineData = getBeastLineData(beast.line);
     const formattedName = `${beast.name} - ${lineData.name}`;
-    drawText(this.ctx, formattedName, infoX + 10, infoY + 10, {
-      font: 'bold 20px monospace',
-      color: COLORS.primary.green,
+    drawText(this.ctx, formattedName, infoX + 10, infoY + 8, {
+      font: 'bold 18px monospace',
+      color: COLORS.primary.gold,
     });
 
-    // Age and phase (no painel de info)
+    // Info compacta em 2 colunas
+    const leftCol = infoX + 10;
+    const rightCol = infoX + 195;
+    let rowY = infoY + 35;
+    
+    // Coluna esquerda: Idade e Fase
     const phase = getLifePhase(beast);
     const phaseNames = {
       infant: 'Filhote',
@@ -402,17 +407,17 @@ export class GameUI {
       elder: 'Idoso',
     };
 
-    drawText(this.ctx, `Idade: ${beast.secondaryStats.age} / ${beast.secondaryStats.maxAge} semanas`, infoX + 10, infoY + 40, {
-      font: '14px monospace',
+    drawText(this.ctx, `Idade: ${beast.secondaryStats.age}/${beast.secondaryStats.maxAge} sem`, leftCol, rowY, {
+      font: '13px monospace',
       color: COLORS.ui.text,
     });
-
-    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, infoX + 10, infoY + 60, {
-      font: '14px monospace',
+    
+    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, leftCol, rowY + 20, {
+      font: '13px monospace',
       color: COLORS.ui.info,
     });
 
-    // Mood
+    // Coluna direita: Humor
     const moodEmoji: Record<string, string> = {
       happy: '😊',
       neutral: '😐',
@@ -421,52 +426,51 @@ export class GameUI {
       tired: '😴',
     };
     
-    // CORREÇÃO: Tratar mood undefined
     const mood = beast.mood || 'neutral';
     const moodDisplay = moodEmoji[mood] || moodEmoji.neutral;
 
-    drawText(this.ctx, `Humor: ${moodDisplay}`, infoX + 10, infoY + 80, {
-      font: '14px monospace',
+    drawText(this.ctx, `Humor: ${moodDisplay}`, rightCol, rowY, {
+      font: '13px monospace',
       color: COLORS.status[mood] || COLORS.status.neutral,
     });
 
-    // HP Bar (compacta)
+    // Barras (HP, Essência, Fadiga) - compactas
+    rowY = infoY + 75;
+    
     drawBar(
       this.ctx,
       infoX + 10,
-      infoY + 105,
+      rowY,
       infoWidth - 20,
-      20,
+      18,
       beast.currentHp,
       beast.maxHp,
       {
         fillColor: COLORS.attributes.vitality,
-        label: `HP: ${beast.currentHp} / ${beast.maxHp}`,
+        label: `HP: ${beast.currentHp}/${beast.maxHp}`,
       }
     );
 
-    // Essence Bar (compacta)
     drawBar(
       this.ctx,
       infoX + 10,
-      infoY + 132,
+      rowY + 25,
       infoWidth - 20,
-      20,
+      18,
       beast.essence,
       beast.maxEssence,
       {
         fillColor: COLORS.primary.purple,
-        label: `Essência: ${beast.essence} / ${beast.maxEssence}`,
+        label: `Essência: ${beast.essence}/${beast.maxEssence}`,
       }
     );
 
-    // Fatigue Bar (compacta)
     drawBar(
       this.ctx,
       infoX + 10,
-      infoY + 159,
+      rowY + 50,
       infoWidth - 20,
-      12,
+      14,
       beast.secondaryStats.fatigue,
       100,
       {
@@ -606,19 +610,21 @@ export class GameUI {
 
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
-    // Painel mais compacto à direita
-    const x = 920;
+    
+    // Painel ATRIBUTOS/STATUS - alinhado à direita
+    const x = 910;
     const y = 100;
-    const width = 460;
-    const height = 400;
+    const width = 470;
+    const height = 680;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(15, 15, 30, 0.88)', // Semi-transparente
+      bgColor: 'rgba(10, 10, 25, 0.90)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
 
-    drawText(this.ctx, 'ATRIBUTOS', x + 10, y + 10, {
+    // Título ATRIBUTOS
+    drawText(this.ctx, 'ATRIBUTOS', x + 10, y + 8, {
       font: 'bold 18px monospace',
       color: COLORS.primary.gold,
     });
@@ -632,7 +638,10 @@ export class GameUI {
       { key: 'vitality', name: 'Vitalidade', color: COLORS.attributes.vitality },
     ];
 
-    let yOffset = y + 38;
+    let yOffset = y + 40;
+    const labelWidth = 110;
+    const barWidth = 320;
+    
     attrs.forEach((attr) => {
       const value = beast.attributes[attr.key as keyof typeof beast.attributes];
       
@@ -643,10 +652,10 @@ export class GameUI {
 
       drawBar(
         this.ctx,
-        x + 140,
-        yOffset - 5,
-        280,
-        20,
+        x + labelWidth + 10,
+        yOffset - 3,
+        barWidth,
+        18,
         value,
         150,
         {
@@ -655,32 +664,54 @@ export class GameUI {
         }
       );
 
-      yOffset += 30;
+      yOffset += 28;
     });
 
-    // Stats secundários (mais compacto)
-    const statusY = yOffset + 15;
+    // Divisor
+    yOffset += 12;
+    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + 10, yOffset);
+    this.ctx.lineTo(x + width - 10, yOffset);
+    this.ctx.stroke();
     
-    drawText(this.ctx, 'STATUS', x + 10, statusY, {
-      font: 'bold 16px monospace',
+    // STATUS (mais compacto)
+    yOffset += 18;
+    
+    drawText(this.ctx, 'STATUS', x + 10, yOffset, {
+      font: 'bold 18px monospace',
       color: COLORS.primary.gold,
     });
+    
+    yOffset += 30;
 
-    drawText(this.ctx, `Stress: ${beast.secondaryStats.stress}`, x + 10, statusY + 25, {
+    // Grid de 2 colunas para stats
+    const col1X = x + 10;
+    const col2X = x + 240;
+    
+    drawText(this.ctx, `Stress: ${beast.secondaryStats.stress}`, col1X, yOffset, {
       font: '14px monospace',
       color: beast.secondaryStats.stress > 70 ? COLORS.ui.error : COLORS.ui.text,
     });
 
-    drawText(this.ctx, `Lealdade: ${beast.secondaryStats.loyalty}`, x + 10, statusY + 45, {
+    drawText(this.ctx, `Lealdade: ${beast.secondaryStats.loyalty}`, col2X, yOffset, {
       font: '14px monospace',
       color: COLORS.ui.info,
     });
+    
+    yOffset += 25;
 
     // CORREÇÃO: Tratar victories e defeats undefined
     const victories = beast.victories ?? 0;
     const defeats = beast.defeats ?? 0;
     
-    drawText(this.ctx, `Vitórias: ${victories} | Derrotas: ${defeats}`, x + 10, statusY + 65, {
+    drawText(this.ctx, `Vitórias: ${victories}`, col1X, yOffset, {
+      font: '14px monospace',
+      color: COLORS.ui.success,
+    });
+    
+    drawText(this.ctx, `Derrotas: ${defeats}`, col2X, yOffset, {
       font: '14px monospace',
       color: COLORS.ui.textDim,
     });
@@ -692,14 +723,14 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Painel de ações mais compacto e bem posicionado
+    // Painel AÇÕES - abaixo do painel de info, alinhado
     const x = 20;
-    const y = 520;
+    const y = 290;
     const width = 880;
-    const height = 260;
+    const height = 490;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(15, 15, 30, 0.88)', // Semi-transparente
+      bgColor: 'rgba(10, 10, 25, 0.90)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
@@ -921,14 +952,14 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Info compacta e semi-transparente no canto
-    const x = this.canvas.width - 320;
+    // Info compacta (canto inferior direito, abaixo do painel de STATUS)
+    const x = 1080;
     const y = this.canvas.height - 60;
     const width = 300;
     const height = 50;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(15, 15, 30, 0.88)',
+      bgColor: 'rgba(10, 10, 25, 0.90)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
