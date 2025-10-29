@@ -550,11 +550,11 @@ export class ExplorationUI {
   private drawActionButtons() {
     const btnWidth = 130;
     const btnHeight = 40;
-    const startX = 20;
-    const y = this.canvas.height - btnHeight - 20;
-
-    // Return button
-    const returnX = startX;
+    
+    // CORREÇÃO: Reposicionar botão "Voltar" para o topo direito para não conflitar com chat
+    // Chat está no bottom-left, então vamos colocar o botão no top-right
+    const returnX = this.canvas.width - btnWidth - 20; // Canto superior direito
+    const y = 20; // Topo da tela
     const returnIsHovered = isMouseOver(this.mouseX, this.mouseY, returnX, y, btnWidth, btnHeight);
 
     drawButton(this.ctx, returnX, y, btnWidth, btnHeight, '🏠 Voltar', {
