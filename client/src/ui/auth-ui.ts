@@ -43,6 +43,8 @@ export class AuthUI {
   private isDrawing: boolean = false;
   private isCalculatingScale: boolean = false;
   private resizeTimeout: NodeJS.Timeout | null = null;
+  private drawTimeout: NodeJS.Timeout | null = null;
+  private pendingDraw: boolean = false;
 
   // Callbacks
   public onLoginSuccess: (token: string, user: any) => void = () => {};
@@ -137,14 +139,12 @@ export class AuthUI {
       // Se precisar redesenhar após resize, deve ser feito de forma controlada
       
       // Atualizar posições após um pequeno delay
-      setTimeout(() => {
+      // CORREÇÃO: Não chamar draw() aqui para evitar piscar durante resize
+      // O canvas já foi redimensionado, apenas as posições dos inputs precisam ser atualizadas
+      requestAnimationFrame(() => {
         this.updateInputPositions();
-        // Redesenhar apenas se não estiver desenhando já
-        if (!this.isDrawing) {
-          this.draw();
-        }
         this.isCalculatingScale = false;
-      }, 50);
+      });
     } catch (error) {
       console.error('[AuthUI] Error in calculateScale:', error);
       this.isCalculatingScale = false;
@@ -595,17 +595,33 @@ export class AuthUI {
     }
   }
 
-  draw() {
-    // CORREÇÃO: Proteção contra chamadas recursivas - mas permitir retry após timeout
-    if (this.isDrawing) {
-      // Se está desenhando, aguardar um pouco e tentar novamente
-      setTimeout(() => {
-        if (!this.isDrawing) {
-          this.draw();
-        }
-      }, 50);
+  draw(force: boolean = false) {
+    // CORREÇÃO: Debounce para evitar múltiplas renderizações rápidas que causam piscar
+    // Se force=true, ignora debounce (para mudanças de tela)
+    if (!force && this.isDrawing) {
+      // Marcar que há um draw pendente e agendar para depois
+      this.pendingDraw = true;
+      // Agendar draw se não houver um já agendado
+      if (!this.drawTimeout) {
+        this.drawTimeout = setTimeout(() => {
+          this.drawTimeout = null;
+          // Só executar se ainda estiver pendente e não estiver desenhando
+          if (this.pendingDraw && !this.isDrawing) {
+            this.pendingDraw = false;
+            this.draw(false);
+          }
+        }, 50); // 50ms de debounce (reduzido de 100ms para melhor responsividade)
+      }
       return;
     }
+    
+    // Se force=true ou não está desenhando, executar imediatamente
+    // Limpar flags de pendência
+    if (this.drawTimeout) {
+      clearTimeout(this.drawTimeout);
+      this.drawTimeout = null;
+    }
+    this.pendingDraw = false;
     
     this.isDrawing = true;
     
@@ -624,19 +640,29 @@ export class AuthUI {
       } else if (this.currentScreen === 'login') {
         this.drawLoginScreen();
         // Atualizar posições após desenhar
-        setTimeout(() => this.updateInputPositions(), 10);
+        requestAnimationFrame(() => this.updateInputPositions());
       } else if (this.currentScreen === 'register') {
         this.drawRegisterScreen();
         // Atualizar posições após desenhar
-        setTimeout(() => this.updateInputPositions(), 10);
+        requestAnimationFrame(() => this.updateInputPositions());
       }
     } catch (error) {
       console.error('[AuthUI] Error in draw():', error);
     } finally {
-      // Sempre liberar o flag após um pequeno delay para evitar travamentos
-      setTimeout(() => {
+      // Sempre liberar o flag após um frame para evitar travamentos
+      requestAnimationFrame(() => {
         this.isDrawing = false;
-      }, 10);
+        // Se havia um draw pendente e não foi forçado, executar agora
+        if (this.pendingDraw && !force) {
+          // Pequeno delay para evitar renderizações muito rápidas
+          setTimeout(() => {
+            if (this.pendingDraw && !this.isDrawing) {
+              this.pendingDraw = false;
+              this.draw(false);
+            }
+          }, 16); // ~1 frame a 60fps
+        }
+      });
     }
   }
 
@@ -895,24 +921,12 @@ export class AuthUI {
           return;
         }
         
-        // Se está desenhando, tentar novamente em um momento melhor
-        if (this.isDrawing) {
-          setTimeout(() => {
-            if (!this.isDrawing && this.currentScreen !== 'login') {
-              this.currentScreen = 'login';
-              this.clearInputs();
-              this.draw();
-            }
-          }, 50);
-          return;
-        }
-        
         console.log('[AuthUI] Switching to login screen');
         this.currentScreen = 'login';
         // Limpar inputs quando mudar para login
         this.clearInputs();
-        // Redesenhar imediatamente se não estiver desenhando
-        this.draw();
+        // CORREÇÃO: Forçar draw imediatamente para mudança de tela (sem debounce)
+        this.draw(true);
       }
     });
 
@@ -934,24 +948,12 @@ export class AuthUI {
           return;
         }
         
-        // Se está desenhando, tentar novamente em um momento melhor
-        if (this.isDrawing) {
-          setTimeout(() => {
-            if (!this.isDrawing && this.currentScreen !== 'register') {
-              this.currentScreen = 'register';
-              this.clearInputs();
-              this.draw();
-            }
-          }, 50);
-          return;
-        }
-        
         console.log('[AuthUI] Switching to register screen');
         this.currentScreen = 'register';
         // Limpar inputs quando mudar para registro
         this.clearInputs();
-        // Redesenhar imediatamente se não estiver desenhando
-        this.draw();
+        // CORREÇÃO: Forçar draw imediatamente para mudança de tela (sem debounce)
+        this.draw(true);
       }
     });
 
@@ -1097,21 +1099,11 @@ export class AuthUI {
         if (this.currentScreen === 'welcome') {
           return;
         }
-        if (this.isDrawing) {
-          setTimeout(() => {
-            if (!this.isDrawing && this.currentScreen !== 'welcome') {
-              this.currentScreen = 'welcome';
-              this.clearInputs();
-              this.clearForm();
-              this.draw();
-            }
-          }, 50);
-          return;
-        }
         this.currentScreen = 'welcome';
         this.clearInputs();
         this.clearForm();
-        this.draw();
+        // CORREÇÃO: Forçar draw imediatamente para mudança de tela (sem debounce)
+        this.draw(true);
       }
     });
 
@@ -1261,21 +1253,11 @@ export class AuthUI {
         if (this.currentScreen === 'welcome') {
           return;
         }
-        if (this.isDrawing) {
-          setTimeout(() => {
-            if (!this.isDrawing && this.currentScreen !== 'welcome') {
-              this.currentScreen = 'welcome';
-              this.clearInputs();
-              this.clearForm();
-              this.draw();
-            }
-          }, 50);
-          return;
-        }
         this.currentScreen = 'welcome';
         this.clearInputs();
         this.clearForm();
-        this.draw();
+        // CORREÇÃO: Forçar draw imediatamente para mudança de tela (sem debounce)
+        this.draw(true);
       }
     });
 
