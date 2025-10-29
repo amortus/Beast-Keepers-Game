@@ -379,11 +379,11 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === 3D Ranch centralizado (como no exemplo) ===
+    // === 3D Ranch expandido para preencher melhor a página ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = 880; // Centralizado
-    const scene3DHeight = 710;
+    const scene3DWidth = this.canvas.width - 520; // Deixa 520px para os painéis à direita
+    const scene3DHeight = this.canvas.height - 90; // Altura total menos header
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
@@ -526,11 +526,11 @@ export class GameUI {
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
     
-    // Painel INFO + ATRIBUTOS + STATUS (tudo junto no lado direito)
-    const x = 890;
+    // Painel INFO + ATRIBUTOS + STATUS (lado direito - ajustado)
+    const x = this.canvas.width - 510;
     const y = 90;
     const width = 510;
-    const height = 360;
+    const height = 350;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
@@ -699,10 +699,10 @@ export class GameUI {
     const serverTime = this.gameState.serverTime || Date.now();
     
     // Painel AÇÕES - lado direito, abaixo do STATUS
-    const x = 890;
-    const y = 455;
+    const x = this.canvas.width - 510;
+    const y = 445;
     const width = 510;
-    const height = 285;
+    const height = 290;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
@@ -928,10 +928,10 @@ export class GameUI {
     const serverTime = this.gameState.serverTime || Date.now();
     
     // Week Info - embaixo de AÇÕES
-    const x = 890;
-    const y = 745;
+    const x = this.canvas.width - 510;
+    const y = 740;
     const width = 510;
-    const height = 55;
+    const height = 60;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
