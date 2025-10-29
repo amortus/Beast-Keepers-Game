@@ -2287,6 +2287,12 @@ function resizeCanvas() {
   if (ctx) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
+  
+  // ✅ FORÇAR ATUALIZAÇÃO DO CONTAINER 3D NO RESIZE
+  if (gameUI && !inAuth) {
+    // Força redesenho para recriar o container 3D com novo tamanho
+    gameUI.forceRedraw();
+  }
 }
 
 function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {
