@@ -527,11 +527,11 @@ export class ChatUI {
       const tab = this.tabs.find(t => t.channel === data.channel);
       if (tab) {
         tab.messages = data.messages.reverse(); // Reverter para ordem cronológica (mais antiga primeiro)
-        // Se é a aba ativa, garantir renderização e scroll
+        // Se é a aba ativa, garantir renderização e scroll (sem forçar se já estava lendo)
         if (tab.id === this.activeTabId) {
           this.render();
           setTimeout(() => {
-            this.scrollToBottom();
+            this.scrollToBottom(false);
           }, 50);
         } else {
           this.render();
@@ -651,17 +651,17 @@ export class ChatUI {
     this.container.style.height = this.isExpanded ? '400px' : '40px';
     this.render();
 
-    // Auto-scroll para última mensagem quando expandir
-    if (this.isExpanded) {
-      setTimeout(() => {
-        this.scrollToBottom();
-        // Focar no input quando expandir para permitir digitar imediatamente
-        const input = this.container.querySelector('.chat-input') as HTMLInputElement;
-        if (input) {
-          input.focus();
-        }
-      }, 100);
-    }
+      // Auto-scroll para última mensagem quando expandir (sempre forçar ao expandir)
+      if (this.isExpanded) {
+        setTimeout(() => {
+          this.scrollToBottom(true);
+          // Focar no input quando expandir para permitir digitar imediatamente
+          const input = this.container.querySelector('.chat-input') as HTMLInputElement;
+          if (input) {
+            input.focus();
+          }
+        }, 100);
+      }
   }
 
   /**
@@ -690,7 +690,8 @@ export class ChatUI {
       }
     }
     this.render();
-    this.scrollToBottom();
+    // Ao selecionar aba, sempre ir para o final
+    this.scrollToBottom(true);
     
     // Focar no input após selecionar aba (mas não se for aba de amigos)
     if (tabId !== 'friends') {
@@ -829,10 +830,10 @@ export class ChatUI {
 
       this.render();
 
-      // Auto-scroll se é a aba ativa
+      // Auto-scroll se é a aba ativa (não forçar - apenas se já estava perto do final)
       if (targetTab.id === this.activeTabId) {
         setTimeout(() => {
-          this.scrollToBottom();
+          this.scrollToBottom(false);
         }, 10);
       }
     }
@@ -840,15 +841,18 @@ export class ChatUI {
 
   /**
    * Adiciona mensagem do sistema
+   * @param message Mensagem a ser exibida
+   * @param isError Se é uma mensagem de erro (vermelho)
+   * @param keepTab Se true, não muda para aba Global (útil para mensagens de amigos)
    */
-  private addSystemMessage(message: string, isError: boolean = false): void {
+  private addSystemMessage(message: string, isError: boolean = false, keepTab: boolean = false): void {
     // Garantir que chat esteja expandido para mostrar mensagens importantes
     if (isError && !this.isExpanded) {
       this.toggleExpanded();
     }
     
-    // Se não estiver na aba de Global, mudar para ela para mostrar mensagens do sistema
-    if (this.activeTabId !== 'global') {
+    // Só mudar para Global se não for para manter a aba atual
+    if (!keepTab && this.activeTabId !== 'global') {
       const globalTab = this.tabs.find(t => t.id === 'global');
       if (globalTab) {
         this.activeTabId = 'global';
@@ -874,7 +878,8 @@ export class ChatUI {
     });
 
     this.render();
-    setTimeout(() => this.scrollToBottom(), 10);
+    // Não forçar scroll - apenas se já estiver perto do final
+    setTimeout(() => this.scrollToBottom(false), 10);
   }
 
   /**
@@ -917,6 +922,18 @@ export class ChatUI {
         channel: 'group',
         message: args.join(' '),
       };
+    }
+
+    // Add friend command
+    if (command === 'add' || command === 'adicionar') {
+      if (args.length < 1) {
+        this.addSystemMessage('Uso: /add <usuário>', true);
+        return null;
+      }
+      const username = args[0];
+      // Chamar sendFriendRequest diretamente
+      this.sendFriendRequest(username);
+      return null; // Não enviar como mensagem
     }
 
     if (command === 'trade' || command === 'comercio') {
@@ -1065,11 +1082,21 @@ export class ChatUI {
   }
 
   /**
-   * Scroll para o final
+   * Scroll para o final apenas se já estava perto do final
+   * Isso previne que a rolagem suba automaticamente quando o usuário está lendo mensagens antigas
    */
-  private scrollToBottom(): void {
+  private scrollToBottom(force: boolean = false): void {
     const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
-    if (messagesContainer) {
+    if (!messagesContainer) return;
+    
+    const containerHeight = messagesContainer.clientHeight;
+    const scrollHeight = messagesContainer.scrollHeight;
+    const currentScroll = messagesContainer.scrollTop;
+    const distanceFromBottom = scrollHeight - currentScroll - containerHeight;
+    
+    // Se estiver a menos de 50px do final OU for scroll forçado, rolar para o final
+    // Caso contrário, manter a posição atual
+    if (force || distanceFromBottom < 50) {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
   }
@@ -1341,14 +1368,14 @@ export class ChatUI {
         await this.loadFriendRequests();
         this.addFriendInput = '';
         this.render();
-        // Mensagem de sucesso no chat
-        this.addSystemMessage(`Pedido de amizade enviado para ${username}`, false);
+        // Mensagem de sucesso no chat (manter aba atual)
+        this.addSystemMessage(`Pedido de amizade enviado para ${username}`, false, true);
       } else {
-        this.addSystemMessage(`Erro: ${response.error || 'Erro ao enviar pedido'}`, true);
+        this.addSystemMessage(`Erro: ${response.error || 'Erro ao enviar pedido'}`, true, true);
       }
     } catch (error: any) {
       console.error('[ChatUI] Error sending friend request:', error);
-      this.addSystemMessage(`Erro: ${error.message || 'Erro ao enviar pedido'}`, true);
+      this.addSystemMessage(`Erro: ${error.message || 'Erro ao enviar pedido'}`, true, true);
     }
   }
 
@@ -1365,14 +1392,14 @@ export class ChatUI {
         await this.loadFriends();
         await this.loadFriendRequests();
         this.render();
-        // Mensagem de sucesso no chat
-        this.addSystemMessage(`Agora você é amigo de ${friendName}!`, false);
+        // Mensagem de sucesso no chat (manter aba atual)
+        this.addSystemMessage(`Agora você é amigo de ${friendName}!`, false, true);
       } else {
-        this.addSystemMessage('Erro: Erro ao aceitar pedido', true);
+        this.addSystemMessage('Erro: Erro ao aceitar pedido', true, true);
       }
     } catch (error: any) {
       console.error('[ChatUI] Error accepting request:', error);
-      this.addSystemMessage(`Erro: ${error.message || 'Erro ao aceitar pedido'}`, true);
+      this.addSystemMessage(`Erro: ${error.message || 'Erro ao aceitar pedido'}`, true, true);
     }
   }
 
@@ -1397,13 +1424,13 @@ export class ChatUI {
       this.render();
       
       if (response.success) {
-        // Mensagem de sucesso no chat baseada na ação
+        // Mensagem de sucesso no chat baseada na ação (manter aba atual)
         if (action === 'reject') {
-          this.addSystemMessage(`Pedido de amizade de ${targetName} rejeitado`, false);
+          this.addSystemMessage(`Pedido de amizade de ${targetName} rejeitado`, false, true);
         } else if (action === 'cancel') {
-          this.addSystemMessage(`Pedido de amizade para ${targetName} cancelado`, false);
+          this.addSystemMessage(`Pedido de amizade para ${targetName} cancelado`, false, true);
         } else {
-          this.addSystemMessage(`${targetName} foi removido da lista de amigos`, false);
+          this.addSystemMessage(`${targetName} foi removido da lista de amigos`, false, true);
         }
       } else {
         // Se retornou erro mas não é 404, é um erro real
@@ -1413,7 +1440,7 @@ export class ChatUI {
           // A lista já foi recarregada acima, então não precisa fazer nada
         } else {
           const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
-          this.addSystemMessage(`Erro: ${response.error || errorMsg}`, true);
+          this.addSystemMessage(`Erro: ${response.error || errorMsg}`, true, true);
         }
       }
     } catch (error: any) {
@@ -1431,9 +1458,9 @@ export class ChatUI {
         return;
       }
       
-      // Outros erros mostrar mensagem
+      // Outros erros mostrar mensagem (manter aba atual)
       const errorMsg = action === 'reject' ? 'Erro ao rejeitar pedido' : action === 'cancel' ? 'Erro ao cancelar pedido' : 'Erro ao remover amigo';
-      this.addSystemMessage(`Erro: ${error.message || errorMsg}`, true);
+      this.addSystemMessage(`Erro: ${error.message || errorMsg}`, true, true);
     }
   }
 
