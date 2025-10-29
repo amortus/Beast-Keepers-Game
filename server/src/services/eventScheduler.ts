@@ -313,6 +313,7 @@ async function processCalendarEvents() {
 
 let midnightTimeout: NodeJS.Timeout | null = null;
 let lastProcessedMidnight: number = 0;
+let chatCleanupInterval: NodeJS.Timeout | null = null;
 
 /**
  * Função para limpar o scheduler (útil para testes ou shutdown)
@@ -321,6 +322,10 @@ export function stopEventScheduler() {
   if (midnightTimeout) {
     clearTimeout(midnightTimeout);
     midnightTimeout = null;
+  }
+  if (chatCleanupInterval) {
+    clearInterval(chatCleanupInterval);
+    chatCleanupInterval = null;
   }
   console.log('[EventScheduler] Event scheduler stopped');
 }
@@ -419,7 +424,20 @@ export async function startEventScheduler() {
     console.error('[EventScheduler] Initial calendar events error:', error);
   });
   
+  // PERFORMANCE: Limpar mensagens antigas do chat a cada 1 hora (ao invés de apenas meia-noite)
+  chatCleanupInterval = setInterval(async () => {
+    try {
+      console.log('[EventScheduler] Running hourly chat cleanup...');
+      const { cleanupOldChatMessages } = await import('./chatService');
+      await cleanupOldChatMessages();
+      console.log('[EventScheduler] Hourly chat cleanup completed');
+    } catch (error: any) {
+      console.error('[EventScheduler] Hourly chat cleanup error:', error?.message || error);
+    }
+  }, 60 * 60 * 1000); // A cada 1 hora
+  
   console.log('[EventScheduler] Event scheduler started (alarm-based, no polling)');
+  console.log('[EventScheduler] Chat cleanup scheduled every 1 hour');
 }
 
 /**

@@ -44,6 +44,16 @@ const CHAT_COLORS = {
 const connectedUsers = new Map<string, ConnectedUser>(); // socketId -> user
 const userSockets = new Map<number, Set<string>>(); // userId -> Set<socketId>
 
+// PERFORMANCE: Sistema de batch inserts para mensagens
+const messageQueue: ChatMessage[] = [];
+let saveInterval: NodeJS.Timeout | null = null;
+const BATCH_SIZE = 10; // Salvar quando atingir 10 mensagens
+const BATCH_DELAY = 500; // Ou a cada 500ms
+
+// PERFORMANCE: Cache de histórico por canal
+const channelHistoryCache = new Map<string, { messages: ChatMessage[]; timestamp: number }>();
+const CACHE_TTL = 60000; // Cache válido por 1 minuto
+
 let io: SocketServer | null = null;
 
 /**
@@ -82,32 +92,115 @@ async function authenticateSocket(socket: Socket): Promise<{ userId: number; use
 }
 
 /**
- * Salva mensagem no banco de dados
+ * PERFORMANCE: Salva mensagem no banco de dados (agora usa batch inserts)
  */
 async function saveMessage(msg: ChatMessage): Promise<void> {
+  // Adicionar à queue
+  messageQueue.push(msg);
+  
+  // Se atingiu o tamanho do batch, salvar imediatamente
+  if (messageQueue.length >= BATCH_SIZE) {
+    await flushMessageQueue();
+  } else if (!saveInterval) {
+    // Agendar salvamento após delay
+    saveInterval = setTimeout(async () => {
+      await flushMessageQueue();
+      saveInterval = null;
+    }, BATCH_DELAY);
+  }
+}
+
+/**
+ * PERFORMANCE: Salva múltiplas mensagens em batch (reduz queries de N para 1)
+ */
+async function flushMessageQueue(): Promise<void> {
+  if (messageQueue.length === 0) {
+    return;
+  }
+
+  // Copiar mensagens da queue e limpar
+  const messagesToSave = messageQueue.splice(0, messageQueue.length);
+  
+  // Cancelar timer se existir
+  if (saveInterval) {
+    clearTimeout(saveInterval);
+    saveInterval = null;
+  }
+
+  if (messagesToSave.length === 0) {
+    return;
+  }
+
   try {
-    await query(
-      `INSERT INTO chat_messages (channel, sender_user_id, sender_username, recipient_username, message, timestamp)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
+    // Criar valores para INSERT múltiplo
+    const values: any[] = [];
+    const placeholders: string[] = [];
+    
+    messagesToSave.forEach((msg, index) => {
+      const base = index * 6;
+      placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
+      values.push(
         msg.channel,
         msg.senderUserId,
         msg.sender,
         msg.recipient || null,
         msg.message,
         msg.timestamp
-      ]
+      );
+    });
+
+    await query(
+      `INSERT INTO chat_messages (channel, sender_user_id, sender_username, recipient_username, message, timestamp)
+       VALUES ${placeholders.join(', ')}`,
+      values
     );
+
+    // PERFORMANCE: Invalidar cache dos canais afetados
+    const affectedChannels = new Set(messagesToSave.map(m => m.channel));
+    affectedChannels.forEach(channel => {
+      channelHistoryCache.delete(channel);
+    });
+
+    console.log(`[ChatService] Saved ${messagesToSave.length} messages in batch`);
   } catch (error) {
-    console.error('[ChatService] Error saving message:', error);
+    console.error('[ChatService] Error saving messages in batch:', error);
+    // Em caso de erro, tentar salvar individualmente (fallback)
+    for (const msg of messagesToSave) {
+      try {
+        await query(
+          `INSERT INTO chat_messages (channel, sender_user_id, sender_username, recipient_username, message, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            msg.channel,
+            msg.senderUserId,
+            msg.sender,
+            msg.recipient || null,
+            msg.message,
+            msg.timestamp
+          ]
+        );
+      } catch (individualError) {
+        console.error('[ChatService] Error saving individual message:', individualError);
+      }
+    }
   }
 }
 
 /**
- * Carrega histórico de mensagens do canal
+ * PERFORMANCE: Carrega histórico de mensagens do canal (com cache)
  */
 async function loadChannelHistory(channel: string, limit: number = 100): Promise<ChatMessage[]> {
   try {
+    // Verificar cache primeiro
+    const cached = channelHistoryCache.get(channel);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < CACHE_TTL) {
+      // Cache válido, retornar mensagens do cache (limitadas)
+      return cached.messages.slice(-limit);
+    }
+
+    // Cache inválido ou não existe, buscar do banco
     const result = await query(
       `SELECT id, channel, sender_user_id, sender_username, recipient_username, message, timestamp
        FROM chat_messages
@@ -117,7 +210,7 @@ async function loadChannelHistory(channel: string, limit: number = 100): Promise
       [channel, limit]
     );
 
-    return result.rows.reverse().map(row => ({
+    const messages = result.rows.reverse().map(row => ({
       id: `msg-${row.id}`,
       channel: row.channel,
       sender: row.sender_username,
@@ -127,6 +220,14 @@ async function loadChannelHistory(channel: string, limit: number = 100): Promise
       timestamp: parseInt(row.timestamp),
       color: CHAT_COLORS[row.channel as keyof typeof CHAT_COLORS] || CHAT_COLORS.global,
     }));
+
+    // Atualizar cache
+    channelHistoryCache.set(channel, {
+      messages,
+      timestamp: now,
+    });
+
+    return messages;
   } catch (error) {
     console.error('[ChatService] Error loading history:', error);
     return [];
@@ -318,9 +419,9 @@ export function initializeChatService(server: HttpServer) {
         color: CHAT_COLORS[channel as keyof typeof CHAT_COLORS] || CHAT_COLORS.global,
       };
 
-      // Salvar no banco (exceto system)
+      // PERFORMANCE: Salvar no banco usando batch inserts (exceto system)
       if (channel !== 'system') {
-        await saveMessage(chatMessage);
+        saveMessage(chatMessage); // Não precisa await - salva em batch
       }
 
       // Enviar para sala do canal
@@ -376,9 +477,9 @@ export function initializeChatService(server: HttpServer) {
         color: CHAT_COLORS.whisper,
       };
 
-      // Salvar no banco (ambas as mensagens)
-      await saveMessage(whisperToSender);
-      await saveMessage(whisperToRecipient);
+      // PERFORMANCE: Salvar no banco usando batch inserts
+      saveMessage(whisperToSender); // Não precisa await - salva em batch
+      saveMessage(whisperToRecipient); // Não precisa await - salva em batch
 
       // Enviar para remetente
       socket.emit('chat:message', whisperToSender);
@@ -521,5 +622,12 @@ export function notifyFriendUpdate(userId: number, eventType: 'request-sent' | '
  */
 export function getSocketIO(): SocketServer | null {
   return io;
+}
+
+/**
+ * PERFORMANCE: Garante que todas as mensagens pendentes sejam salvas (graceful shutdown)
+ */
+export async function flushPendingMessages(): Promise<void> {
+  await flushMessageQueue();
 }
 

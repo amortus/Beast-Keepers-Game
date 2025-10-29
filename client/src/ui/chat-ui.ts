@@ -121,8 +121,8 @@ export class ChatUI {
     // Verificar se há mensagens não lidas para notificar
     this.checkUnreadMessages();
 
-    // Renderizar
-    this.render();
+    // PERFORMANCE: Render inicial usa force=true (é a primeira renderização)
+    this.scheduleRender(true);
 
     // Setup event listeners
     this.setupEventListeners();
@@ -419,7 +419,8 @@ export class ChatUI {
           // Só renderizar se o estado do autocomplete mudou (apareceu/desapareceu)
           // ou se há sugestões para atualizar o dropdown
           if (wasAutocompleteVisible !== this.autocompleteVisible || this.autocompleteVisible) {
-            this.render();
+            // PERFORMANCE: Atualizar apenas dropdown, não precisa de render completo
+            this.updateAutocompleteDropdown();
             // Preservar foco e cursor após render
             setTimeout(() => {
               const newInput = this.container.querySelector('.chat-input') as HTMLInputElement;
@@ -709,7 +710,8 @@ export class ChatUI {
   private toggleExpanded(): void {
     this.isExpanded = !this.isExpanded;
     this.container.style.height = this.isExpanded ? '400px' : '40px';
-    this.render();
+    // PERFORMANCE: Forçar render imediato para mudanças de UI importantes
+    this.scheduleRender(true);
 
       // Auto-scroll para última mensagem quando expandir (sempre forçar ao expandir)
       if (this.isExpanded) {
@@ -749,7 +751,10 @@ export class ChatUI {
         this.loadFriendRequests();
       }
     }
-    this.render();
+    // PERFORMANCE: Limpar tracking de mensagens renderizadas ao mudar de aba
+    this.lastRenderedMessageIds.clear();
+    // Forçar render imediato para mudança de aba
+    this.scheduleRender(true);
     // Ao selecionar aba, sempre ir para o final
     this.scrollToBottom(true);
     
@@ -865,10 +870,12 @@ export class ChatUI {
     }
 
     if (targetTab) {
-      // Limitar a 100 mensagens
+      // PERFORMANCE: Limitar a 100 mensagens usando pop() ao invés de shift() (O(1) vs O(n))
+      // Manter ordem: mensagens mais antigas no início, novas no final
       targetTab.messages.push(msg);
       if (targetTab.messages.length > 100) {
-        targetTab.messages.shift();
+        targetTab.messages.shift(); // Remover a mais antiga (ainda precisa shift para ordem cronológica)
+        // Alternativa futura: manter ordem reversa e usar pop(), mas precisa ajustar toda renderização
       }
 
       // Incrementar contador não lidas se não é a aba ativa
@@ -888,29 +895,44 @@ export class ChatUI {
         }
       }
 
-      // Verificar se deve preservar scroll ANTES de renderizar
-      const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+      // PERFORMANCE: Tentar renderização incremental primeiro
+      const wasAppended = this.appendMessageToDOM(msg, targetTab.id, false);
       
-      if (shouldPreserveScroll) {
-        this.preserveScrollOnRender = true;
-      }
-      
-      this.render();
-
-      // Auto-scroll APENAS se:
-      // 1. É a aba ativa
-      // 2. NÃO está preservando scroll (usuário não está lendo mensagens antigas)
-      // 3. Estava perto do final antes da mensagem chegar
-      if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
-        setTimeout(() => {
-          this.scrollToBottom(false);
-        }, 10);
-      } else {
-        // Resetar flag após render se estava preservando
-        if (this.preserveScrollOnRender) {
+      if (wasAppended) {
+        // Mensagem adicionada incrementalmente - apenas fazer scroll se necessário
+        const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+        
+        if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
           setTimeout(() => {
-            this.preserveScrollOnRender = false;
-          }, 100);
+            this.scrollToBottom(false);
+          }, 10);
+        }
+      } else {
+        // Renderização completa necessária (não é a aba ativa, ou precisa de render completo)
+        const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+        
+        if (shouldPreserveScroll) {
+          this.preserveScrollOnRender = true;
+        }
+        
+        // PERFORMANCE: Usar scheduleRender ao invés de render() direto
+        this.scheduleRender(false);
+
+        // Auto-scroll APENAS se:
+        // 1. É a aba ativa
+        // 2. NÃO está preservando scroll (usuário não está lendo mensagens antigas)
+        // 3. Estava perto do final antes da mensagem chegar
+        if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
+          setTimeout(() => {
+            this.scrollToBottom(false);
+          }, 10);
+        } else {
+          // Resetar flag após render se estava preservando
+          if (this.preserveScrollOnRender) {
+            setTimeout(() => {
+              this.preserveScrollOnRender = false;
+            }, 100);
+          }
         }
       }
     }
@@ -960,7 +982,8 @@ export class ChatUI {
         }
       });
 
-      this.render();
+      // PERFORMANCE: Usar scheduleRender ao invés de render() direto
+      this.scheduleRender(false);
       // Não forçar scroll - apenas se já estiver perto do final
       setTimeout(() => this.scrollToBottom(false), 10);
     }
@@ -979,7 +1002,8 @@ export class ChatUI {
     };
     
     this.notifications.push(notification);
-    this.render(); // Re-renderizar para mostrar notificação
+    // PERFORMANCE: Usar scheduleRender para notificações
+    this.scheduleRender(false);
     
     // Remover após 4 segundos (erros ficam mais tempo)
     const duration = isError ? 6000 : 4000;
@@ -987,7 +1011,8 @@ export class ChatUI {
       const index = this.notifications.findIndex(n => n.id === notificationId);
       if (index > -1) {
         this.notifications.splice(index, 1);
-        this.render(); // Re-renderizar para remover notificação
+        // PERFORMANCE: Usar scheduleRender para remoção de notificações
+        this.scheduleRender(false);
       }
     }, duration);
   }
@@ -1001,7 +1026,8 @@ export class ChatUI {
       onConfirm,
       onCancel,
     };
-    this.render(); // Re-renderizar para mostrar diálogo
+    // PERFORMANCE: Forçar render imediato para diálogos importantes
+    this.scheduleRender(true);
   }
   
   /**
@@ -1009,7 +1035,8 @@ export class ChatUI {
    */
   private closeConfirmationDialog(): void {
     this.confirmationDialog = null;
-    this.render();
+    // PERFORMANCE: Forçar render imediato para fechar diálogo
+    this.scheduleRender(true);
   }
 
   /**
@@ -1961,6 +1988,153 @@ export class ChatUI {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * PERFORMANCE: Agendar renderização com debounce (evita múltiplas renderizações consecutivas)
+   */
+  private scheduleRender(force: boolean = false): void {
+    if (force) {
+      // Render imediato (para mudanças críticas como mudar de aba)
+      if (this.renderDebounceTimer) {
+        clearTimeout(this.renderDebounceTimer);
+        this.renderDebounceTimer = null;
+      }
+      this.pendingRender = false;
+      this.render();
+      return;
+    }
+
+    // Marcar que há uma renderização pendente
+    this.pendingRender = true;
+
+    // Se já existe um timer, cancelar e criar um novo
+    if (this.renderDebounceTimer) {
+      clearTimeout(this.renderDebounceTimer);
+    }
+
+    // Agendar renderização após 16ms (~60fps)
+    this.renderDebounceTimer = window.setTimeout(() => {
+      if (this.pendingRender) {
+        this.pendingRender = false;
+        this.render();
+      }
+      this.renderDebounceTimer = null;
+    }, 16);
+  }
+
+  /**
+   * PERFORMANCE: Formatar HTML de uma única mensagem
+   */
+  private formatMessageHTML(msg: ChatMessage): string {
+    const isWhisper = msg.channel === 'whisper';
+    const isSystem = msg.channel === 'system';
+    const time = this.formatTime(msg.timestamp);
+    const currentUsername = localStorage.getItem('username') || '';
+    
+    let whisperPrefix = '';
+    if (isWhisper && msg.recipient) {
+      if (msg.recipient === currentUsername) {
+        whisperPrefix = `<span style="color: ${CHAT_COLORS.whisper};">[De ${msg.sender}]</span> `;
+      } else {
+        whisperPrefix = `<span style="color: ${CHAT_COLORS.whisper};">[Para ${msg.recipient}]</span> `;
+      }
+    }
+    
+    return `
+      <div data-message-id="${msg.id}" style="
+        margin-bottom: 5px;
+        line-height: 1.4;
+        word-wrap: break-word;
+      ">
+        ${isSystem ? '' : `<span style="color: #888; font-size: 10px;">[${time}]</span> `}
+        ${whisperPrefix}
+        ${!isSystem ? `<span class="chat-username" data-username="${this.escapeHtml(msg.sender)}" style="color: ${isWhisper ? CHAT_COLORS.whisper : '#4FD1C7'}; font-weight: bold; cursor: pointer; text-decoration: underline;" title="Clique para enviar whisper">${this.escapeHtml(msg.sender)}</span>: ` : ''}
+        <span style="color: ${msg.color};">${this.escapeHtml(msg.message)}</span>
+      </div>
+    `;
+  }
+
+  /**
+   * PERFORMANCE: Adicionar mensagem incrementalmente ao DOM (ao invés de recriar todo HTML)
+   */
+  private appendMessageToDOM(msg: ChatMessage, tabId: string, forceFullRender: boolean = false): boolean {
+    // Se não é a aba ativa ou precisa de render completo, retornar false para usar render() completo
+    if (forceFullRender || tabId !== this.activeTabId || this.activeTabId === 'friends') {
+      return false;
+    }
+
+    const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+    if (!messagesContainer) {
+      return false;
+    }
+
+    // Verificar se já existe no DOM (evitar duplicatas)
+    if (messagesContainer.querySelector(`[data-message-id="${msg.id}"]`)) {
+      return true; // Já existe, não precisa adicionar
+    }
+
+    // Criar elemento da mensagem
+    const messageDiv = document.createElement('div');
+    messageDiv.innerHTML = this.formatMessageHTML(msg).trim();
+    const actualDiv = messageDiv.firstElementChild as HTMLElement;
+    
+    if (!actualDiv) {
+      return false;
+    }
+
+    // Adicionar ao final do container
+    messagesContainer.appendChild(actualDiv);
+
+    // Atualizar tracking de mensagens renderizadas
+    if (!this.lastRenderedMessageIds.has(tabId)) {
+      this.lastRenderedMessageIds.set(tabId, new Set());
+    }
+    this.lastRenderedMessageIds.get(tabId)!.add(msg.id);
+
+    // PERFORMANCE: Limpar mensagens antigas do DOM (manter apenas últimas 50 visíveis)
+    this.cleanupOldDOMMessages(messagesContainer, tabId, 50);
+
+    // Re-setup event listeners apenas para novos elementos
+    this.setupMessageEventListeners(actualDiv);
+
+    return true;
+  }
+
+  /**
+   * PERFORMANCE: Limpar mensagens antigas do DOM (mantém apenas últimas N visíveis)
+   */
+  private cleanupOldDOMMessages(container: HTMLDivElement, tabId: string, maxVisible: number): void {
+    const messages = Array.from(container.querySelectorAll('[data-message-id]')) as HTMLElement[];
+    
+    if (messages.length > maxVisible) {
+      // Remover as mensagens mais antigas (do início)
+      const toRemove = messages.slice(0, messages.length - maxVisible);
+      toRemove.forEach(el => {
+        const msgId = el.dataset.messageId;
+        if (msgId) {
+          this.lastRenderedMessageIds.get(tabId)?.delete(msgId);
+        }
+        el.remove();
+      });
+    }
+  }
+
+  /**
+   * PERFORMANCE: Setup event listeners apenas para um elemento (ao invés de todo o container)
+   */
+  private setupMessageEventListeners(element: HTMLElement): void {
+    // Adicionar listener para clicks em usernames (whisper)
+    const usernameElements = element.querySelectorAll('.chat-username');
+    usernameElements.forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const username = (e.target as HTMLElement).dataset.username;
+        if (username) {
+          this.createWhisperTab(username);
+        }
+      });
+    });
   }
 
   /**
