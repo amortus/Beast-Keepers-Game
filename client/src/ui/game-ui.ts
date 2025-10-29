@@ -404,10 +404,11 @@ export class GameUI {
     const beast = this.gameState.activeBeast!;
     
     // === 3D Ranch: preenche até os painéis direitos ===
+    const headerHeight = 80; // Mesmo valor do drawHeader()
     const scene3DX = 0;
-    const scene3DY = 90;
+    const scene3DY = headerHeight; // Começa LOGO APÓS o header
     const scene3DWidth = this.canvas.width - 510; // Até os painéis (gap mínimo)
-    const scene3DHeight = this.canvas.height - 90; // Até o fundo
+    const scene3DHeight = this.canvas.height - headerHeight; // Até o fundo
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
