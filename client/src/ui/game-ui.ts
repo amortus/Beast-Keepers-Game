@@ -379,11 +379,11 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === 3D Ranch expandido para preencher melhor a página ===
+    // === 3D Ranch: preenche até perto dos painéis e até o fundo (como no exemplo) ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = this.canvas.width - 520; // Deixa 520px para os painéis à direita
-    const scene3DHeight = this.canvas.height - 90; // Altura total menos header
+    const scene3DWidth = this.canvas.width - 515; // Chega PERTO dos painéis (pequeno gap)
+    const scene3DHeight = this.canvas.height - 90; // Vai ATÉ O FUNDO (chat fica por cima)
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
