@@ -26,10 +26,10 @@ export function createPS1Skybox(scene: THREE.Scene): THREE.Mesh {
     void main() {
       float h = normalize(vWorldPosition).y;
       
-      // Sky colors (PS1 style - saturated)
-      vec3 skyTop = vec3(0.4, 0.6, 1.0);       // Light blue
-      vec3 skyHorizon = vec3(0.7, 0.5, 0.9);   // Purple-pink
-      vec3 skyBottom = vec3(0.5, 0.3, 0.7);    // Dark purple
+      // Sky colors (concept art style - azul/verde natural)
+      vec3 skyTop = vec3(0.3, 0.5, 0.95);      // Azul céu
+      vec3 skyHorizon = vec3(0.6, 0.75, 0.95); // Azul claro
+      vec3 skyBottom = vec3(0.7, 0.85, 0.95);  // Azul muito claro (próximo branco)
       
       // Blend based on height
       vec3 color;
@@ -151,7 +151,7 @@ export function createPS1Clouds(scene: THREE.Scene, count: number = 5): THREE.Gr
 /**
  * Setup fog for depth (PS1 aesthetic)
  */
-export function setupPS1Fog(scene: THREE.Scene, color: number = 0x5a4a7a, near: number = 15, far: number = 35) {
+export function setupPS1Fog(scene: THREE.Scene, color: number = 0x9fb8d9, near: number = 20, far: number = 50) {
   scene.fog = new THREE.Fog(color, near, far);
 }
 

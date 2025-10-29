@@ -17,8 +17,8 @@ export class ThreeScene {
 
     // Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0f0f1e);
-    this.scene.fog = new THREE.Fog(0x0f0f1e, 10, 50);
+    // Sem background color - o skybox vai preencher
+    this.scene.background = null;
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(

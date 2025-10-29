@@ -39,17 +39,22 @@ export class RanchScene3D {
     camera.lookAt(0, 0.8, 0);
     camera.updateProjectionMatrix();
     
-    // PS1 Background elements
+    // PS1 Background elements (cores naturais do concept art)
     this.skybox = createPS1Skybox(scene);
     this.mountains = createDistantMountains(scene);
-    setupPS1Fog(scene, 0x5a4a7a, 15, 40);
+    setupPS1Fog(scene, 0x9fb8d9, 20, 50); // Fog azul claro
     
-    // Procedural terrain (replaces flat ground)
+    // Procedural terrain (replaces flat ground) - cores verdes do concept art
     this.terrain = new PS1Terrain({
       size: 20,
       segments: 24,
       heightVariation: 0.3,
       seed: 12345,
+      colors: {
+        base: 0x3a7c2a,  // Verde grama médio
+        high: 0x5a9c4a, // Verde claro (colinas)
+        low: 0x2a5c1a,  // Verde escuro (vales)
+      }
     });
     scene.add(this.terrain.getMesh());
     

@@ -379,7 +379,9 @@ export class GameUI {
     const infoHeight = 180;
     
     drawPanel(this.ctx, infoX, infoY, infoWidth, infoHeight, {
-      bgColor: 'rgba(20, 20, 40, 0.85)', // Semi-transparente para ver 3D atrás
+      bgColor: 'rgba(15, 15, 30, 0.92)', // Mais opaco para legibilidade
+      borderColor: COLORS.primary.gold,
+      borderWidth: 3,
     });
 
     // Beast name and line (formatted as "Nome - Espécie (Tipo)")
@@ -610,7 +612,11 @@ export class GameUI {
     const width = 890;
     const height = 450;
 
-    drawPanel(this.ctx, x, y, width, height);
+    drawPanel(this.ctx, x, y, width, height, {
+      bgColor: 'rgba(15, 15, 30, 0.92)', // Mais opaco para legibilidade
+      borderColor: COLORS.primary.gold,
+      borderWidth: 3,
+    });
 
     drawText(this.ctx, 'ATRIBUTOS', x + 10, y + 10, {
       font: 'bold 20px monospace',
@@ -693,7 +699,11 @@ export class GameUI {
     const width = this.canvas.width - 40;
     const height = 170;
 
-    drawPanel(this.ctx, x, y, width, height);
+    drawPanel(this.ctx, x, y, width, height, {
+      bgColor: 'rgba(15, 15, 30, 0.92)', // Mais opaco para legibilidade
+      borderColor: COLORS.primary.gold,
+      borderWidth: 3,
+    });
 
     // Se tem ação em progresso, mostrar progresso
     if (beast.currentAction) {
