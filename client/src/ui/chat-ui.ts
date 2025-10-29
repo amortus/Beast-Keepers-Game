@@ -752,7 +752,10 @@ export class ChatUI {
       }
     }
     // PERFORMANCE: Limpar tracking de mensagens renderizadas ao mudar de aba
-    this.lastRenderedMessageIds.clear();
+    // CORREÇÃO: Verificar se existe antes de chamar clear()
+    if (this.lastRenderedMessageIds) {
+      this.lastRenderedMessageIds.clear();
+    }
     // Forçar render imediato para mudança de aba
     this.scheduleRender(true);
     // Ao selecionar aba, sempre ir para o final
@@ -2113,6 +2116,10 @@ export class ChatUI {
       messagesContainer.appendChild(actualDiv);
 
       // Atualizar tracking de mensagens renderizadas
+      // CORREÇÃO: Garantir que lastRenderedMessageIds existe
+      if (!this.lastRenderedMessageIds) {
+        this.lastRenderedMessageIds = new Map();
+      }
       if (!this.lastRenderedMessageIds.has(tabId)) {
         this.lastRenderedMessageIds.set(tabId, new Set());
       }
@@ -2146,7 +2153,7 @@ export class ChatUI {
       const toRemove = messages.slice(0, messages.length - maxVisible);
       toRemove.forEach(el => {
         const msgId = el.dataset.messageId;
-        if (msgId) {
+        if (msgId && this.lastRenderedMessageIds) {
           this.lastRenderedMessageIds.get(tabId)?.delete(msgId);
         }
         el.remove();
