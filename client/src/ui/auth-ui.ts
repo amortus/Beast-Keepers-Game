@@ -38,6 +38,11 @@ export class AuthUI {
   private baseHeight: number = 700;
   private minScale: number = 0.6;
   private maxScale: number = 1.5;
+  
+  // Proteção contra loops infinitos
+  private isDrawing: boolean = false;
+  private isCalculatingScale: boolean = false;
+  private resizeTimeout: NodeJS.Timeout | null = null;
 
   // Callbacks
   public onLoginSuccess: (token: string, user: any) => void = () => {};
@@ -65,61 +70,85 @@ export class AuthUI {
     
     this.setupEventListeners();
     this.calculateScale();
+    
+    // CORREÇÃO: Debounce no resize para evitar múltiplas chamadas
     window.addEventListener('resize', () => {
-      this.calculateScale();
-      this.updateInputPositions();
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
+      }
+      this.resizeTimeout = setTimeout(() => {
+        this.calculateScale();
+      }, 150); // 150ms de debounce
     });
   }
 
   private calculateScale() {
-    const containerWidth = window.innerWidth;
-    const containerHeight = window.innerHeight;
-    const isMobile = containerWidth < 768;
-    
-    // Para mobile, ajustar baseWidth/baseHeight para melhor experiência
-    if (isMobile) {
-      this.baseWidth = 600;
-      this.baseHeight = 800;
-      this.minScale = 0.5;
-    } else {
-      this.baseWidth = 800;
-      this.baseHeight = 700;
-      this.minScale = 0.6;
+    // CORREÇÃO: Proteção contra múltiplas chamadas simultâneas
+    if (this.isCalculatingScale) {
+      return;
     }
-    
-    // Calcular escala baseada na menor dimensão para manter proporção
-    const scaleX = containerWidth / this.baseWidth;
-    const scaleY = containerHeight / this.baseHeight;
-    this.scale = Math.min(scaleX, scaleY);
-    
-    // Limitar escala entre min e max
-    this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
-    
-    // Aplicar escala ao canvas
-    this.canvas.width = this.baseWidth;
-    this.canvas.height = this.baseHeight;
-    this.canvas.style.width = `${this.baseWidth * this.scale}px`;
-    this.canvas.style.height = `${this.baseHeight * this.scale}px`;
-    
-    // Centralizar canvas
-    this.canvas.style.position = 'absolute';
-    this.canvas.style.left = '50%';
-    this.canvas.style.top = '50%';
-    this.canvas.style.transform = 'translate(-50%, -50%)';
-    
-    // Aplicar mesma escala e posição do canvas ao container de inputs
-    // O container deve ter o mesmo tamanho visual que o canvas
-    this.inputsContainer.style.width = `${this.baseWidth * this.scale}px`;
-    this.inputsContainer.style.height = `${this.baseHeight * this.scale}px`;
-    // Usar mesma transform do canvas para manter alinhamento
-    this.inputsContainer.style.transform = 'translate(-50%, -50%)';
-    
-    // Redesenhar após mudança de escala
-    // IMPORTANTE: Sempre limpar botões antes de redesenhar para garantir que sejam recriados
-    this.buttons.clear();
-    this.draw();
-    // Atualizar posições após um pequeno delay para garantir que o canvas foi renderizado
-    setTimeout(() => this.updateInputPositions(), 0);
+    this.isCalculatingScale = true;
+
+    try {
+      const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
+      const isMobile = containerWidth < 768;
+      
+      // Para mobile, ajustar baseWidth/baseHeight para melhor experiência
+      if (isMobile) {
+        this.baseWidth = 600;
+        this.baseHeight = 800;
+        this.minScale = 0.5;
+      } else {
+        this.baseWidth = 800;
+        this.baseHeight = 700;
+        this.minScale = 0.6;
+      }
+      
+      // Calcular escala baseada na menor dimensão para manter proporção
+      const scaleX = containerWidth / this.baseWidth;
+      const scaleY = containerHeight / this.baseHeight;
+      this.scale = Math.min(scaleX, scaleY);
+      
+      // Limitar escala entre min e max
+      this.scale = Math.max(this.minScale, Math.min(this.maxScale, this.scale));
+      
+      // Aplicar escala ao canvas
+      this.canvas.width = this.baseWidth;
+      this.canvas.height = this.baseHeight;
+      this.canvas.style.width = `${this.baseWidth * this.scale}px`;
+      this.canvas.style.height = `${this.baseHeight * this.scale}px`;
+      
+      // Centralizar canvas
+      this.canvas.style.position = 'absolute';
+      this.canvas.style.left = '50%';
+      this.canvas.style.top = '50%';
+      this.canvas.style.transform = 'translate(-50%, -50%)';
+      
+      // Aplicar mesma escala e posição do canvas ao container de inputs
+      // O container deve ter o mesmo tamanho visual que o canvas
+      this.inputsContainer.style.width = `${this.baseWidth * this.scale}px`;
+      this.inputsContainer.style.height = `${this.baseHeight * this.scale}px`;
+      // Usar mesma transform do canvas para manter alinhamento
+      this.inputsContainer.style.transform = 'translate(-50%, -50%)';
+      
+      // CORREÇÃO: NÃO chamar draw() aqui para evitar loop infinito
+      // O draw() será chamado apenas quando necessário (mudança de tela, etc)
+      // Se precisar redesenhar após resize, deve ser feito de forma controlada
+      
+      // Atualizar posições após um pequeno delay
+      setTimeout(() => {
+        this.updateInputPositions();
+        // Redesenhar apenas se não estiver desenhando já
+        if (!this.isDrawing) {
+          this.draw();
+        }
+        this.isCalculatingScale = false;
+      }, 50);
+    } catch (error) {
+      console.error('[AuthUI] Error in calculateScale:', error);
+      this.isCalculatingScale = false;
+    }
   }
 
   private createInputField(
@@ -445,6 +474,12 @@ export class AuthUI {
   }
 
   private handleClick(e: MouseEvent) {
+    // CORREÇÃO: Proteção adicional contra cliques durante operações críticas
+    if (this.isDrawing || this.isCalculatingScale) {
+      console.warn('[AuthUI] Click ignored - UI is updating');
+      return;
+    }
+    
     // Ignorar cliques em inputs HTML
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.closest('#auth-inputs-container')) {
@@ -469,6 +504,13 @@ export class AuthUI {
         // Parar propagação
         e.stopPropagation();
         e.preventDefault();
+        
+        // CORREÇÃO: Debounce para evitar múltiplos cliques rápidos
+        if (this.isDrawing) {
+          console.warn('[AuthUI] Button click ignored - already drawing');
+          return;
+        }
+        
         // Executar ação do botão
         btn.action();
         return; // Parar após encontrar o botão clicado
@@ -559,25 +601,42 @@ export class AuthUI {
   }
 
   draw() {
-    // IMPORTANTE: Sempre limpar botões antes de redesenhar para evitar botões órfãos
-    this.buttons.clear();
-
-    // Limpar inputs existentes quando mudar de tela para welcome
-    if (this.currentScreen === 'welcome') {
-      this.clearInputs();
+    // CORREÇÃO: Proteção contra chamadas recursivas que podem causar loop infinito
+    if (this.isDrawing) {
+      console.warn('[AuthUI] draw() called while already drawing - skipping');
+      return;
     }
+    
+    this.isDrawing = true;
+    
+    try {
+      // IMPORTANTE: Sempre limpar botões antes de redesenhar para evitar botões órfãos
+      this.buttons.clear();
 
-    // Redesenhar a tela atual
-    if (this.currentScreen === 'welcome') {
-      this.drawWelcomeScreen();
-    } else if (this.currentScreen === 'login') {
-      this.drawLoginScreen();
-      // Atualizar posições após desenhar
-      setTimeout(() => this.updateInputPositions(), 0);
-    } else if (this.currentScreen === 'register') {
-      this.drawRegisterScreen();
-      // Atualizar posições após desenhar
-      setTimeout(() => this.updateInputPositions(), 0);
+      // Limpar inputs existentes quando mudar de tela para welcome
+      if (this.currentScreen === 'welcome') {
+        this.clearInputs();
+      }
+
+      // Redesenhar a tela atual
+      if (this.currentScreen === 'welcome') {
+        this.drawWelcomeScreen();
+      } else if (this.currentScreen === 'login') {
+        this.drawLoginScreen();
+        // Atualizar posições após desenhar
+        setTimeout(() => this.updateInputPositions(), 10);
+      } else if (this.currentScreen === 'register') {
+        this.drawRegisterScreen();
+        // Atualizar posições após desenhar
+        setTimeout(() => this.updateInputPositions(), 10);
+      }
+    } catch (error) {
+      console.error('[AuthUI] Error in draw():', error);
+    } finally {
+      // Sempre liberar o flag após um pequeno delay para evitar travamentos
+      setTimeout(() => {
+        this.isDrawing = false;
+      }, 10);
     }
   }
 
@@ -830,11 +889,22 @@ export class AuthUI {
       width: buttonWidth,
       height: 60,
       action: () => {
+        // CORREÇÃO: Proteção contra múltiplos cliques
+        if (this.isDrawing || this.currentScreen === 'login') {
+          console.warn('[AuthUI] Login button clicked while already in login screen or drawing - ignoring');
+          return;
+        }
+        
+        console.log('[AuthUI] Switching to login screen');
         this.currentScreen = 'login';
         // Limpar inputs quando mudar para login
         this.clearInputs();
-        // Limpar botões e redesenhar
-        this.draw();
+        // Limpar botões e redesenhar - mas com proteção contra loops
+        setTimeout(() => {
+          if (!this.isDrawing) {
+            this.draw();
+          }
+        }, 10);
       }
     });
 
@@ -850,11 +920,22 @@ export class AuthUI {
       width: buttonWidth,
       height: 60,
       action: () => {
+        // CORREÇÃO: Proteção contra múltiplos cliques que podem causar loop
+        if (this.isDrawing || this.currentScreen === 'register') {
+          console.warn('[AuthUI] Register button clicked while already in register screen or drawing - ignoring');
+          return;
+        }
+        
+        console.log('[AuthUI] Switching to register screen');
         this.currentScreen = 'register';
-        // Limpar inputs quando mudar para register
+        // Limpar inputs quando mudar para registro
         this.clearInputs();
-        // Limpar botões e redesenhar
-        this.draw();
+        // Limpar botões e redesenhar - mas com proteção contra loops
+        setTimeout(() => {
+          if (!this.isDrawing) {
+            this.draw();
+          }
+        }, 10);
       }
     });
 
