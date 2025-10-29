@@ -381,11 +381,11 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === 3D Ranch: preenche MÁXIMO possível (baseado nas linhas vermelhas) ===
+    // === 3D Ranch: preenche MÁXIMO possível ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = this.canvas.width - 510; // ATÉ OS PAINÉIS (gap mínimo)
-    const scene3DHeight = this.canvas.height - 90; // ATÉ O FUNDO (altura total)
+    const scene3DWidth = 890; // FIXO para testar se preenche visualmente
+    const scene3DHeight = 710; // FIXO para testar
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
