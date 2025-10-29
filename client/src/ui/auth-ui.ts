@@ -45,6 +45,9 @@ export class AuthUI {
   private resizeTimeout: NodeJS.Timeout | null = null;
   private drawTimeout: NodeJS.Timeout | null = null;
   private pendingDraw: boolean = false;
+  
+  // CORREÇÃO: Guardar referência do handler de resize para poder remover
+  private resizeHandler?: () => void;
 
   // Callbacks
   public onLoginSuccess: (token: string, user: any) => void = () => {};
@@ -73,15 +76,16 @@ export class AuthUI {
     this.setupEventListeners();
     this.calculateScale();
     
-    // CORREÇÃO: Debounce no resize para evitar múltiplas chamadas
-    window.addEventListener('resize', () => {
+    // CORREÇÃO: Guardar referência do handler de resize para poder remover depois
+    this.resizeHandler = () => {
       if (this.resizeTimeout) {
         clearTimeout(this.resizeTimeout);
       }
       this.resizeTimeout = setTimeout(() => {
         this.calculateScale();
       }, 150); // 150ms de debounce
-    });
+    };
+    window.addEventListener('resize', this.resizeHandler);
   }
 
   private calculateScale() {
@@ -707,11 +711,29 @@ export class AuthUI {
       }
     }
     
-    // Remover event listeners do canvas relacionados ao AuthUI
-    // O canvas será reutilizado pelo GameUI
+    // CORREÇÃO: Remover TODOS os event listeners do AuthUI
+    
+    // Remover click listener do canvas
     if (this.clickHandler && this.canvas) {
       this.canvas.removeEventListener('click', this.clickHandler);
       this.clickHandler = undefined;
+    }
+    
+    // CORREÇÃO: Remover resize listener da window - CRÍTICO!
+    // Este listener estava chamando calculateScale() após resize e bagunçando o canvas
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = undefined;
+    }
+    
+    // Limpar timeouts pendentes
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = null;
+    }
+    if (this.drawTimeout) {
+      clearTimeout(this.drawTimeout);
+      this.drawTimeout = null;
     }
   }
 
