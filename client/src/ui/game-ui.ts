@@ -893,6 +893,7 @@ export class GameUI {
         bgColor: isSelected ? COLORS.ui.success : COLORS.bg.light,
         isHovered,
         isDisabled: !canStart.can,
+        fontSize: 12, // ✅ Fonte 12px para botões menores (mais legível)
       });
 
       this.buttons.set(`action_${action.id}`, {

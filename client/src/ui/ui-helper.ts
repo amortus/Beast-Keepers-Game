@@ -152,6 +152,7 @@ export function drawButton(
     textColor?: string;
     isHovered?: boolean;
     isDisabled?: boolean;
+    fontSize?: number; // ✅ Novo: tamanho customizável da fonte
   } = {}
 ) {
   const {
@@ -160,6 +161,7 @@ export function drawButton(
     textColor = COLORS.ui.text,
     isHovered = false,
     isDisabled = false,
+    fontSize = 14, // ✅ Padrão 14px
   } = options;
 
   const color = isDisabled
@@ -177,11 +179,11 @@ export function drawButton(
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, width, height);
 
-  // Text
+  // Text (com tamanho customizável)
   drawText(ctx, text, x + width / 2, y + height / 2, {
     align: 'center',
     baseline: 'middle',
-    font: 'bold 14px monospace',
+    font: `bold ${fontSize}px monospace`,
     color: isDisabled ? COLORS.ui.textDim : textColor,
   });
 }
