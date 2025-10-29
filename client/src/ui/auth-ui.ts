@@ -48,6 +48,9 @@ export class AuthUI {
   
   // CORREÇÃO: Guardar referência do handler de resize para poder remover
   private resizeHandler?: () => void;
+  
+  // CORREÇÃO CRÍTICA: Flag para prevenir qualquer operação após hide()
+  private isHidden: boolean = false;
 
   // Callbacks
   public onLoginSuccess: (token: string, user: any) => void = () => {};
@@ -89,6 +92,12 @@ export class AuthUI {
   }
 
   private calculateScale() {
+    // CORREÇÃO CRÍTICA: Se AuthUI foi escondido, não fazer NADA
+    if (this.isHidden) {
+      console.warn('[AuthUI] calculateScale() called after hide() - ignoring completely');
+      return;
+    }
+    
     // CORREÇÃO: Proteção contra múltiplas chamadas simultâneas
     if (this.isCalculatingScale) {
       return;
@@ -133,18 +142,13 @@ export class AuthUI {
       
       // Aplicar mesma escala e posição do canvas ao container de inputs
       // O container deve ter o mesmo tamanho visual que o canvas
-      this.inputsContainer.style.width = `${this.baseWidth * this.scale}px`;
-      this.inputsContainer.style.height = `${this.baseHeight * this.scale}px`;
-      // Usar mesma transform do canvas para manter alinhamento
-      this.inputsContainer.style.transform = 'translate(-50%, -50%)';
-      
-      // CORREÇÃO: NÃO chamar draw() aqui para evitar loop infinito
-      // O draw() será chamado apenas quando necessário (mudança de tela, etc)
-      // Se precisar redesenhar após resize, deve ser feito de forma controlada
+      if (this.inputsContainer) {
+        this.inputsContainer.style.width = `${this.baseWidth * this.scale}px`;
+        this.inputsContainer.style.height = `${this.baseHeight * this.scale}px`;
+        this.inputsContainer.style.transform = 'translate(-50%, -50%)';
+      }
       
       // Atualizar posições após um pequeno delay
-      // CORREÇÃO: Não chamar draw() aqui para evitar piscar durante resize
-      // O canvas já foi redimensionado, apenas as posições dos inputs precisam ser atualizadas
       requestAnimationFrame(() => {
         this.updateInputPositions();
         this.isCalculatingScale = false;
@@ -599,6 +603,12 @@ export class AuthUI {
   }
 
   draw(force: boolean = false) {
+    // CORREÇÃO CRÍTICA: Se AuthUI foi escondido, não fazer NADA
+    if (this.isHidden) {
+      console.warn('[AuthUI] draw() called after hide() - ignoring completely');
+      return;
+    }
+    
     // CORREÇÃO: Debounce para evitar múltiplas renderizações rápidas que causam piscar
     // Se force=true, ignora debounce (para mudanças de tela)
     if (!force && this.isDrawing) {
@@ -681,7 +691,34 @@ export class AuthUI {
   // CORREÇÃO: Método para esconder completamente o AuthUI após login
   // IMPORTANTE: NÃO esconder o canvas, pois ele é compartilhado com GameUI!
   public hide() {
-    // CORREÇÃO: Remover completamente todos os elementos do AuthUI do DOM
+    // CORREÇÃO CRÍTICA: Marcar como escondido PRIMEIRO para prevenir operações
+    this.isHidden = true;
+    
+    console.log('[AuthUI] Hiding AuthUI - removing all listeners and elements');
+    
+    // CORREÇÃO: Remover resize listener da window IMEDIATAMENTE - CRÍTICO!
+    // Este listener estava chamando calculateScale() após resize e bagunçando o canvas
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = undefined;
+      console.log('[AuthUI] Resize listener removed');
+    }
+    
+    // Limpar timeouts pendentes IMEDIATAMENTE
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = null;
+    }
+    if (this.drawTimeout) {
+      clearTimeout(this.drawTimeout);
+      this.drawTimeout = null;
+    }
+    
+    // Remover click listener do canvas
+    if (this.clickHandler && this.canvas) {
+      this.canvas.removeEventListener('click', this.clickHandler);
+      this.clickHandler = undefined;
+    }
     
     // Remover container de inputs completamente do DOM (não apenas esconder)
     if (this.inputsContainer && this.inputsContainer.parentElement) {
@@ -711,30 +748,7 @@ export class AuthUI {
       }
     }
     
-    // CORREÇÃO: Remover TODOS os event listeners do AuthUI
-    
-    // Remover click listener do canvas
-    if (this.clickHandler && this.canvas) {
-      this.canvas.removeEventListener('click', this.clickHandler);
-      this.clickHandler = undefined;
-    }
-    
-    // CORREÇÃO: Remover resize listener da window - CRÍTICO!
-    // Este listener estava chamando calculateScale() após resize e bagunçando o canvas
-    if (this.resizeHandler) {
-      window.removeEventListener('resize', this.resizeHandler);
-      this.resizeHandler = undefined;
-    }
-    
-    // Limpar timeouts pendentes
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
-      this.resizeTimeout = null;
-    }
-    if (this.drawTimeout) {
-      clearTimeout(this.drawTimeout);
-      this.drawTimeout = null;
-    }
+    console.log('[AuthUI] AuthUI hidden successfully - all listeners removed');
   }
 
   private updateInputPositions() {
