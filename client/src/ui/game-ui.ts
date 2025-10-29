@@ -870,13 +870,19 @@ export class GameUI {
 
   private drawActionList(x: number, y: number, beast: Beast, serverTime: number) {
     const actions = this.getActionsForCategory();
-    const buttonWidth = 160;
-    const buttonHeight = 35;
-    const spacing = 10;
+    
+    // Layout 2 colunas (botões MAIORES e mais legíveis)
+    const buttonWidth = 235; // Aumentado de 160 → 235px
+    const buttonHeight = 38; // Aumentado de 35 → 38px
+    const spacingX = 10;
+    const spacingY = 8;
+    const columns = 2; // 2 colunas ao invés de 4
 
     actions.forEach((action, index) => {
-      const buttonX = x + (buttonWidth + spacing) * (index % 4);
-      const buttonY = y + Math.floor(index / 4) * (buttonHeight + spacing);
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const buttonX = x + col * (buttonWidth + spacingX);
+      const buttonY = y + row * (buttonHeight + spacingY);
       const isHovered = isMouseOver(this.mouseX, this.mouseY, buttonX, buttonY, buttonWidth, buttonHeight);
       const isSelected = this.selectedAction === action.id;
       
