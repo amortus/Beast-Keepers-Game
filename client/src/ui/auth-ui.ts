@@ -1,6 +1,7 @@
 /**
  * Authentication UI
  * Beast Keepers - Login and Registration
+ * Usa inputs HTML reais para funcionalidade completa de seleção e navegação
  */
 
 import { COLORS } from './colors';
@@ -15,12 +16,15 @@ export class AuthUI {
   private currentScreen: AuthScreen = 'welcome';
   private buttons: Map<string, { x: number; y: number; width: number; height: number; action: () => void }> = new Map();
   
+  // HTML Inputs Container
+  private inputsContainer: HTMLDivElement;
+  private emailInput: HTMLInputElement | null = null;
+  private passwordInput: HTMLInputElement | null = null;
+  private displayNameInput: HTMLInputElement | null = null;
+  private confirmPasswordInput: HTMLInputElement | null = null;
+  private errorElements: Map<string, HTMLDivElement> = new Map();
+
   // Form state
-  private email: string = '';
-  private password: string = '';
-  private displayName: string = '';
-  private confirmPassword: string = '';
-  private activeField: 'email' | 'password' | 'displayName' | 'confirmPassword' | null = null;
   private errorMessage: string = '';
   private isLoading: boolean = false;
   
@@ -42,9 +46,26 @@ export class AuthUI {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
+    
+    // Criar container para inputs HTML
+    this.inputsContainer = document.createElement('div');
+    this.inputsContainer.id = 'auth-inputs-container';
+    this.inputsContainer.style.cssText = `
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 100;
+    `;
+    document.body.appendChild(this.inputsContainer);
+    
     this.setupEventListeners();
     this.calculateScale();
-    window.addEventListener('resize', () => this.calculateScale());
+    window.addEventListener('resize', () => {
+      this.calculateScale();
+      this.updateInputPositions();
+    });
   }
 
   private calculateScale() {
@@ -83,20 +104,336 @@ export class AuthUI {
     this.canvas.style.top = '50%';
     this.canvas.style.transform = 'translate(-50%, -50%)';
     
+    // Aplicar escala ao container de inputs
+    this.inputsContainer.style.width = `${this.baseWidth * this.scale}px`;
+    this.inputsContainer.style.height = `${this.baseHeight * this.scale}px`;
+    this.inputsContainer.style.transform = `translate(-50%, -50%) scale(${this.scale})`;
+    this.inputsContainer.style.transformOrigin = 'center center';
+    
     // Redesenhar após mudança de escala
     this.draw();
+    this.updateInputPositions();
+  }
+
+  private createInputField(
+    name: string,
+    type: string,
+    placeholder: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): HTMLInputElement {
+    // Remover input existente se houver
+    const existing = this.inputsContainer.querySelector(`[data-field="${name}"]`) as HTMLInputElement;
+    if (existing) {
+      existing.remove();
+    }
+
+    const input = document.createElement('input');
+    input.type = type;
+    input.dataset.field = name;
+    input.placeholder = placeholder;
+    input.autocomplete = type === 'email' ? 'email' : type === 'password' ? 'current-password' : 'off';
+    
+    // Posicionamento absoluto no container
+    input.style.cssText = `
+      position: absolute;
+      left: ${x}px;
+      top: ${y}px;
+      width: ${width}px;
+      height: ${height}px;
+      background: linear-gradient(to bottom, #2a2a3e, #1a1a2e);
+      border: 2px solid ${COLORS.ui.textDim};
+      border-radius: 0;
+      padding: 0 45px 0 20px;
+      color: ${COLORS.ui.text};
+      font-family: monospace;
+      font-size: 20px;
+      font-weight: bold;
+      outline: none;
+      pointer-events: all;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    `;
+
+    // Event listeners para validação em tempo real
+    input.addEventListener('input', () => {
+      this.validateField(name, input.value);
+      this.updateInputStyle(input, name);
+    });
+
+    input.addEventListener('focus', () => {
+      this.updateInputStyle(input, name, true);
+    });
+
+    input.addEventListener('blur', () => {
+      this.updateInputStyle(input, name, false);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.handleEnterKey(name);
+      }
+    });
+
+    this.inputsContainer.appendChild(input);
+    return input;
+  }
+
+  private createErrorElement(name: string, x: number, y: number, width: number): HTMLDivElement {
+    const existing = this.errorElements.get(name);
+    if (existing) {
+      existing.remove();
+    }
+
+    const errorDiv = document.createElement('div');
+    errorDiv.dataset.field = name;
+    errorDiv.style.cssText = `
+      position: absolute;
+      left: ${x}px;
+      top: ${y}px;
+      width: ${width}px;
+      color: ${COLORS.ui.error};
+      font-family: monospace;
+      font-size: 14px;
+      pointer-events: none;
+      display: none;
+    `;
+
+    this.inputsContainer.appendChild(errorDiv);
+    this.errorElements.set(name, errorDiv);
+    return errorDiv;
+  }
+
+  private updateInputStyle(input: HTMLInputElement, fieldName: string, isFocused: boolean = false) {
+    const fieldError = this.fieldErrors.get(fieldName);
+    const isValid = this.fieldValid.get(fieldName);
+    const hasValue = input.value.length > 0;
+    const borderColor = this.currentScreen === 'login' ? COLORS.primary.purple : COLORS.primary.green;
+
+    let finalBorderColor = COLORS.ui.textDim;
+    if (isFocused) {
+      finalBorderColor = borderColor;
+      input.style.boxShadow = `0 0 15px ${this.currentScreen === 'login' ? 'rgba(159, 122, 234, 0.4)' : 'rgba(72, 187, 120, 0.4)'}`;
+    } else if (hasValue) {
+      if (fieldError) {
+        finalBorderColor = COLORS.ui.error;
+        input.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.2)';
+      } else if (isValid) {
+        finalBorderColor = COLORS.primary.green;
+        input.style.boxShadow = '0 0 10px rgba(72, 187, 120, 0.2)';
+      } else {
+        input.style.boxShadow = 'none';
+      }
+    } else {
+      input.style.boxShadow = 'none';
+    }
+
+    input.style.borderColor = finalBorderColor;
+    input.style.borderWidth = isFocused ? '4px' : (hasValue && (isValid || fieldError) ? '3px' : '2px');
+
+    // Atualizar ícone de validação
+    this.updateValidationIcon(input, fieldName, isValid, fieldError, hasValue);
+    
+    // Atualizar mensagem de erro
+    this.updateErrorMessage(fieldName, fieldError);
+  }
+
+  private updateValidationIcon(
+    input: HTMLInputElement,
+    fieldName: string,
+    isValid: boolean | undefined,
+    fieldError: string | undefined,
+    hasValue: boolean
+  ) {
+    // Criar ou atualizar elemento de ícone
+    let icon = input.parentElement?.querySelector(`[data-icon="${fieldName}"]`) as HTMLDivElement;
+    
+    if (!icon && hasValue && !input.matches(':focus')) {
+      icon = document.createElement('div');
+      icon.dataset.icon = fieldName;
+      icon.style.cssText = `
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 24px;
+        font-weight: bold;
+        pointer-events: none;
+        z-index: 10;
+      `;
+      input.parentElement?.appendChild(icon);
+    }
+
+    if (icon) {
+      if (hasValue && !input.matches(':focus')) {
+        if (isValid) {
+          icon.textContent = '✓';
+          icon.style.color = COLORS.primary.green;
+          icon.style.display = 'block';
+        } else if (fieldError) {
+          icon.textContent = '✗';
+          icon.style.color = COLORS.ui.error;
+          icon.style.display = 'block';
+        } else {
+          icon.style.display = 'none';
+        }
+      } else {
+        icon.style.display = 'none';
+      }
+    }
+  }
+
+  private updateErrorMessage(fieldName: string, error: string | undefined) {
+    const errorEl = this.errorElements.get(fieldName);
+    if (errorEl) {
+      if (error) {
+        errorEl.textContent = error;
+        errorEl.style.display = 'block';
+      } else {
+        errorEl.style.display = 'none';
+      }
+    }
+  }
+
+  private validateField(fieldName: string, value: string) {
+    switch (fieldName) {
+      case 'email':
+        this.validateEmail(value);
+        break;
+      case 'password':
+        this.validatePassword(value);
+        break;
+      case 'displayName':
+        this.validateDisplayName(value);
+        break;
+      case 'confirmPassword':
+        this.validateConfirmPassword(value);
+        break;
+    }
+  }
+
+  private validateEmail(email: string) {
+    if (!email) {
+      this.fieldErrors.delete('email');
+      this.fieldValid.delete('email');
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      this.fieldErrors.set('email', 'Email inválido');
+      this.fieldValid.set('email', false);
+    } else {
+      this.fieldErrors.delete('email');
+      this.fieldValid.set('email', true);
+    }
+
+    const input = this.emailInput;
+    if (input) {
+      this.updateInputStyle(input, 'email', input === document.activeElement);
+    }
+  }
+
+  private validatePassword(password: string) {
+    if (!password) {
+      this.fieldErrors.delete('password');
+      this.fieldValid.delete('password');
+      if (this.confirmPasswordInput && this.confirmPasswordInput.value) {
+        this.validateConfirmPassword(this.confirmPasswordInput.value);
+      }
+      return;
+    }
+    
+    if (password.length < 6) {
+      this.fieldErrors.set('password', 'Senha deve ter no mínimo 6 caracteres');
+      this.fieldValid.set('password', false);
+    } else {
+      this.fieldErrors.delete('password');
+      this.fieldValid.set('password', true);
+    }
+
+    // Revalidar confirmação se existir
+    if (this.confirmPasswordInput && this.confirmPasswordInput.value) {
+      this.validateConfirmPassword(this.confirmPasswordInput.value);
+    }
+
+    const input = this.passwordInput;
+    if (input) {
+      this.updateInputStyle(input, 'password', input === document.activeElement);
+    }
+  }
+
+  private validateDisplayName(displayName: string) {
+    if (!displayName) {
+      this.fieldErrors.delete('displayName');
+      this.fieldValid.delete('displayName');
+      return;
+    }
+    
+    if (displayName.length < 3) {
+      this.fieldErrors.set('displayName', 'Nome deve ter no mínimo 3 caracteres');
+      this.fieldValid.set('displayName', false);
+    } else if (displayName.length > 20) {
+      this.fieldErrors.set('displayName', 'Nome deve ter no máximo 20 caracteres');
+      this.fieldValid.set('displayName', false);
+    } else {
+      this.fieldErrors.delete('displayName');
+      this.fieldValid.set('displayName', true);
+    }
+
+    const input = this.displayNameInput;
+    if (input) {
+      this.updateInputStyle(input, 'displayName', input === document.activeElement);
+    }
+  }
+
+  private validateConfirmPassword(confirmPassword: string) {
+    if (!confirmPassword) {
+      this.fieldErrors.delete('confirmPassword');
+      this.fieldValid.delete('confirmPassword');
+      return;
+    }
+    
+    const password = this.passwordInput?.value || '';
+    if (confirmPassword !== password) {
+      this.fieldErrors.set('confirmPassword', 'As senhas não coincidem');
+      this.fieldValid.set('confirmPassword', false);
+    } else {
+      this.fieldErrors.delete('confirmPassword');
+      this.fieldValid.set('confirmPassword', true);
+    }
+
+    const input = this.confirmPasswordInput;
+    if (input) {
+      this.updateInputStyle(input, 'confirmPassword', input === document.activeElement);
+    }
+  }
+
+  private handleEnterKey(fieldName: string) {
+    if (this.currentScreen === 'login') {
+      if (fieldName === 'email') {
+        this.passwordInput?.focus();
+      } else if (fieldName === 'password') {
+        this.handleLogin();
+      }
+    } else if (this.currentScreen === 'register') {
+      if (fieldName === 'email') {
+        this.displayNameInput?.focus();
+      } else if (fieldName === 'displayName') {
+        this.passwordInput?.focus();
+      } else if (fieldName === 'password') {
+        this.confirmPasswordInput?.focus();
+      } else if (fieldName === 'confirmPassword') {
+        this.handleRegister();
+      }
+    }
   }
 
   private setupEventListeners() {
     this.canvas.addEventListener('click', (e) => this.handleClick(e));
-    window.addEventListener('keydown', (e) => this.handleKeyPress(e));
-    
-    // Prevent default tab behavior
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab' && this.activeField) {
-        e.preventDefault();
-      }
-    });
   }
 
   private handleClick(e: MouseEvent) {
@@ -112,343 +449,6 @@ export class AuthUI {
         btn.action();
       }
     });
-
-    // Check input fields
-    this.checkFieldClick(x, y);
-  }
-
-  private checkFieldClick(x: number, y: number) {
-    const panelWidth = this.currentScreen === 'register' ? 750 : 700;
-    const panelHeight = this.currentScreen === 'register' ? 750 : 600;
-    const panelX = (this.canvas.width - panelWidth) / 2;
-    const panelY = (this.canvas.height - panelHeight) / 2;
-
-    const fieldWidth = 600;
-    const fieldHeight = 60;
-    const fieldX = panelX + (panelWidth - fieldWidth) / 2;
-    
-    // Large clickable zone (include label area - 40px above)
-    const clickableHeight = fieldHeight + 40;
-
-    if (this.currentScreen === 'login') {
-      // Email field (large clickable area)
-      if (isMouseOver(x, y, fieldX, panelY + 150, fieldWidth, clickableHeight)) {
-        this.activeField = 'email';
-      }
-      // Password field (large clickable area)
-      else if (isMouseOver(x, y, fieldX, panelY + 260, fieldWidth, clickableHeight)) {
-        this.activeField = 'password';
-      }
-      else {
-        this.activeField = null;
-      }
-    } else if (this.currentScreen === 'register') {
-      // Email field
-      if (isMouseOver(x, y, fieldX, panelY + 150, fieldWidth, clickableHeight)) {
-        this.activeField = 'email';
-      }
-      // Display name field
-      else if (isMouseOver(x, y, fieldX, panelY + 260, fieldWidth, clickableHeight)) {
-        this.activeField = 'displayName';
-      }
-      // Password field
-      else if (isMouseOver(x, y, fieldX, panelY + 370, fieldWidth, clickableHeight)) {
-        this.activeField = 'password';
-      }
-      // Confirm password field
-      else if (isMouseOver(x, y, fieldX, panelY + 480, fieldWidth, clickableHeight)) {
-        this.activeField = 'confirmPassword';
-      }
-      else {
-        this.activeField = null;
-      }
-    }
-  }
-
-  private handleKeyPress(e: KeyboardEvent) {
-    if (e.key === 'Tab' && this.activeField) {
-      e.preventDefault();
-      this.nextField();
-      return;
-    }
-
-    if (!this.activeField) return;
-
-    // Atalhos de teclado (Ctrl/Cmd)
-    if (e.ctrlKey || e.metaKey) {
-      switch (e.key.toLowerCase()) {
-        case 'a':
-          e.preventDefault();
-          this.selectAllText();
-          return;
-        case 'c':
-          e.preventDefault();
-          this.copyText();
-          return;
-        case 'v':
-          e.preventDefault();
-          this.pasteText();
-          return;
-        case 'x':
-          e.preventDefault();
-          this.cutText();
-          return;
-        case 'z':
-          e.preventDefault();
-          // Implementar undo se necessário
-          return;
-      }
-    }
-
-    if (e.key === 'Escape') {
-      this.activeField = null;
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      // Try next field, or submit if on last field
-      if (this.currentScreen === 'login' && this.activeField === 'password') {
-        this.handleLogin();
-      } else if (this.currentScreen === 'register' && this.activeField === 'confirmPassword') {
-        this.handleRegister();
-      } else {
-        this.nextField();
-      }
-      return;
-    }
-
-    // Navegação melhorada
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      // Implementar navegação de cursor se necessário
-      return;
-    }
-
-    if (e.key === 'Home' || e.key === 'End') {
-      e.preventDefault();
-      this.navigateToEdge(e.key === 'Home');
-      return;
-    }
-
-    if (e.key === 'Delete') {
-      e.preventDefault();
-      this.deleteForward();
-      return;
-    }
-
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      this.deleteBackward();
-      return;
-    }
-
-    // Caracteres normais
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-      this.insertText(e.key);
-    }
-  }
-
-  private selectAllText() {
-    // Implementar seleção de todo o texto no campo ativo
-    // Por enquanto, apenas limpar e selecionar
-    if (this.activeField === 'email') {
-      this.email = '';
-    } else if (this.activeField === 'password') {
-      this.password = '';
-    } else if (this.activeField === 'displayName') {
-      this.displayName = '';
-    } else if (this.activeField === 'confirmPassword') {
-      this.confirmPassword = '';
-    }
-  }
-
-  private copyText() {
-    const text = this.getCurrentFieldText();
-    if (text) {
-      navigator.clipboard.writeText(text).catch(() => {
-        // Fallback para navegadores mais antigos
-        console.log('Clipboard API não suportada');
-      });
-    }
-  }
-
-  private pasteText() {
-    navigator.clipboard.readText().then(text => {
-      this.insertText(text);
-    }).catch(() => {
-      // Fallback ou erro
-      console.log('Não foi possível colar texto');
-    });
-  }
-
-  private cutText() {
-    const text = this.getCurrentFieldText();
-    if (text) {
-      navigator.clipboard.writeText(text).then(() => {
-        this.clearCurrentField();
-      }).catch(() => {
-        console.log('Clipboard API não suportada');
-      });
-    }
-  }
-
-  private navigateToEdge(isHome: boolean) {
-    // Implementar navegação para início/fim do texto
-    // Por enquanto, apenas limpar o campo
-    this.clearCurrentField();
-  }
-
-  private deleteForward() {
-    // Implementar delete forward (Delete key)
-    // Por enquanto, mesmo comportamento do Backspace
-    this.deleteBackward();
-  }
-
-  private deleteBackward() {
-    if (this.activeField === 'email') {
-      this.email = this.email.slice(0, -1);
-      this.validateEmail();
-    } else if (this.activeField === 'password') {
-      this.password = this.password.slice(0, -1);
-      this.validatePassword();
-    } else if (this.activeField === 'displayName') {
-      this.displayName = this.displayName.slice(0, -1);
-      this.validateDisplayName();
-    } else if (this.activeField === 'confirmPassword') {
-      this.confirmPassword = this.confirmPassword.slice(0, -1);
-      this.validateConfirmPassword();
-    }
-  }
-
-  private insertText(text: string) {
-    if (this.activeField === 'email') {
-      this.email += text;
-      this.validateEmail();
-    } else if (this.activeField === 'password') {
-      this.password += text;
-      this.validatePassword();
-    } else if (this.activeField === 'displayName') {
-      this.displayName += text;
-      this.validateDisplayName();
-    } else if (this.activeField === 'confirmPassword') {
-      this.confirmPassword += text;
-      this.validateConfirmPassword();
-    }
-  }
-  
-  private validateEmail() {
-    if (!this.email) {
-      this.fieldErrors.set('email', '');
-      this.fieldValid.set('email', false);
-      return;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(this.email)) {
-      this.fieldErrors.set('email', 'Email inválido');
-      this.fieldValid.set('email', false);
-    } else {
-      this.fieldErrors.delete('email');
-      this.fieldValid.set('email', true);
-    }
-  }
-  
-  private validatePassword() {
-    if (!this.password) {
-      this.fieldErrors.set('password', '');
-      this.fieldValid.set('password', false);
-      return;
-    }
-    
-    if (this.password.length < 6) {
-      this.fieldErrors.set('password', 'Senha deve ter no mínimo 6 caracteres');
-      this.fieldValid.set('password', false);
-    } else {
-      this.fieldErrors.delete('password');
-      this.fieldValid.set('password', true);
-    }
-    
-    // Revalidar confirmação de senha se existir
-    if (this.confirmPassword) {
-      this.validateConfirmPassword();
-    }
-  }
-  
-  private validateDisplayName() {
-    if (!this.displayName) {
-      this.fieldErrors.set('displayName', '');
-      this.fieldValid.set('displayName', false);
-      return;
-    }
-    
-    if (this.displayName.length < 3) {
-      this.fieldErrors.set('displayName', 'Nome deve ter no mínimo 3 caracteres');
-      this.fieldValid.set('displayName', false);
-    } else if (this.displayName.length > 20) {
-      this.fieldErrors.set('displayName', 'Nome deve ter no máximo 20 caracteres');
-      this.fieldValid.set('displayName', false);
-    } else {
-      this.fieldErrors.delete('displayName');
-      this.fieldValid.set('displayName', true);
-    }
-  }
-  
-  private validateConfirmPassword() {
-    if (!this.confirmPassword) {
-      this.fieldErrors.set('confirmPassword', '');
-      this.fieldValid.set('confirmPassword', false);
-      return;
-    }
-    
-    if (this.confirmPassword !== this.password) {
-      this.fieldErrors.set('confirmPassword', 'As senhas não coincidem');
-      this.fieldValid.set('confirmPassword', false);
-    } else {
-      this.fieldErrors.delete('confirmPassword');
-      this.fieldValid.set('confirmPassword', true);
-    }
-  }
-
-  private getCurrentFieldText(): string {
-    switch (this.activeField) {
-      case 'email': return this.email;
-      case 'password': return this.password;
-      case 'displayName': return this.displayName;
-      case 'confirmPassword': return this.confirmPassword;
-      default: return '';
-    }
-  }
-
-  private clearCurrentField() {
-    if (this.activeField === 'email') {
-      this.email = '';
-    } else if (this.activeField === 'password') {
-      this.password = '';
-    } else if (this.activeField === 'displayName') {
-      this.displayName = '';
-    } else if (this.activeField === 'confirmPassword') {
-      this.confirmPassword = '';
-    }
-  }
-
-  private nextField() {
-    if (this.currentScreen === 'login') {
-      if (this.activeField === 'email') {
-        this.activeField = 'password';
-      } else if (this.activeField === 'password') {
-        this.activeField = 'email';
-      }
-    } else if (this.currentScreen === 'register') {
-      if (this.activeField === 'email') {
-        this.activeField = 'displayName';
-      } else if (this.activeField === 'displayName') {
-        this.activeField = 'password';
-      } else if (this.activeField === 'password') {
-        this.activeField = 'confirmPassword';
-      } else if (this.activeField === 'confirmPassword') {
-        this.activeField = 'email';
-      }
-    }
   }
 
   private async handleLogin() {
@@ -456,15 +456,20 @@ export class AuthUI {
 
     this.errorMessage = '';
 
-    if (!this.email || !this.password) {
+    const email = this.emailInput?.value || '';
+    const password = this.passwordInput?.value || '';
+
+    if (!email || !password) {
       this.errorMessage = 'Por favor, preencha todos os campos';
+      this.draw();
       return;
     }
 
     this.isLoading = true;
+    this.draw();
 
     try {
-      const response = await authApi.login(this.email, this.password);
+      const response = await authApi.login(email, password);
       
       if (response.success && response.data) {
         localStorage.setItem('auth_token', response.data.token);
@@ -476,6 +481,7 @@ export class AuthUI {
       this.errorMessage = error.message || 'Erro ao conectar com servidor';
     } finally {
       this.isLoading = false;
+      this.draw();
     }
   }
 
@@ -484,25 +490,34 @@ export class AuthUI {
 
     this.errorMessage = '';
 
-    if (!this.email || !this.password || !this.displayName) {
+    const email = this.emailInput?.value || '';
+    const password = this.passwordInput?.value || '';
+    const displayName = this.displayNameInput?.value || '';
+    const confirmPassword = this.confirmPasswordInput?.value || '';
+
+    if (!email || !password || !displayName) {
       this.errorMessage = 'Por favor, preencha todos os campos';
+      this.draw();
       return;
     }
 
-    if (this.password !== this.confirmPassword) {
+    if (password !== confirmPassword) {
       this.errorMessage = 'As senhas não coincidem';
+      this.draw();
       return;
     }
 
-    if (this.password.length < 6) {
+    if (password.length < 6) {
       this.errorMessage = 'Senha deve ter no mínimo 6 caracteres';
+      this.draw();
       return;
     }
 
     this.isLoading = true;
+    this.draw();
 
     try {
-      const response = await authApi.register(this.email, this.password, this.displayName);
+      const response = await authApi.register(email, password, displayName);
       
       if (response.success && response.data) {
         localStorage.setItem('auth_token', response.data.token);
@@ -514,11 +529,17 @@ export class AuthUI {
       this.errorMessage = error.message || 'Erro ao conectar com servidor';
     } finally {
       this.isLoading = false;
+      this.draw();
     }
   }
 
   draw() {
     this.buttons.clear();
+
+    // Limpar inputs existentes quando mudar de tela
+    if (this.currentScreen === 'welcome') {
+      this.clearInputs();
+    }
 
     if (this.currentScreen === 'welcome') {
       this.drawWelcomeScreen();
@@ -529,8 +550,153 @@ export class AuthUI {
     }
   }
 
+  private clearInputs() {
+    this.inputsContainer.innerHTML = '';
+    this.emailInput = null;
+    this.passwordInput = null;
+    this.displayNameInput = null;
+    this.confirmPasswordInput = null;
+    this.errorElements.clear();
+  }
+
+  private updateInputPositions() {
+    if (this.currentScreen === 'login') {
+      this.updateLoginInputPositions();
+    } else if (this.currentScreen === 'register') {
+      this.updateRegisterInputPositions();
+    }
+  }
+
+  private updateLoginInputPositions() {
+    const isMobile = window.innerWidth < 768;
+    const panelWidth = isMobile ? 550 : 700;
+    const panelHeight = isMobile ? 700 : 650;
+    const panelX = (this.baseWidth - panelWidth) / 2;
+    const panelY = (this.baseHeight - panelHeight) / 2;
+
+    const fieldWidth = isMobile ? panelWidth - 80 : 600;
+    const fieldHeight = isMobile ? 50 : 60;
+    const fieldX = panelX + (panelWidth - fieldWidth) / 2;
+
+    // Email
+    if (this.emailInput) {
+      const emailY = panelY + 210;
+      this.emailInput.style.left = `${fieldX}px`;
+      this.emailInput.style.top = `${emailY}px`;
+      this.emailInput.style.width = `${fieldWidth}px`;
+      this.emailInput.style.height = `${fieldHeight}px`;
+      
+      const errorEl = this.errorElements.get('email');
+      if (errorEl) {
+        errorEl.style.left = `${fieldX}px`;
+        errorEl.style.top = `${emailY + fieldHeight + 5}px`;
+        errorEl.style.width = `${fieldWidth}px`;
+      }
+    }
+
+    // Password
+    if (this.passwordInput) {
+      let passwordY = panelY + 330;
+      if (this.fieldErrors.get('email')) passwordY += 25;
+      
+      this.passwordInput.style.left = `${fieldX}px`;
+      this.passwordInput.style.top = `${passwordY}px`;
+      this.passwordInput.style.width = `${fieldWidth}px`;
+      this.passwordInput.style.height = `${fieldHeight}px`;
+      
+      const errorEl = this.errorElements.get('password');
+      if (errorEl) {
+        errorEl.style.left = `${fieldX}px`;
+        errorEl.style.top = `${passwordY + fieldHeight + 5}px`;
+        errorEl.style.width = `${fieldWidth}px`;
+      }
+    }
+  }
+
+  private updateRegisterInputPositions() {
+    const isMobile = window.innerWidth < 768;
+    const panelWidth = isMobile ? 550 : 750;
+    const panelHeight = isMobile ? Math.min(850, this.baseHeight - 20) : 750;
+    const panelX = (this.baseWidth - panelWidth) / 2;
+    const panelY = (this.baseHeight - panelHeight) / 2;
+
+    const fieldWidth = isMobile ? panelWidth - 80 : 600;
+    const fieldHeight = isMobile ? 50 : 60;
+    const fieldX = panelX + (panelWidth - fieldWidth) / 2;
+
+    let currentY = panelY + 170;
+
+    // Email
+    if (this.emailInput) {
+      this.emailInput.style.left = `${fieldX}px`;
+      this.emailInput.style.top = `${currentY}px`;
+      this.emailInput.style.width = `${fieldWidth}px`;
+      this.emailInput.style.height = `${fieldHeight}px`;
+      
+      const errorEl = this.errorElements.get('email');
+      if (errorEl) {
+        errorEl.style.left = `${fieldX}px`;
+        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
+        errorEl.style.width = `${fieldWidth}px`;
+      }
+      
+      if (this.fieldErrors.get('email')) currentY += 25;
+    }
+
+    // Display Name
+    if (this.displayNameInput) {
+      currentY += 110;
+      this.displayNameInput.style.left = `${fieldX}px`;
+      this.displayNameInput.style.top = `${currentY}px`;
+      this.displayNameInput.style.width = `${fieldWidth}px`;
+      this.displayNameInput.style.height = `${fieldHeight}px`;
+      
+      const errorEl = this.errorElements.get('displayName');
+      if (errorEl) {
+        errorEl.style.left = `${fieldX}px`;
+        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
+        errorEl.style.width = `${fieldWidth}px`;
+      }
+      
+      if (this.fieldErrors.get('displayName')) currentY += 25;
+    }
+
+    // Password
+    if (this.passwordInput) {
+      currentY += 110;
+      this.passwordInput.style.left = `${fieldX}px`;
+      this.passwordInput.style.top = `${currentY}px`;
+      this.passwordInput.style.width = `${fieldWidth}px`;
+      this.passwordInput.style.height = `${fieldHeight}px`;
+      
+      const errorEl = this.errorElements.get('password');
+      if (errorEl) {
+        errorEl.style.left = `${fieldX}px`;
+        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
+        errorEl.style.width = `${fieldWidth}px`;
+      }
+      
+      if (this.fieldErrors.get('password')) currentY += 25;
+    }
+
+    // Confirm Password
+    if (this.confirmPasswordInput) {
+      currentY += 110;
+      this.confirmPasswordInput.style.left = `${fieldX}px`;
+      this.confirmPasswordInput.style.top = `${currentY}px`;
+      this.confirmPasswordInput.style.width = `${fieldWidth}px`;
+      this.confirmPasswordInput.style.height = `${fieldHeight}px`;
+      
+      const errorEl = this.errorElements.get('confirmPassword');
+      if (errorEl) {
+        errorEl.style.left = `${fieldX}px`;
+        errorEl.style.top = `${currentY + fieldHeight + 5}px`;
+        errorEl.style.width = `${fieldWidth}px`;
+      }
+    }
+  }
+
   private drawWelcomeScreen() {
-    // Ajustar tamanho do painel para mobile
     const isMobile = window.innerWidth < 768;
     const panelWidth = isMobile ? 550 : 700;
     const panelHeight = isMobile ? 700 : 650;
@@ -560,7 +726,7 @@ export class AuthUI {
       align: 'center'
     });
 
-    // Description (multiple lines)
+    // Description
     const descriptions = [
       'Crie, treine e batalhe com criaturas místicas.',
       'Explore zonas perigosas, participe de torneios,',
@@ -582,7 +748,7 @@ export class AuthUI {
     this.ctx.lineTo(panelX + panelWidth - 150, panelY + 300);
     this.ctx.stroke();
 
-    // Login button (larger)
+    // Login button
     const loginBtnY = panelY + 340;
     drawButton(this.ctx, panelX + 125, loginBtnY, 450, 60, '🔐 Entrar', {
       bgColor: COLORS.primary.purple,
@@ -593,10 +759,13 @@ export class AuthUI {
       y: loginBtnY,
       width: 450,
       height: 60,
-      action: () => this.currentScreen = 'login'
+      action: () => {
+        this.currentScreen = 'login';
+        this.draw();
+      }
     });
 
-    // Register button (larger)
+    // Register button
     const registerBtnY = panelY + 420;
     drawButton(this.ctx, panelX + 125, registerBtnY, 450, 60, '✨ Criar Conta', {
       bgColor: COLORS.primary.green,
@@ -607,10 +776,13 @@ export class AuthUI {
       y: registerBtnY,
       width: 450,
       height: 60,
-      action: () => this.currentScreen = 'register'
+      action: () => {
+        this.currentScreen = 'register';
+        this.draw();
+      }
     });
 
-    // Google button (larger, with note)
+    // Google button
     const googleBtnY = panelY + 520;
     drawButton(this.ctx, panelX + 125, googleBtnY, 450, 60, '🔗 Entrar com Google', {
       bgColor: '#4285f4',
@@ -635,14 +807,13 @@ export class AuthUI {
   }
 
   private drawLoginScreen() {
-    // Ajustar tamanho do painel para mobile
     const isMobile = window.innerWidth < 768;
     const panelWidth = isMobile ? 550 : 700;
     const panelHeight = isMobile ? 700 : 650;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
-    // Panel with shadow
+    // Panel
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
     this.ctx.shadowBlur = 30;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
@@ -651,7 +822,7 @@ export class AuthUI {
     });
     this.ctx.shadowBlur = 0;
 
-    // Title with icon (larger)
+    // Title
     drawText(this.ctx, '🔐 LOGIN', panelX + panelWidth / 2, panelY + 80, {
       font: 'bold 48px monospace',
       color: COLORS.primary.purple,
@@ -665,12 +836,37 @@ export class AuthUI {
       align: 'center'
     });
 
-    // Email field (more spacing para acomodar mensagens de erro)
-    this.drawInputField(panelX, panelY + 210, panelWidth, 'Email:', this.email, 'email');
+    // Labels e inputs
+    const fieldWidth = isMobile ? panelWidth - 80 : 600;
+    const fieldHeight = isMobile ? 50 : 60;
+    const fieldX = panelX + (panelWidth - fieldWidth) / 2;
 
-    // Password field (more spacing para acomodar mensagens de erro)
-    const passwordY = panelY + 340 + (this.fieldErrors.get('email') ? 25 : 0);
-    this.drawInputField(panelX, passwordY, panelWidth, 'Senha:', '*'.repeat(this.password.length), 'password');
+    // Email label
+    drawText(this.ctx, 'Email:', fieldX, panelY + 190, {
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
+      color: COLORS.ui.text
+    });
+
+    // Email input
+    if (!this.emailInput) {
+      this.emailInput = this.createInputField('email', 'email', 'Digite seu email...', fieldX, panelY + 210, fieldWidth, fieldHeight);
+      this.createErrorElement('email', fieldX, panelY + 210 + fieldHeight + 5, fieldWidth);
+    }
+
+    // Password label
+    let passwordY = panelY + 310;
+    if (this.fieldErrors.get('email')) passwordY += 25;
+    
+    drawText(this.ctx, 'Senha:', fieldX, passwordY - 20, {
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
+      color: COLORS.ui.text
+    });
+
+    // Password input
+    if (!this.passwordInput) {
+      this.passwordInput = this.createInputField('password', 'password', 'Digite sua senha...', fieldX, passwordY, fieldWidth, fieldHeight);
+      this.createErrorElement('password', fieldX, passwordY + fieldHeight + 5, fieldWidth);
+    }
 
     // Error message
     if (this.errorMessage) {
@@ -681,7 +877,7 @@ export class AuthUI {
       });
     }
 
-    // Login button (larger)
+    // Login button
     const loginBtnY = panelY + 480;
     const btnText = this.isLoading ? '⏳ Entrando...' : '▶ Entrar';
     drawButton(this.ctx, panelX + 100, loginBtnY, 500, 60, btnText, {
@@ -712,20 +908,22 @@ export class AuthUI {
       height: 50,
       action: () => {
         this.currentScreen = 'welcome';
+        this.clearInputs();
         this.clearForm();
       }
     });
+
+    this.updateInputPositions();
   }
 
   private drawRegisterScreen() {
-    // Ajustar tamanho do painel para mobile
     const isMobile = window.innerWidth < 768;
     const panelWidth = isMobile ? 550 : 750;
     const panelHeight = isMobile ? Math.min(850, this.canvas.height - 20) : 750;
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
-    // Panel with shadow
+    // Panel
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
     this.ctx.shadowBlur = 20;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
@@ -734,7 +932,7 @@ export class AuthUI {
     });
     this.ctx.shadowBlur = 0;
 
-    // Title with icon
+    // Title
     drawText(this.ctx, '✨ CRIAR CONTA', panelX + panelWidth / 2, panelY + 70, {
       font: 'bold 40px monospace',
       color: COLORS.primary.green,
@@ -748,25 +946,65 @@ export class AuthUI {
       align: 'center'
     });
 
-    // Email field (with more spacing para acomodar mensagens de erro)
+    // Labels e inputs
+    const fieldWidth = isMobile ? panelWidth - 80 : 600;
+    const fieldHeight = isMobile ? 50 : 60;
+    const fieldX = panelX + (panelWidth - fieldWidth) / 2;
     let currentY = panelY + 170;
-    this.drawInputField(panelX, currentY, panelWidth, 'Email:', this.email, 'email');
+
+    // Email label
+    drawText(this.ctx, 'Email:', fieldX, currentY - 20, {
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
+      color: COLORS.ui.text
+    });
+
+    // Email input
+    if (!this.emailInput) {
+      this.emailInput = this.createInputField('email', 'email', 'Digite seu email...', fieldX, currentY, fieldWidth, fieldHeight);
+      this.createErrorElement('email', fieldX, currentY + fieldHeight + 5, fieldWidth);
+    }
     if (this.fieldErrors.get('email')) currentY += 25;
 
-    // Display name field
+    // Display Name label
     currentY += 110;
-    this.drawInputField(panelX, currentY, panelWidth, 'Nome do Guardião:', this.displayName, 'displayName');
+    drawText(this.ctx, 'Nome do Guardião:', fieldX, currentY - 20, {
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
+      color: COLORS.ui.text
+    });
+
+    // Display Name input
+    if (!this.displayNameInput) {
+      this.displayNameInput = this.createInputField('displayName', 'text', 'Digite seu nome...', fieldX, currentY, fieldWidth, fieldHeight);
+      this.createErrorElement('displayName', fieldX, currentY + fieldHeight + 5, fieldWidth);
+    }
     if (this.fieldErrors.get('displayName')) currentY += 25;
 
-    // Password field
+    // Password label
     currentY += 110;
-    this.drawInputField(panelX, currentY, panelWidth, 'Senha (mín. 6 caracteres):', '*'.repeat(this.password.length), 'password');
+    drawText(this.ctx, 'Senha (mín. 6 caracteres):', fieldX, currentY - 20, {
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
+      color: COLORS.ui.text
+    });
+
+    // Password input
+    if (!this.passwordInput) {
+      this.passwordInput = this.createInputField('password', 'password', 'Digite sua senha...', fieldX, currentY, fieldWidth, fieldHeight);
+      this.createErrorElement('password', fieldX, currentY + fieldHeight + 5, fieldWidth);
+    }
     if (this.fieldErrors.get('password')) currentY += 25;
 
-    // Confirm password field
+    // Confirm Password label
     currentY += 110;
-    this.drawInputField(panelX, currentY, panelWidth, 'Confirmar Senha:', '*'.repeat(this.confirmPassword.length), 'confirmPassword');
-    if (this.fieldErrors.get('confirmPassword')) currentY += 25;
+    drawText(this.ctx, 'Confirmar Senha:', fieldX, currentY - 20, {
+      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
+      color: COLORS.ui.text
+    });
+
+    // Confirm Password input
+    if (!this.confirmPasswordInput) {
+      this.confirmPasswordInput = this.createInputField('confirmPassword', 'password', 'Confirme sua senha...', fieldX, currentY, fieldWidth, fieldHeight);
+      this.createErrorElement('confirmPassword', fieldX, currentY + fieldHeight + 5, fieldWidth);
+    }
 
     // Error message
     if (this.errorMessage) {
@@ -778,7 +1016,7 @@ export class AuthUI {
       });
     }
 
-    // Register button (larger) - posicionar dinamicamente
+    // Register button
     const registerBtnY = currentY + (this.errorMessage ? 80 : 50);
     const btnText = this.isLoading ? '⏳ Criando conta...' : '✓ Criar Conta';
     drawButton(this.ctx, panelX + 125, registerBtnY, 500, 60, btnText, {
@@ -797,7 +1035,7 @@ export class AuthUI {
     }
 
     // Back button
-    const backBtnY = panelY + 560;
+    const backBtnY = registerBtnY - 80;
     drawButton(this.ctx, panelX + 225, backBtnY, 300, 45, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
@@ -809,144 +1047,15 @@ export class AuthUI {
       height: 45,
       action: () => {
         this.currentScreen = 'welcome';
+        this.clearInputs();
         this.clearForm();
       }
     });
-  }
 
-  private drawInputField(
-    panelX: number,
-    fieldY: number,
-    panelWidth: number,
-    label: string,
-    value: string,
-    fieldName: string
-  ) {
-    // Ajustar tamanho dos campos para mobile
-    const isMobile = window.innerWidth < 768;
-    const fieldWidth = isMobile ? panelWidth - 80 : 600;
-    const fieldHeight = isMobile ? 50 : 60;
-    const fieldX = panelX + (panelWidth - fieldWidth) / 2;
-
-    // Label (ajustar tamanho para mobile)
-    drawText(this.ctx, label, fieldX, fieldY - 20, {
-      font: isMobile ? 'bold 16px monospace' : 'bold 18px monospace',
-      color: COLORS.ui.text
-    });
-
-    const isActive = this.activeField === fieldName;
-    const borderColor = this.currentScreen === 'login' ? COLORS.primary.purple : COLORS.primary.green;
-    
-    // Validação do campo
-    const fieldError = this.fieldErrors.get(fieldName);
-    const isValid = this.fieldValid.get(fieldName);
-    const hasValue = value.length > 0;
-    
-    // Determinar cor da borda baseada em validação
-    let finalBorderColor = COLORS.ui.textDim;
-    if (isActive) {
-      finalBorderColor = borderColor;
-    } else if (hasValue) {
-      if (fieldError) {
-        finalBorderColor = COLORS.ui.error;
-      } else if (isValid) {
-        finalBorderColor = COLORS.primary.green;
-      }
-    }
-    
-    // Field shadow when active
-    if (isActive) {
-      this.ctx.shadowColor = this.currentScreen === 'login' ? 'rgba(159, 122, 234, 0.4)' : 'rgba(72, 187, 120, 0.4)';
-      this.ctx.shadowBlur = 15;
-    } else if (hasValue && isValid) {
-      this.ctx.shadowColor = 'rgba(72, 187, 120, 0.2)';
-      this.ctx.shadowBlur = 10;
-    } else if (fieldError) {
-      this.ctx.shadowColor = 'rgba(239, 68, 68, 0.2)';
-      this.ctx.shadowBlur = 10;
-    }
-
-    // Field background (gradient)
-    const gradient = this.ctx.createLinearGradient(fieldX, fieldY, fieldX, fieldY + fieldHeight);
-    gradient.addColorStop(0, isActive ? '#2a2a3e' : '#1a1a2e');
-    gradient.addColorStop(1, isActive ? '#1f1f2e' : '#0f0f1e');
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
-
-    // Field border (animated when active or validated)
-    this.ctx.strokeStyle = finalBorderColor;
-    this.ctx.lineWidth = isActive ? 4 : (hasValue && (isValid || fieldError) ? 3 : 2);
-    this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
-
-    this.ctx.shadowBlur = 0;
-
-    // Inner glow when active
-    if (isActive) {
-      this.ctx.strokeStyle = borderColor;
-      this.ctx.lineWidth = 1;
-      this.ctx.globalAlpha = 0.3;
-      this.ctx.strokeRect(fieldX + 3, fieldY + 3, fieldWidth - 6, fieldHeight - 6);
-      this.ctx.globalAlpha = 1;
-    }
-
-    // Field value (larger text)
-    const displayText = value || 'Clique aqui para digitar...';
-    drawText(this.ctx, displayText, fieldX + 20, fieldY + 38, {
-      font: value ? 'bold 20px monospace' : '18px monospace',
-      color: value ? COLORS.ui.text : COLORS.ui.textDim
-    });
-
-    // Cursor (blinking, animated)
-    if (isActive && Math.floor(Date.now() / 500) % 2 === 0) {
-      this.ctx.font = 'bold 20px monospace';
-      const textWidth = this.ctx.measureText(value).width;
-      this.ctx.fillStyle = borderColor;
-      this.ctx.fillRect(fieldX + 20 + textWidth, fieldY + 18, 3, 30);
-    }
-
-    // Indicador de validação (ícone à direita)
-    if (hasValue && !isActive) {
-      const iconX = fieldX + fieldWidth - 35;
-      const iconY = fieldY + 30;
-      if (isValid) {
-        // Check verde
-        this.ctx.fillStyle = COLORS.primary.green;
-        this.ctx.font = 'bold 24px monospace';
-        this.ctx.fillText('✓', iconX, iconY);
-      } else if (fieldError) {
-        // X vermelho
-        this.ctx.fillStyle = COLORS.ui.error;
-        this.ctx.font = 'bold 24px monospace';
-        this.ctx.fillText('✗', iconX, iconY);
-      }
-    }
-
-    // Mensagem de erro do campo (abaixo do campo)
-    if (fieldError && (isActive || hasValue)) {
-      drawText(this.ctx, fieldError, fieldX, fieldY + fieldHeight + 25, {
-        font: '14px monospace',
-        color: COLORS.ui.error
-      });
-    }
-
-    // Tab hint
-    if (isActive) {
-      const isLastField = (this.currentScreen === 'login' && fieldName === 'password') ||
-                          (this.currentScreen === 'register' && fieldName === 'confirmPassword');
-      const hint = isLastField ? '(Enter para enviar)' : '(Tab/Enter p/ próximo)';
-      drawText(this.ctx, hint, fieldX + fieldWidth - 200, fieldY - 20, {
-        font: '13px monospace',
-        color: borderColor
-      });
-    }
+    this.updateInputPositions();
   }
 
   private clearForm() {
-    this.email = '';
-    this.password = '';
-    this.displayName = '';
-    this.confirmPassword = '';
-    this.activeField = null;
     this.errorMessage = '';
     this.fieldErrors.clear();
     this.fieldValid.clear();
@@ -966,6 +1075,7 @@ export class AuthUI {
         }
       }).catch(() => {
         this.errorMessage = 'Erro ao obter dados do usuário';
+        this.draw();
       });
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
@@ -985,8 +1095,15 @@ export class AuthUI {
           errorMsg = 'Erro na autenticação com Google';
       }
       this.errorMessage = errorMsg;
+      this.draw();
       window.history.replaceState({}, '', window.location.pathname);
     }
   }
-}
 
+  public destroy() {
+    // Limpar inputs quando o componente for destruído
+    if (this.inputsContainer && this.inputsContainer.parentElement) {
+      this.inputsContainer.remove();
+    }
+  }
+}
