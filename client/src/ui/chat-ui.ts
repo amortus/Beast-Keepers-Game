@@ -46,9 +46,11 @@ export class ChatUI {
   private addFriendInput: string = '';
   private pendingRemoveFriendId: number | null = null; // ID do amigo pendente para remover
   
-  // Notification system (popups)
+  // Notification system (popups dentro do chat)
   private notifications: Array<{ id: string; message: string; isError: boolean; timestamp: number }> = [];
-  private notificationContainer: HTMLDivElement | null = null;
+  
+  // Confirmation dialog
+  private confirmationDialog: { message: string; onConfirm: () => void; onCancel?: () => void } | null = null;
 
   // Callbacks
   public onMessageReceived?: (msg: ChatMessage) => void;
@@ -132,28 +134,6 @@ export class ChatUI {
     // Carregar amigos
     this.loadFriends();
     this.loadFriendRequests();
-    
-    // Criar container de notificações
-    this.createNotificationContainer();
-  }
-  
-  /**
-   * Cria container para notificações popup
-   */
-  private createNotificationContainer(): void {
-    this.notificationContainer = document.createElement('div');
-    this.notificationContainer.id = 'chat-notifications';
-    this.notificationContainer.style.cssText = `
-      position: fixed;
-      top: 80px;
-      right: 20px;
-      z-index: 10001;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      pointer-events: none;
-    `;
-    document.body.appendChild(this.notificationContainer);
   }
 
   private createDefaultTabs(): void {
@@ -302,15 +282,17 @@ export class ChatUI {
           const friendName = friend?.friendName || 'este amigo';
           this.pendingRemoveFriendId = friendId;
           
-          // Mensagem de confirmação no chat (manter aba atual)
-          this.addSystemMessage(`⚠️ Deseja remover ${friendName} da lista de amigos? Clique novamente no botão × para confirmar.`, false, true);
-          
-          // Cancelar confirmação após 10 segundos
-          setTimeout(() => {
-            if (this.pendingRemoveFriendId === friendId) {
+          // Mostrar diálogo de confirmação
+          this.showConfirmationDialog(
+            `Deseja remover ${friendName} da lista de amigos?`,
+            () => {
+              this.pendingRemoveFriendId = null;
+              this.removeOrRejectFriend(friendId, 'remove');
+            },
+            () => {
               this.pendingRemoveFriendId = null;
             }
-          }, 10000);
+          );
         }
       }
       return;
@@ -888,7 +870,8 @@ export class ChatUI {
       this.render();
 
       // Auto-scroll se é a aba ativa (não forçar - apenas se já estava perto do final)
-      if (targetTab.id === this.activeTabId) {
+      // Mas se estava preservando scroll (usuário digitando/enviando), não fazer scroll automático
+      if (targetTab.id === this.activeTabId && !this.preserveScrollOnRender) {
         setTimeout(() => {
           this.scrollToBottom(false);
         }, 10);
@@ -947,75 +930,49 @@ export class ChatUI {
   }
   
   /**
-   * Mostra notificação popup discreta
+   * Mostra notificação popup discreta dentro do chat
    */
   private showNotification(message: string, isError: boolean = false): void {
-    if (!this.notificationContainer) {
-      this.createNotificationContainer();
-    }
-    
     const notificationId = `notif-${Date.now()}-${Math.random()}`;
-    const notification = document.createElement('div');
-    notification.id = notificationId;
-    notification.style.cssText = `
-      background: ${isError ? 'rgba(245, 101, 101, 0.95)' : 'rgba(74, 85, 104, 0.95)'};
-      color: #fff;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border-left: 4px solid ${isError ? '#ff0000' : '#4FD1C7'};
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      font-family: monospace;
-      font-size: 13px;
-      max-width: 350px;
-      word-wrap: break-word;
-      animation: slideInRight 0.3s ease-out;
-      pointer-events: auto;
-    `;
-    notification.textContent = message;
+    const notification: { id: string; message: string; isError: boolean; timestamp: number } = {
+      id: notificationId,
+      message,
+      isError,
+      timestamp: Date.now(),
+    };
     
-    // Adicionar estilo de animação se não existir
-    if (!document.getElementById('chat-notification-styles')) {
-      const style = document.createElement('style');
-      style.id = 'chat-notification-styles';
-      style.textContent = `
-        @keyframes slideInRight {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        @keyframes slideOutRight {
-          from {
-            transform: translateX(0);
-            opacity: 1;
-          }
-          to {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    
-    this.notificationContainer.appendChild(notification);
+    this.notifications.push(notification);
+    this.render(); // Re-renderizar para mostrar notificação
     
     // Remover após 4 segundos (erros ficam mais tempo)
     const duration = isError ? 6000 : 4000;
     setTimeout(() => {
-      if (notification.parentNode) {
-        notification.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => {
-          if (notification.parentNode) {
-            notification.parentNode.removeChild(notification);
-          }
-        }, 300);
+      const index = this.notifications.findIndex(n => n.id === notificationId);
+      if (index > -1) {
+        this.notifications.splice(index, 1);
+        this.render(); // Re-renderizar para remover notificação
       }
     }, duration);
+  }
+  
+  /**
+   * Mostra diálogo de confirmação dentro do chat
+   */
+  private showConfirmationDialog(message: string, onConfirm: () => void, onCancel?: () => void): void {
+    this.confirmationDialog = {
+      message,
+      onConfirm,
+      onCancel,
+    };
+    this.render(); // Re-renderizar para mostrar diálogo
+  }
+  
+  /**
+   * Fecha diálogo de confirmação
+   */
+  private closeConfirmationDialog(): void {
+    this.confirmationDialog = null;
+    this.render();
   }
 
   /**
@@ -1093,11 +1050,19 @@ export class ChatUI {
     // Fechar autocomplete se estiver aberto
     if (this.autocompleteVisible) {
       this.autocompleteVisible = false;
+      // Preservar scroll ao fechar autocomplete antes de enviar
+      this.preserveScrollOnRender = true;
       this.render();
     }
 
     const text = input.value.trim();
     if (!text) return;
+    
+    // Preservar scroll ao enviar mensagem (a mensagem será adicionada depois)
+    const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+    if (messagesContainer) {
+      this.preserveScrollOnRender = true;
+    }
 
     // Verificar se é comando
     const command = this.parseCommand(text);
@@ -1713,7 +1678,90 @@ export class ChatUI {
           `).join('')}
         </div>
 
+        <!-- Notifications (dentro do chat) -->
+        ${this.notifications.length > 0 ? `
+        <div style="
+          padding: 5px 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          max-height: 80px;
+          overflow-y: auto;
+        ">
+          ${this.notifications.map(notif => `
+            <div style="
+              background: ${notif.isError ? 'rgba(245, 101, 101, 0.95)' : 'rgba(74, 85, 104, 0.95)'};
+              color: #fff;
+              padding: 8px 12px;
+              border-radius: 6px;
+              border-left: 4px solid ${notif.isError ? '#ff0000' : '#4FD1C7'};
+              font-size: 12px;
+              word-wrap: break-word;
+            ">${this.escapeHtml(notif.message)}</div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        <!-- Confirmation Dialog (dentro do chat) -->
+        ${this.confirmationDialog ? `
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+        ">
+          <div style="
+            background: rgba(26, 32, 44, 0.98);
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 350px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+          ">
+            <div style="
+              color: #fff;
+              font-size: 14px;
+              margin-bottom: 15px;
+              word-wrap: break-word;
+            ">${this.escapeHtml(this.confirmationDialog.message)}</div>
+            <div style="
+              display: flex;
+              gap: 10px;
+              justify-content: flex-end;
+            ">
+              <button class="chat-confirm-btn" style="
+                padding: 8px 16px;
+                background: #48bb78;
+                border: none;
+                border-radius: 4px;
+                color: #fff;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 12px;
+              ">Confirmar</button>
+              <button class="chat-cancel-btn" style="
+                padding: 8px 16px;
+                background: #f56565;
+                border: none;
+                border-radius: 4px;
+                color: #fff;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 12px;
+              ">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
         <!-- Content (Messages or Friends) -->
+        <div style="position: relative;">
         ${this.activeTabId === 'friends' ? this.renderFriendsContent() : `
         <!-- Messages -->
         <div class="chat-messages" style="
@@ -1755,6 +1803,7 @@ export class ChatUI {
           }).join('') || '<div style="color: #888; text-align: center; padding: 20px;">Nenhuma mensagem ainda</div>'}
         </div>
         `}
+        </div>
 
         <!-- Input (only show for non-friends tabs) -->
         ${this.activeTabId !== 'friends' ? `
@@ -1873,11 +1922,6 @@ export class ChatUI {
     this.disconnect();
     if (this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
-    }
-    
-    // Remover container de notificações
-    if (this.notificationContainer && this.notificationContainer.parentNode) {
-      this.notificationContainer.parentNode.removeChild(this.notificationContainer);
     }
     
     document.title = 'Beast Keepers'; // Resetar título
