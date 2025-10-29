@@ -113,7 +113,7 @@ export class GameUI {
         width: ${width}px;
         height: ${height}px;
         pointer-events: none;
-        z-index: 0;
+        z-index: 2;
         overflow: hidden;
       `;
       
@@ -246,9 +246,8 @@ export class GameUI {
   public draw() {
     this.buttons.clear();
     
-    // Clear
-    this.ctx.fillStyle = COLORS.bg.dark;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // Clear canvas (transparente para mostrar 3D)
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (!this.gameState.activeBeast) {
       this.drawNoBeastScreen();

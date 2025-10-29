@@ -47,13 +47,13 @@ export class RanchScene3D {
     // Procedural terrain (replaces flat ground) - cores verdes do concept art
     this.terrain = new PS1Terrain({
       size: 20,
-      segments: 24,
-      heightVariation: 0.3,
+      segments: 40, // Mais segmentos para suavizar
+      heightVariation: 0.4,
       seed: 12345,
       colors: {
-        base: 0x3a7c2a,  // Verde grama médio
-        high: 0x5a9c4a, // Verde claro (colinas)
-        low: 0x2a5c1a,  // Verde escuro (vales)
+        base: 0x4a9c3a,  // Verde grama mais claro
+        high: 0x6abc5a, // Verde claro (colinas)
+        low: 0x3a7c2a,  // Verde médio (vales)
       }
     });
     scene.add(this.terrain.getMesh());
@@ -116,18 +116,18 @@ export class RanchScene3D {
     // Main body
     const bodyGeometry = new THREE.BoxGeometry(3, 2, 2.5);
     const bodyMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8b4513,
-      flatShading: true 
+      color: 0xa0522d,
+      flatShading: false // Smooth
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 1;
     barnGroup.add(body);
     
     // Roof (pyramid)
-    const roofGeometry = new THREE.ConeGeometry(2.3, 1.5, 4);
+    const roofGeometry = new THREE.ConeGeometry(2.3, 1.5, 6);
     const roofMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x654321,
-      flatShading: true 
+      color: 0x8b4513,
+      flatShading: false // Smooth
     });
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
     roof.position.y = 2.75;
@@ -137,8 +137,8 @@ export class RanchScene3D {
     // Door
     const doorGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.1);
     const doorMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x3d2817,
-      flatShading: true 
+      color: 0x4d3317,
+      flatShading: false // Smooth
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
     door.position.set(0, 0.6, 1.26);
@@ -172,8 +172,8 @@ export class RanchScene3D {
     const fenceHeight = 0.8;
     const fenceThickness = 0.1;
     const fenceMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8b4513,
-      flatShading: true
+      color: 0xa0612d,
+      flatShading: false // Smooth
     });
 
     // Front fence
@@ -202,21 +202,21 @@ export class RanchScene3D {
   private createTree(x: number, y: number, z: number) {
     const scene = this.threeScene.getScene();
 
-    // Trunk (low-poly)
-    const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.25, 1.5, 5);
+    // Trunk (low-poly mas smooth)
+    const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.25, 1.5, 8);
     const trunkMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x654321,
-      flatShading: true
+      color: 0x6d4423,
+      flatShading: false // Smooth para não ficar muito blocky
     });
     const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
     trunk.position.set(x, 0.75, z);
     scene.add(trunk);
 
     // Foliage (pyramid/cone - PS1 style)
-    const foliageGeometry = new THREE.ConeGeometry(0.9, 1.6, 5);
+    const foliageGeometry = new THREE.ConeGeometry(0.9, 1.6, 8);
     const foliageMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x2a7c3a,
-      flatShading: true
+      color: 0x3a9c4a,
+      flatShading: false // Smooth para não ficar muito blocky
     });
     const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
     foliage.position.set(x, 2.3, z);

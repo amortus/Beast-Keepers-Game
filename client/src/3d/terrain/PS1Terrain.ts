@@ -50,7 +50,7 @@ export class PS1Terrain {
     // Create material with vertex colors for elevation-based coloring
     const material = new THREE.MeshLambertMaterial({
       vertexColors: true,
-      flatShading: true, // PS1 flat shading
+      flatShading: false, // Smooth shading para não ficar blocky
       side: THREE.DoubleSide,
     });
     

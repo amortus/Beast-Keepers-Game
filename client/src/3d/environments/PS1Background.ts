@@ -85,11 +85,11 @@ export function createDistantMountains(scene: THREE.Scene): THREE.Group {
     const height = 4 + Math.random() * 3;
     const width = 2.5 + Math.random() * 1.5;
     
-    // Low-poly cone (4-sided pyramid)
-    const geometry = new THREE.ConeGeometry(width, height, 4);
+    // Low-poly cone (8-sided para smooth)
+    const geometry = new THREE.ConeGeometry(width, height, 8);
     const material = new THREE.MeshLambertMaterial({ 
       color: mountainColors[i % mountainColors.length],
-      flatShading: true,
+      flatShading: false, // Smooth shading
     });
     
     const mountain = new THREE.Mesh(geometry, material);

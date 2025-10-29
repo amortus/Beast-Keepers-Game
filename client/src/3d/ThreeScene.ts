@@ -17,8 +17,8 @@ export class ThreeScene {
 
     // Create scene
     this.scene = new THREE.Scene();
-    // Sem background color - o skybox vai preencher
-    this.scene.background = null;
+    // Background azul claro (caso skybox falhe)
+    this.scene.background = new THREE.Color(0x87ceeb); // Azul céu
 
     // Create camera
     this.camera = new THREE.PerspectiveCamera(
@@ -33,12 +33,12 @@ export class ThreeScene {
     // Create renderer with PS1 optimizations
     this.renderer = new THREE.WebGLRenderer({ 
       canvas,
-      antialias: false,          // No antialiasing (PS1 pixelated look)
+      antialias: true,           // Antialiasing para suavizar (não queremos Minecraft)
       alpha: false,
       powerPreference: 'high-performance'
     });
     this.renderer.setSize(canvas.width, canvas.height);
-    this.renderer.setPixelRatio(0.5);     // Low resolution for PS1 effect (320x240 feel)
+    this.renderer.setPixelRatio(1.0);     // Resolução normal (PS1 smooth, não Minecraft)
     this.renderer.shadowMap.enabled = false; // Disable shadows for performance
     
     // Add basic lighting

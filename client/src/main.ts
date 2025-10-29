@@ -2276,7 +2276,7 @@ function resizeCanvas() {
   canvas.style.height = `${renderHeight}px`;
   canvas.style.margin = '0';
   canvas.style.padding = '0';
-  canvas.style.zIndex = '1';
+  canvas.style.zIndex = '5'; // ACIMA do 3D para desenhar UI overlay
 
   // Tamanho lógico interno
   canvas.width = logicalWidth;
