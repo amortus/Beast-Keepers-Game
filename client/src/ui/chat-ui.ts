@@ -391,6 +391,13 @@ export class ChatUI {
       const input = target as HTMLInputElement;
       this.inputValue = input.value;
       
+      // SEMPRE preservar scroll quando o usuário está digitando
+      // Isso previne que o scroll seja alterado enquanto digita
+      const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+      if (messagesContainer) {
+        this.preserveScrollOnRender = true;
+      }
+      
       // Detectar @ para autocomplete
       const cursorPos = input.selectionStart || 0;
       const textBeforeCursor = input.value.substring(0, cursorPos);
@@ -412,8 +419,6 @@ export class ChatUI {
           // Só renderizar se o estado do autocomplete mudou (apareceu/desapareceu)
           // ou se há sugestões para atualizar o dropdown
           if (wasAutocompleteVisible !== this.autocompleteVisible || this.autocompleteVisible) {
-            // Preservar scroll quando está digitando
-            this.preserveScrollOnRender = true;
             this.render();
             // Preservar foco e cursor após render
             setTimeout(() => {
@@ -431,8 +436,6 @@ export class ChatUI {
           // Espaço após @ - fechar autocomplete
           if (this.autocompleteVisible) {
             this.autocompleteVisible = false;
-            // Preservar scroll quando está digitando
-            this.preserveScrollOnRender = true;
             this.render();
             // Preservar foco
             setTimeout(() => {
@@ -448,8 +451,6 @@ export class ChatUI {
         // Sem @ - fechar autocomplete se estava aberto
         if (this.autocompleteVisible) {
           this.autocompleteVisible = false;
-          // Preservar scroll quando está digitando
-          this.preserveScrollOnRender = true;
           this.render();
           // Preservar foco
           setTimeout(() => {
@@ -469,6 +470,22 @@ export class ChatUI {
       this.addFriendInput = (target as HTMLInputElement).value;
     }
   };
+  
+  /**
+   * Verifica se o usuário está próximo do final do scroll
+   * Retorna true se está a menos de 100px do final
+   */
+  private isNearBottom(): boolean {
+    const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+    if (!messagesContainer) return false;
+    
+    const containerHeight = messagesContainer.clientHeight;
+    const scrollHeight = messagesContainer.scrollHeight;
+    const currentScroll = messagesContainer.scrollTop;
+    const distanceFromBottom = scrollHeight - currentScroll - containerHeight;
+    
+    return distanceFromBottom < 100; // 100px de margem
+  }
   
   /**
    * Atualiza apenas o dropdown de autocomplete sem recriar todo o HTML
@@ -873,14 +890,30 @@ export class ChatUI {
         }
       }
 
+      // Verificar se deve preservar scroll ANTES de renderizar
+      const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+      
+      if (shouldPreserveScroll) {
+        this.preserveScrollOnRender = true;
+      }
+      
       this.render();
 
-      // Auto-scroll se é a aba ativa (não forçar - apenas se já estava perto do final)
-      // Mas se estava preservando scroll (usuário digitando/enviando), não fazer scroll automático
-      if (targetTab.id === this.activeTabId && !this.preserveScrollOnRender) {
+      // Auto-scroll APENAS se:
+      // 1. É a aba ativa
+      // 2. NÃO está preservando scroll (usuário não está lendo mensagens antigas)
+      // 3. Estava perto do final antes da mensagem chegar
+      if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
         setTimeout(() => {
           this.scrollToBottom(false);
         }, 10);
+      } else {
+        // Resetar flag após render se estava preservando
+        if (this.preserveScrollOnRender) {
+          setTimeout(() => {
+            this.preserveScrollOnRender = false;
+          }, 100);
+        }
       }
     }
   }
@@ -1056,17 +1089,16 @@ export class ChatUI {
     // Fechar autocomplete se estiver aberto
     if (this.autocompleteVisible) {
       this.autocompleteVisible = false;
-      // Preservar scroll ao fechar autocomplete antes de enviar
-      this.preserveScrollOnRender = true;
-      this.render();
     }
 
     const text = input.value.trim();
     if (!text) return;
     
-    // Preservar scroll ao enviar mensagem (a mensagem será adicionada depois)
+    // SEMPRE preservar scroll ao enviar mensagem
+    // A mensagem será adicionada e renderizada depois, mas não queremos que o scroll mude
     const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
     if (messagesContainer) {
+      // Salvar posição atual do scroll ANTES de enviar
       this.preserveScrollOnRender = true;
     }
 
@@ -1189,10 +1221,15 @@ export class ChatUI {
   }
 
   /**
-   * Scroll para o final apenas se já estava perto do final
+   * Scroll para o final apenas se já estava perto do final OU for forçado
    * Isso previne que a rolagem suba automaticamente quando o usuário está lendo mensagens antigas
    */
   private scrollToBottom(force: boolean = false): void {
+    // Se está preservando scroll (usuário digitando/lendo), NUNCA fazer scroll
+    if (this.preserveScrollOnRender && !force) {
+      return;
+    }
+    
     const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
     if (!messagesContainer) return;
     
@@ -1201,9 +1238,9 @@ export class ChatUI {
     const currentScroll = messagesContainer.scrollTop;
     const distanceFromBottom = scrollHeight - currentScroll - containerHeight;
     
-    // Se estiver a menos de 50px do final OU for scroll forçado, rolar para o final
+    // Se estiver a menos de 100px do final OU for scroll forçado, rolar para o final
     // Caso contrário, manter a posição atual
-    if (force || distanceFromBottom < 50) {
+    if (force || distanceFromBottom < 100) {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
   }
@@ -1604,10 +1641,21 @@ export class ChatUI {
     const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
     let savedScrollTop = 0;
     let savedScrollHeight = 0;
+    let savedDistanceFromBottom = 0;
     
-    if (messagesContainer && this.preserveScrollOnRender) {
-      savedScrollTop = messagesContainer.scrollTop;
-      savedScrollHeight = messagesContainer.scrollHeight;
+    if (messagesContainer) {
+      if (this.preserveScrollOnRender) {
+        // Preservar posição absoluta
+        savedScrollTop = messagesContainer.scrollTop;
+        savedScrollHeight = messagesContainer.scrollHeight;
+      } else {
+        // Salvar distância do final para manter posição relativa
+        const containerHeight = messagesContainer.clientHeight;
+        const scrollHeight = messagesContainer.scrollHeight;
+        const currentScroll = messagesContainer.scrollTop;
+        savedDistanceFromBottom = scrollHeight - currentScroll - containerHeight;
+        savedScrollHeight = scrollHeight;
+      }
     }
     
     const activeTab = this.tabs.find(t => t.id === this.activeTabId);
@@ -1876,23 +1924,36 @@ export class ChatUI {
     // Re-setup event listeners após render
     this.setupEventListeners();
     
-    // Restaurar posição do scroll se estava preservando
-    if (this.preserveScrollOnRender && savedScrollTop > 0) {
-      setTimeout(() => {
-        const newMessagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
-        if (newMessagesContainer) {
-          // Calcular diferença de altura
-          const newScrollHeight = newMessagesContainer.scrollHeight;
-          const heightDiff = newScrollHeight - savedScrollHeight;
-          
-          // Restaurar posição relativa ao topo, ajustando pela diferença de altura
-          newMessagesContainer.scrollTop = savedScrollTop + heightDiff;
-          
-          // Desativar flag após restaurar
-          this.preserveScrollOnRender = false;
+    // Restaurar posição do scroll após renderizar
+    setTimeout(() => {
+      const newMessagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+      if (!newMessagesContainer) return;
+      
+      if (this.preserveScrollOnRender && savedScrollTop > 0) {
+        // Preservar posição absoluta (usuário estava lendo mensagens antigas)
+        const newScrollHeight = newMessagesContainer.scrollHeight;
+        const heightDiff = newScrollHeight - savedScrollHeight;
+        
+        // Restaurar posição relativa ao topo, ajustando pela diferença de altura
+        newMessagesContainer.scrollTop = savedScrollTop + heightDiff;
+      } else if (savedScrollHeight > 0 && savedDistanceFromBottom >= 0) {
+        // Preservar distância do final (manter posição relativa ao final)
+        const newScrollHeight = newMessagesContainer.scrollHeight;
+        const newScrollTop = newScrollHeight - savedDistanceFromBottom - newMessagesContainer.clientHeight;
+        
+        // Só restaurar se a posição calculada é válida
+        if (newScrollTop >= 0) {
+          newMessagesContainer.scrollTop = newScrollTop;
         }
-      }, 0);
-    }
+      }
+      
+      // Resetar flag após um breve delay
+      if (this.preserveScrollOnRender) {
+        setTimeout(() => {
+          this.preserveScrollOnRender = false;
+        }, 50);
+      }
+    }, 0);
   }
 
   /**
