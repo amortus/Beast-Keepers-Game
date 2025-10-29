@@ -39,8 +39,8 @@ export class GameUI {
   private ranchScene3D: RanchScene3D | null = null;
   private ranchScene3DContainer: HTMLDivElement | null = null;
   private useFullRanchScene: boolean = true; // Toggle to use full ranch vs mini viewer
-  private lastRanchSceneWidth: number = 0; // Cache para detectar mudança de tamanho
-  private lastRanchSceneHeight: number = 0;
+  private lastRealRanchSceneWidth: number = 0; // Cache do tamanho REAL (escalado) para detectar mudança
+  private lastRealRanchSceneHeight: number = 0;
   
   // Public callbacks
   public onView3D: () => void = () => {};
@@ -100,30 +100,37 @@ export class GameUI {
   
   // Create or update Ranch Scene 3D
   private createOrUpdateRanchScene3D(x: number, y: number, width: number, height: number, beast: Beast) {
-    // Detecta se tamanho mudou (eficiente, sem overhead)
-    const sizeChanged = (width !== this.lastRanchSceneWidth || height !== this.lastRanchSceneHeight);
+    // Calculate position based on canvas scale/transform
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const scaleX = canvasRect.width / this.canvas.width;
+    const scaleY = canvasRect.height / this.canvas.height;
     
-    // Recreate if: beast changes OR container doesn't exist OR size changed
-    if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line || sizeChanged) {
-      if (sizeChanged) {
-        console.log('[GameUI] Ranch Scene 3D size changed:', `${this.lastRanchSceneWidth}x${this.lastRanchSceneHeight}`, '→', `${width}x${height}`);
+    const realLeft = canvasRect.left + (x * scaleX);
+    const realTop = canvasRect.top + (y * scaleY);
+    const realWidth = width * scaleX;
+    const realHeight = height * scaleY;
+    
+    // Detecta se tamanho REAL mudou (eficiente, sem overhead)
+    const realSizeChanged = (
+      Math.abs(realWidth - this.lastRealRanchSceneWidth) > 1 || 
+      Math.abs(realHeight - this.lastRealRanchSceneHeight) > 1
+    );
+    
+    // Recreate if: beast changes OR container doesn't exist OR real size changed
+    if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line || realSizeChanged) {
+      if (realSizeChanged) {
+        console.log('[GameUI] Ranch Scene 3D REAL size changed:', 
+          `${Math.round(this.lastRealRanchSceneWidth)}x${Math.round(this.lastRealRanchSceneHeight)}`, 
+          '→', 
+          `${Math.round(realWidth)}x${Math.round(realHeight)}`
+        );
       }
-      console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line, `Size: ${width}x${height}`);
+      console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line, `Logical: ${width}x${height} → Real: ${Math.round(realWidth)}x${Math.round(realHeight)}`);
       this.cleanupRanchScene3D();
       
-      // Atualiza cache de tamanho
-      this.lastRanchSceneWidth = width;
-      this.lastRanchSceneHeight = height;
-      
-      // Calculate position based on canvas scale/transform
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const scaleX = canvasRect.width / this.canvas.width;
-      const scaleY = canvasRect.height / this.canvas.height;
-      
-      const realLeft = canvasRect.left + (x * scaleX);
-      const realTop = canvasRect.top + (y * scaleY);
-      const realWidth = width * scaleX;
-      const realHeight = height * scaleY;
+      // Atualiza cache de tamanho REAL
+      this.lastRealRanchSceneWidth = realWidth;
+      this.lastRealRanchSceneHeight = realHeight;
       
       // Create container for Ranch Scene 3D
       this.ranchScene3DContainer = document.createElement('div');
