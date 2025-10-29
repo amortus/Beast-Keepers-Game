@@ -2231,23 +2231,19 @@ function resizeCanvas() {
   const containerWidth = window.innerWidth;
   const containerHeight = window.innerHeight;
 
-  // Tamanho lógico do canvas (resolução interna)
-  // Ajustar dinamicamente baseado no tamanho da janela, mas manter proporção razoável
-  const targetAspectRatio = containerWidth / containerHeight;
-  
-  // Usar toda a largura como base
-  const logicalWidth = Math.max(800, Math.floor(containerWidth));
-  // Calcular altura proporcional, mas mínimo de 600px
-  const logicalHeight = Math.max(600, Math.floor(logicalWidth / targetAspectRatio));
-  
   // Canvas deve preencher toda a janela
-  canvas.style.width = `${containerWidth}px`;
-  canvas.style.height = `${containerHeight}px`;
   canvas.style.position = 'absolute';
   canvas.style.top = '0';
   canvas.style.left = '0';
   canvas.style.margin = '0';
   canvas.style.padding = '0';
+  canvas.style.width = `${containerWidth}px`;
+  canvas.style.height = `${containerHeight}px`;
+
+  // Tamanho lógico do canvas (resolução interna)
+  // Usar o tamanho real da janela
+  const logicalWidth = containerWidth;
+  const logicalHeight = containerHeight;
 
   // Tamanho interno do canvas (usando devicePixelRatio para alta DPI)
   const dpr = window.devicePixelRatio || 1;
@@ -2259,10 +2255,6 @@ function resizeCanvas() {
   if (ctx) {
     ctx.scale(dpr, dpr);
   }
-  
-  // Ajustar o tamanho físico do canvas para corresponder ao tamanho lógico
-  canvas.style.width = `${logicalWidth}px`;
-  canvas.style.height = `${logicalHeight}px`;
 }
 
 function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {
