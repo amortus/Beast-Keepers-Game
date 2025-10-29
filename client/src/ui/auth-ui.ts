@@ -68,7 +68,7 @@ export class AuthUI {
       left: 50%;
       top: 50%;
       transform: translate(-50%, -50%);
-      pointer-events: none;
+      pointer-events: auto;
       z-index: 100;
     `;
     document.body.appendChild(this.inputsContainer);
