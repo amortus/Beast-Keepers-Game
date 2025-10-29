@@ -103,15 +103,25 @@ export class GameUI {
       console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line);
       this.cleanupRanchScene3D();
       
+      // Calculate position based on canvas scale/transform
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const realLeft = canvasRect.left + (x * scaleX);
+      const realTop = canvasRect.top + (y * scaleY);
+      const realWidth = width * scaleX;
+      const realHeight = height * scaleY;
+      
       // Create container for Ranch Scene 3D
       this.ranchScene3DContainer = document.createElement('div');
       this.ranchScene3DContainer.id = 'ranch-scene-3d-container';
       this.ranchScene3DContainer.style.cssText = `
         position: fixed;
-        left: ${x}px;
-        top: ${y}px;
-        width: ${width}px;
-        height: ${height}px;
+        left: ${realLeft}px;
+        top: ${realTop}px;
+        width: ${realWidth}px;
+        height: ${realHeight}px;
         pointer-events: none;
         z-index: 2;
         overflow: hidden;
@@ -138,10 +148,19 @@ export class GameUI {
     
     // Update container position if canvas was resized
     if (this.ranchScene3DContainer) {
-      this.ranchScene3DContainer.style.left = `${x}px`;
-      this.ranchScene3DContainer.style.top = `${y}px`;
-      this.ranchScene3DContainer.style.width = `${width}px`;
-      this.ranchScene3DContainer.style.height = `${height}px`;
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const scaleX = canvasRect.width / this.canvas.width;
+      const scaleY = canvasRect.height / this.canvas.height;
+      
+      const realLeft = canvasRect.left + (x * scaleX);
+      const realTop = canvasRect.top + (y * scaleY);
+      const realWidth = width * scaleX;
+      const realHeight = height * scaleY;
+      
+      this.ranchScene3DContainer.style.left = `${realLeft}px`;
+      this.ranchScene3DContainer.style.top = `${realTop}px`;
+      this.ranchScene3DContainer.style.width = `${realWidth}px`;
+      this.ranchScene3DContainer.style.height = `${realHeight}px`;
     }
   }
   
