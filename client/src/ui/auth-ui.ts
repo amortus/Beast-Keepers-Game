@@ -151,7 +151,6 @@ export class AuthUI {
       // Atualizar posições após um pequeno delay
       requestAnimationFrame(() => {
         this.updateInputPositions();
-        this.setupTabOrder(); // Garantir que tabIndex é mantido após resize
         this.isCalculatingScale = false;
       });
     } catch (error) {
@@ -180,6 +179,16 @@ export class AuthUI {
     input.dataset.field = name;
     input.placeholder = placeholder;
     input.autocomplete = type === 'email' ? 'email' : type === 'password' ? 'current-password' : 'off';
+    
+    // SOLUÇÃO SIMPLES: Definir tabIndex baseado no nome do campo
+    // Ordem natural: email -> displayName -> password -> confirmPassword
+    const tabIndexMap: { [key: string]: number } = {
+      'email': 1,
+      'displayName': 2,
+      'password': 3,
+      'confirmPassword': 4
+    };
+    input.tabIndex = tabIndexMap[name] || 0;
     
     // Posicionamento absoluto no container
     input.style.cssText = `
@@ -450,23 +459,6 @@ export class AuthUI {
       }
     }
   }
-  
-  // CORREÇÃO: Garantir que os inputs estejam na ordem correta no DOM para Tab funcionar
-  private setupTabOrder() {
-    if (this.currentScreen === 'login') {
-      // Ordem: email -> password
-      if (this.emailInput && this.passwordInput) {
-        this.emailInput.tabIndex = 1;
-        this.passwordInput.tabIndex = 2;
-      }
-    } else if (this.currentScreen === 'register') {
-      // Ordem: email -> displayName -> password -> confirmPassword
-      if (this.emailInput) this.emailInput.tabIndex = 1;
-      if (this.displayNameInput) this.displayNameInput.tabIndex = 2;
-      if (this.passwordInput) this.passwordInput.tabIndex = 3;
-      if (this.confirmPasswordInput) this.confirmPasswordInput.tabIndex = 4;
-    }
-  }
 
   private setupEventListeners() {
     // CORREÇÃO: Guardar referência do handler para poder remover depois
@@ -649,17 +641,11 @@ export class AuthUI {
       } else       if (this.currentScreen === 'login') {
         this.drawLoginScreen();
         // Atualizar posições após desenhar
-        requestAnimationFrame(() => {
-          this.updateInputPositions();
-          this.setupTabOrder(); // Garantir que tabIndex é setado após atualizar posições
-        });
+        requestAnimationFrame(() => this.updateInputPositions());
       } else if (this.currentScreen === 'register') {
         this.drawRegisterScreen();
         // Atualizar posições após desenhar
-        requestAnimationFrame(() => {
-          this.updateInputPositions();
-          this.setupTabOrder(); // Garantir que tabIndex é setado após atualizar posições
-        });
+        requestAnimationFrame(() => this.updateInputPositions());
       }
     } catch (error) {
       console.error('[AuthUI] Error in draw():', error);
@@ -1186,9 +1172,6 @@ export class AuthUI {
     });
 
     this.updateInputPositions();
-    
-    // Configurar ordem do Tab após criar todos os inputs
-    this.setupTabOrder();
   }
 
   private drawRegisterScreen() {
@@ -1343,9 +1326,6 @@ export class AuthUI {
     });
 
     this.updateInputPositions();
-    
-    // Configurar ordem do Tab após criar todos os inputs
-    this.setupTabOrder();
   }
 
   private clearForm() {
