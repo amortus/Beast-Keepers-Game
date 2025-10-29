@@ -219,6 +219,7 @@ function startRenderLoop() {
     }
 
     // Render based on state
+    // CORREÇÃO: inAuth já garante que não renderizamos AuthUI após login
     if (inAuth && authUI) {
       authUI.draw();
     } else if (needsGameInit && gameInitUI) {

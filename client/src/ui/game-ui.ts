@@ -816,11 +816,12 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Mudado para direita para não conflitar com o chat
-    const x = this.canvas.width - 520;
-    const y = this.canvas.height - 60;
+    // CORREÇÃO: Posicionar no canto inferior direito, mas acima dos botões de ação
+    // Para evitar sobreposição com "Selecione uma categoria acima"
     const width = 500;
     const height = 50;
+    const x = this.canvas.width - width - 20; // 20px de margem da borda
+    const y = this.canvas.height - height - 150; // 150px acima da parte inferior para não sobrepor ações
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: COLORS.bg.medium,

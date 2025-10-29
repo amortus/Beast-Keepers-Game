@@ -671,19 +671,32 @@ export class AuthUI {
   }
 
   // CORREÇÃO: Método para esconder completamente o AuthUI após login
+  // IMPORTANTE: NÃO esconder o canvas, pois ele é compartilhado com GameUI!
   public hide() {
-    // Esconder canvas
-    if (this.canvas) {
-      this.canvas.style.display = 'none';
-    }
+    // CORREÇÃO: Não esconder o canvas - ele é usado pelo GameUI
+    // Apenas limpar os elementos do AuthUI
+    
     // Esconder container de inputs
     if (this.inputsContainer) {
       this.inputsContainer.style.display = 'none';
     }
+    
     // Limpar todos os inputs
     this.clearInputs();
+    
     // Limpar botões
     this.buttons.clear();
+    
+    // Limpar canvas (apenas o conteúdo do AuthUI, não esconder)
+    // O canvas será usado pelo GameUI para renderizar o jogo
+    if (this.canvas) {
+      const ctx = this.canvas.getContext('2d');
+      if (ctx) {
+        // Limpar apenas o canvas sem escondê-lo
+        ctx.fillStyle = '#0f0f1e';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+    }
   }
 
   private updateInputPositions() {
