@@ -69,30 +69,11 @@ export class AuthUI {
       top: 50%;
       transform: translate(-50%, -50%);
       pointer-events: auto;
-      z-index: 100;
+      z-index: 98;
     `;
-    
-    // CORREÇÃO CRÍTICA: Passar cliques através do container para o canvas
-    // Mas permitir cliques em inputs e seus filhos
-    this.inputsContainer.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      // Se clicou em um input ou suas labels/divs, permitir
-      if (target.tagName === 'INPUT' || target.closest('input')) {
-        return; // Deixar o input processar
-      }
-      // Caso contrário, passar o clique para o canvas abaixo
-      e.stopPropagation();
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const clickX = e.clientX - canvasRect.left;
-      const clickY = e.clientY - canvasRect.top;
-      
-      // Simular clique no canvas
-      this.handleClick({ clientX: e.clientX, clientY: e.clientY } as MouseEvent);
-    });
-    
     document.body.appendChild(this.inputsContainer);
     
-    // Garantir que canvas fique acima dos inputs quando necessário
+    // Canvas fica ACIMA do container, inputs ficam ACIMA do canvas
     this.canvas.style.zIndex = '99';
     
     this.setupEventListeners();
@@ -235,7 +216,12 @@ export class AuthUI {
       box-sizing: border-box;
       transition: border-color 0.2s, box-shadow 0.2s;
       z-index: 101;
+      isolation: isolate;
     `;
+    
+    // SOLUÇÃO SIMPLES: Garantir que input seja focável via Tab
+    // Mesmo com container pai tendo pointer-events: none
+    input.setAttribute('tabindex', input.tabIndex.toString());
 
     // Event listeners para validação em tempo real
     input.addEventListener('input', () => {
