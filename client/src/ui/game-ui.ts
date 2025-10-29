@@ -128,12 +128,12 @@ export class GameUI {
         overflow: hidden;
       `;
       
-      // Create canvas for Three.js (força tamanho exato)
+      // Create canvas for Three.js (usa tamanho REAL escalado)
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      canvas.style.width = `${realWidth}px`; // ✅ USA TAMANHO ESCALADO
+      canvas.style.height = `${realHeight}px`; // ✅ USA TAMANHO ESCALADO
       canvas.style.display = 'block'; // Remove espaços extras
       this.ranchScene3DContainer.appendChild(canvas);
       
