@@ -2243,50 +2243,49 @@ function startTournamentBattle(rank: TournamentRank) {
 }
 
 function resizeCanvas() {
-  // CORREÇÃO: Resolução lógica fixa 1400x800 (como era antes do AuthUI)
-  // Canvas deve manter aspecto correto e preencher largura
+  // CORREÇÃO FINAL: Resolução fixa 1400x800, mas preenchendo máximo da janela
   const logicalWidth = 1400;
   const logicalHeight = 800;
   const aspectRatio = logicalWidth / logicalHeight;
 
-  // Espaço disponível na janela
+  // Espaço disponível
   const containerWidth = window.innerWidth;
   const containerHeight = window.innerHeight;
   const containerAspect = containerWidth / containerHeight;
 
-  // Calcular tamanho visual mantendo aspect ratio
-  let renderWidth = containerWidth;
-  let renderHeight = containerHeight;
+  // Calcular tamanho que preenche ao máximo mantendo proporção
+  let renderWidth: number;
+  let renderHeight: number;
 
-  // Manter proporção do canvas lógico
   if (containerAspect > aspectRatio) {
-    // Janela mais larga: ajustar pela altura (barras laterais)
-    renderWidth = containerHeight * aspectRatio;
+    // Janela mais larga que canvas: preencher altura
+    renderHeight = containerHeight;
+    renderWidth = renderHeight * aspectRatio;
   } else {
-    // Janela mais alta: ajustar pela largura (barras superior/inferior)
-    renderHeight = containerWidth / aspectRatio;
+    // Janela mais alta que canvas: preencher largura
+    renderWidth = containerWidth;
+    renderHeight = renderWidth / aspectRatio;
   }
 
-  // Canvas centralizado e preenchendo espaço disponível
+  // Aplicar CSS ao canvas
   canvas.style.position = 'fixed';
   canvas.style.top = '50%';
   canvas.style.left = '50%';
-  canvas.style.margin = '0';
-  canvas.style.padding = '0';
+  canvas.style.transform = 'translate(-50%, -50%)';
   canvas.style.width = `${renderWidth}px`;
   canvas.style.height = `${renderHeight}px`;
-  canvas.style.transform = 'translate(-50%, -50%)'; // Centralizar
+  canvas.style.margin = '0';
+  canvas.style.padding = '0';
   canvas.style.zIndex = '1';
 
-  // Tamanho interno do canvas (resolução lógica fixa - NÃO ESCALAR CONTEXTO)
+  // Tamanho lógico interno
   canvas.width = logicalWidth;
   canvas.height = logicalHeight;
   
-  // CORREÇÃO: NÃO aplicar escala no contexto - GameUI desenha direto nas coordenadas lógicas
-  // O browser escala automaticamente do canvas interno para o tamanho visual
+  // Context sem transformações (browser escala automaticamente)
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Sem escala
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 }
 
