@@ -2227,29 +2227,42 @@ function startTournamentBattle(rank: TournamentRank) {
 }
 
 function resizeCanvas() {
-  // CORREÇÃO: Usar toda a largura e altura disponíveis da janela
+  // CORREÇÃO: Voltar para resolução lógica fixa (como era antes) para não quebrar o GameUI
+  // O GameUI foi feito para trabalhar com resolução fixa de 1400x800
+  const logicalWidth = 1400;
+  const logicalHeight = 800;
+  const aspectRatio = logicalWidth / logicalHeight;
+
+  // Espaço disponível na janela
   const containerWidth = window.innerWidth;
   const containerHeight = window.innerHeight;
+  const containerAspect = containerWidth / containerHeight;
 
-  // Canvas deve preencher toda a janela
-  // CORREÇÃO: Garantir que canvas não tenha estilos conflitantes do AuthUI
+  // Calcular tamanho visual mantendo aspect ratio
+  let renderWidth = containerWidth;
+  let renderHeight = containerHeight;
+
+  // Manter proporção do canvas lógico
+  if (containerAspect > aspectRatio) {
+    // Janela mais larga: ajustar pela altura
+    renderWidth = containerHeight * aspectRatio;
+  } else {
+    // Janela mais alta: ajustar pela largura
+    renderHeight = containerWidth / aspectRatio;
+  }
+
+  // Canvas deve preencher toda a janela visualmente (mas com resolução interna fixa)
   canvas.style.position = 'fixed';
-  canvas.style.top = '0';
-  canvas.style.left = '0';
+  canvas.style.top = '50%';
+  canvas.style.left = '50%';
   canvas.style.margin = '0';
   canvas.style.padding = '0';
-  canvas.style.width = `${containerWidth}px`;
-  canvas.style.height = `${containerHeight}px`;
+  canvas.style.width = `${renderWidth}px`;
+  canvas.style.height = `${renderHeight}px`;
+  canvas.style.transform = 'translate(-50%, -50%)'; // Centralizar
   canvas.style.zIndex = '1'; // Z-index baixo para ficar atrás de modais/chats
-  canvas.style.transform = ''; // Remover transformações do AuthUI
 
-  // Tamanho lógico do canvas (resolução interna)
-  // Usar o tamanho real da janela para coordenadas de desenho
-  const logicalWidth = containerWidth;
-  const logicalHeight = containerHeight;
-
-  // CORREÇÃO: Não usar devicePixelRatio aqui pois está causando problemas de escala
-  // Usar tamanho direto da janela
+  // Tamanho interno do canvas (resolução lógica fixa - como era antes)
   canvas.width = logicalWidth;
   canvas.height = logicalHeight;
   
