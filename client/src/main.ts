@@ -2232,7 +2232,7 @@ function resizeCanvas() {
   const containerHeight = window.innerHeight;
 
   // Canvas deve preencher toda a janela
-  canvas.style.position = 'absolute';
+  canvas.style.position = 'fixed';
   canvas.style.top = '0';
   canvas.style.left = '0';
   canvas.style.margin = '0';
@@ -2241,19 +2241,19 @@ function resizeCanvas() {
   canvas.style.height = `${containerHeight}px`;
 
   // Tamanho lógico do canvas (resolução interna)
-  // Usar o tamanho real da janela
+  // Usar o tamanho real da janela para coordenadas de desenho
   const logicalWidth = containerWidth;
   const logicalHeight = containerHeight;
 
-  // Tamanho interno do canvas (usando devicePixelRatio para alta DPI)
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = logicalWidth * dpr;
-  canvas.height = logicalHeight * dpr;
+  // CORREÇÃO: Não usar devicePixelRatio aqui pois está causando problemas de escala
+  // Usar tamanho direto da janela
+  canvas.width = logicalWidth;
+  canvas.height = logicalHeight;
   
-  // Escalar o contexto para compensar o devicePixelRatio
+  // Resetar transformações do contexto
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 }
 

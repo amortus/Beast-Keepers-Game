@@ -330,17 +330,21 @@ export class GameUI {
     });
 
     // Mood
-    const moodEmoji = {
+    const moodEmoji: Record<string, string> = {
       happy: '😊',
       neutral: '😐',
       sad: '😢',
       angry: '😠',
       tired: '😴',
     };
+    
+    // CORREÇÃO: Tratar mood undefined
+    const mood = beast.mood || 'neutral';
+    const moodDisplay = moodEmoji[mood] || moodEmoji.neutral;
 
-    drawText(this.ctx, `Humor: ${moodEmoji[beast.mood]}`, x + 10, y + 290, {
+    drawText(this.ctx, `Humor: ${moodDisplay}`, x + 10, y + 290, {
       font: '14px monospace',
-      color: COLORS.status[beast.mood],
+      color: COLORS.status[mood] || COLORS.status.neutral,
     });
 
     // HP Bar
@@ -580,7 +584,10 @@ export class GameUI {
     });
 
     yOffset += 25;
-    drawText(this.ctx, `Vitórias: ${beast.victories} | Derrotas: ${beast.defeats}`, x + 10, yOffset, {
+    // CORREÇÃO: Tratar victories e defeats undefined
+    const victories = beast.victories ?? 0;
+    const defeats = beast.defeats ?? 0;
+    drawText(this.ctx, `Vitórias: ${victories} | Derrotas: ${defeats}`, x + 10, yOffset, {
       font: '14px monospace',
       color: COLORS.ui.textDim,
     });
