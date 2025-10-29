@@ -748,13 +748,13 @@ export class GameUI {
       color: COLORS.primary.gold,
     });
 
-    // Category buttons (2x2 grid compacto)
+    // Category buttons (2x2 grid MENOR)
     const buttonWidth = 220;
-    const buttonHeight = 45;
+    const buttonHeight = 36; // Reduzido de 45 → 36px
     const buttonStartX = x + 10;
-    const buttonStartY = y + 38;
+    const buttonStartY = y + 32; // Ajustado de 38 → 32px
     const buttonSpacingX = 230;
-    const buttonSpacingY = 52;
+    const buttonSpacingY = 42; // Reduzido de 52 → 42px
 
     // Grid 2x2 de botões de categoria
     const categories = [
