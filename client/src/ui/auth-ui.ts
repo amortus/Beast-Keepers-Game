@@ -474,9 +474,10 @@ export class AuthUI {
   }
 
   private handleClick(e: MouseEvent) {
-    // CORREÇÃO: Proteção adicional contra cliques durante operações críticas
-    if (this.isDrawing || this.isCalculatingScale) {
-      console.warn('[AuthUI] Click ignored - UI is updating');
+    // CORREÇÃO: Proteção menos restritiva - apenas se estiver calculando escala (crítico)
+    // Permite cliques durante draw() se for uma mudança de tela
+    if (this.isCalculatingScale) {
+      console.warn('[AuthUI] Click ignored - UI is calculating scale');
       return;
     }
     
@@ -505,13 +506,7 @@ export class AuthUI {
         e.stopPropagation();
         e.preventDefault();
         
-        // CORREÇÃO: Debounce para evitar múltiplos cliques rápidos
-        if (this.isDrawing) {
-          console.warn('[AuthUI] Button click ignored - already drawing');
-          return;
-        }
-        
-        // Executar ação do botão
+        // Executar ação do botão (a proteção está dentro das ações dos botões)
         btn.action();
         return; // Parar após encontrar o botão clicado
       }
@@ -601,9 +596,14 @@ export class AuthUI {
   }
 
   draw() {
-    // CORREÇÃO: Proteção contra chamadas recursivas que podem causar loop infinito
+    // CORREÇÃO: Proteção contra chamadas recursivas - mas permitir retry após timeout
     if (this.isDrawing) {
-      console.warn('[AuthUI] draw() called while already drawing - skipping');
+      // Se está desenhando, aguardar um pouco e tentar novamente
+      setTimeout(() => {
+        if (!this.isDrawing) {
+          this.draw();
+        }
+      }, 50);
       return;
     }
     
@@ -889,9 +889,21 @@ export class AuthUI {
       width: buttonWidth,
       height: 60,
       action: () => {
-        // CORREÇÃO: Proteção contra múltiplos cliques
-        if (this.isDrawing || this.currentScreen === 'login') {
-          console.warn('[AuthUI] Login button clicked while already in login screen or drawing - ignoring');
+        // CORREÇÃO: Proteção contra múltiplos cliques - mas menos restritiva
+        if (this.currentScreen === 'login') {
+          // Já está na tela de login, não precisa fazer nada
+          return;
+        }
+        
+        // Se está desenhando, tentar novamente em um momento melhor
+        if (this.isDrawing) {
+          setTimeout(() => {
+            if (!this.isDrawing && this.currentScreen !== 'login') {
+              this.currentScreen = 'login';
+              this.clearInputs();
+              this.draw();
+            }
+          }, 50);
           return;
         }
         
@@ -899,12 +911,8 @@ export class AuthUI {
         this.currentScreen = 'login';
         // Limpar inputs quando mudar para login
         this.clearInputs();
-        // Limpar botões e redesenhar - mas com proteção contra loops
-        setTimeout(() => {
-          if (!this.isDrawing) {
-            this.draw();
-          }
-        }, 10);
+        // Redesenhar imediatamente se não estiver desenhando
+        this.draw();
       }
     });
 
@@ -920,9 +928,21 @@ export class AuthUI {
       width: buttonWidth,
       height: 60,
       action: () => {
-        // CORREÇÃO: Proteção contra múltiplos cliques que podem causar loop
-        if (this.isDrawing || this.currentScreen === 'register') {
-          console.warn('[AuthUI] Register button clicked while already in register screen or drawing - ignoring');
+        // CORREÇÃO: Proteção contra múltiplos cliques - mas menos restritiva
+        if (this.currentScreen === 'register') {
+          // Já está na tela de registro, não precisa fazer nada
+          return;
+        }
+        
+        // Se está desenhando, tentar novamente em um momento melhor
+        if (this.isDrawing) {
+          setTimeout(() => {
+            if (!this.isDrawing && this.currentScreen !== 'register') {
+              this.currentScreen = 'register';
+              this.clearInputs();
+              this.draw();
+            }
+          }, 50);
           return;
         }
         
@@ -930,12 +950,8 @@ export class AuthUI {
         this.currentScreen = 'register';
         // Limpar inputs quando mudar para registro
         this.clearInputs();
-        // Limpar botões e redesenhar - mas com proteção contra loops
-        setTimeout(() => {
-          if (!this.isDrawing) {
-            this.draw();
-          }
-        }, 10);
+        // Redesenhar imediatamente se não estiver desenhando
+        this.draw();
       }
     });
 
@@ -1061,10 +1077,12 @@ export class AuthUI {
       });
     }
 
-    // Back button - centralizado e menor
+    // Back button - centralizado e menor, mas respeitando o painel
     const backBtnY = panelY + 565;
-    const backButtonWidth = Math.min(300, panelWidth - 100);
-    const backButtonX = panelX + (panelWidth - backButtonWidth) / 2;
+    // CORREÇÃO: Usar mesmo padding dos outros botões para consistência
+    const backButtonPadding = isMobile ? 100 : 150;
+    const backButtonWidth = panelWidth - (backButtonPadding * 2);
+    const backButtonX = panelX + backButtonPadding;
     drawButton(this.ctx, backButtonX, backBtnY, backButtonWidth, 50, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
@@ -1075,6 +1093,21 @@ export class AuthUI {
       width: backButtonWidth,
       height: 50,
       action: () => {
+        // CORREÇÃO: Proteção similar às outras ações
+        if (this.currentScreen === 'welcome') {
+          return;
+        }
+        if (this.isDrawing) {
+          setTimeout(() => {
+            if (!this.isDrawing && this.currentScreen !== 'welcome') {
+              this.currentScreen = 'welcome';
+              this.clearInputs();
+              this.clearForm();
+              this.draw();
+            }
+          }, 50);
+          return;
+        }
         this.currentScreen = 'welcome';
         this.clearInputs();
         this.clearForm();
@@ -1208,11 +1241,13 @@ export class AuthUI {
       });
     }
 
-    // Back button - centralizado e menor
-    const backBtnY = registerBtnY - 80;
-    const backButtonWidth = Math.min(300, panelWidth - 100);
-    const backButtonX = panelX + (panelWidth - backButtonWidth) / 2;
-    drawButton(this.ctx, backButtonX, backBtnY, backButtonWidth, 45, '← Voltar', {
+    // Back button - centralizado e menor, mas respeitando o painel
+    const backBtnY = registerBtnY + 80;
+    // CORREÇÃO: Usar mesmo padding dos outros botões para consistência
+    const backButtonPadding = isMobile ? 100 : 150;
+    const backButtonWidth = panelWidth - (backButtonPadding * 2);
+    const backButtonX = panelX + backButtonPadding;
+    drawButton(this.ctx, backButtonX, backBtnY, backButtonWidth, 50, '← Voltar', {
       bgColor: '#444',
       hoverColor: '#555'
     });
@@ -1220,8 +1255,23 @@ export class AuthUI {
       x: backButtonX,
       y: backBtnY,
       width: backButtonWidth,
-      height: 45,
+      height: 50,
       action: () => {
+        // CORREÇÃO: Proteção similar às outras ações
+        if (this.currentScreen === 'welcome') {
+          return;
+        }
+        if (this.isDrawing) {
+          setTimeout(() => {
+            if (!this.isDrawing && this.currentScreen !== 'welcome') {
+              this.currentScreen = 'welcome';
+              this.clearInputs();
+              this.clearForm();
+              this.draw();
+            }
+          }, 50);
+          return;
+        }
         this.currentScreen = 'welcome';
         this.clearInputs();
         this.clearForm();
