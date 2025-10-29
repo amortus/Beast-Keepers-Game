@@ -279,9 +279,9 @@ export class GameUI {
 
     drawPanel(this.ctx, x, y, width, height);
 
-    // Beast name and line (formatted as "Nome (Linhagem)")
+    // Beast name and line (formatted as "Nome - Espécie (Tipo)")
     const lineData = getBeastLineData(beast.line);
-    const formattedName = `${beast.name} (${lineData.name})`;
+    const formattedName = `${beast.name} - ${lineData.name}`;
     drawText(this.ctx, formattedName, x + 10, y + 10, {
       font: 'bold 20px monospace',
       color: COLORS.primary.green,
