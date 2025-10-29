@@ -836,6 +836,7 @@ export class ChatUI {
    */
   public addMessage(msg: ChatMessage): void {
     let targetTab: ChatTab | undefined;
+    let tabCreated = false; // Flag para indicar se acabou de criar nova aba
 
     if (msg.channel === 'whisper') {
       // Para whispers, encontrar aba com o sender ou recipient correto
@@ -860,22 +861,23 @@ export class ChatUI {
 
         // Criar nova aba se não existe
         if (!targetTab) {
+          tabCreated = true;
           this.createWhisperTab(otherUser);
           targetTab = this.tabs.find(t => t.id === this.activeTabId);
         }
       }
     } else {
-      // Canais normais
+      // Canais normais (já existem por padrão)
       targetTab = this.tabs.find(t => t.channel === msg.channel);
+      // Para canais normais, não criamos nova aba (já existem sempre)
+      // tabCreated permanece false
     }
 
     if (targetTab) {
-      // PERFORMANCE: Limitar a 100 mensagens usando pop() ao invés de shift() (O(1) vs O(n))
-      // Manter ordem: mensagens mais antigas no início, novas no final
+      // Limitar a 100 mensagens
       targetTab.messages.push(msg);
       if (targetTab.messages.length > 100) {
-        targetTab.messages.shift(); // Remover a mais antiga (ainda precisa shift para ordem cronológica)
-        // Alternativa futura: manter ordem reversa e usar pop(), mas precisa ajustar toda renderização
+        targetTab.messages.shift();
       }
 
       // Incrementar contador não lidas se não é a aba ativa
@@ -895,44 +897,59 @@ export class ChatUI {
         }
       }
 
-      // PERFORMANCE: Tentar renderização incremental primeiro
-      const wasAppended = this.appendMessageToDOM(msg, targetTab.id, false);
-      
-      if (wasAppended) {
-        // Mensagem adicionada incrementalmente - apenas fazer scroll se necessário
-        const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
-        
-        if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
-          setTimeout(() => {
-            this.scrollToBottom(false);
-          }, 10);
-        }
-      } else {
-        // Renderização completa necessária (não é a aba ativa, ou precisa de render completo)
-        const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
-        
-        if (shouldPreserveScroll) {
-          this.preserveScrollOnRender = true;
-        }
-        
-        // PERFORMANCE: Usar scheduleRender ao invés de render() direto
-        this.scheduleRender(false);
+      // CORREÇÃO: Se criou nova aba ou não é a aba ativa, SEMPRE forçar render completo imediato
+      // Renderização incremental apenas para mensagens na aba ATIVA que já está renderizada
+      const shouldUseIncremental = 
+        !tabCreated && // Não acabou de criar a aba
+        targetTab.id === this.activeTabId && // É a aba ativa
+        this.activeTabId !== 'friends' && // Não é aba de amigos
+        this.container.querySelector('.chat-messages'); // Container já existe no DOM
 
-        // Auto-scroll APENAS se:
-        // 1. É a aba ativa
-        // 2. NÃO está preservando scroll (usuário não está lendo mensagens antigas)
-        // 3. Estava perto do final antes da mensagem chegar
-        if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
-          setTimeout(() => {
-            this.scrollToBottom(false);
-          }, 10);
-        } else {
-          // Resetar flag após render se estava preservando
-          if (this.preserveScrollOnRender) {
+      if (shouldUseIncremental) {
+        const wasAppended = this.appendMessageToDOM(msg, targetTab.id, false);
+        
+        if (wasAppended) {
+          // Mensagem adicionada incrementalmente - apenas fazer scroll se necessário
+          const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+          
+          if (!shouldPreserveScroll && this.isNearBottom()) {
             setTimeout(() => {
-              this.preserveScrollOnRender = false;
-            }, 100);
+              this.scrollToBottom(false);
+            }, 10);
           }
+          // Não precisa render completo, sair aqui
+          return;
+        }
+      }
+
+      // Renderização completa necessária (nova aba, aba inativa, ou incremental falhou)
+      const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+      
+      if (shouldPreserveScroll) {
+        this.preserveScrollOnRender = true;
+      }
+      
+      // CORREÇÃO: Se criou nova aba, SEMPRE render imediato. Para outras, usar debounce leve
+      if (tabCreated) {
+        this.scheduleRender(true); // Forçar render imediato para nova aba
+      } else {
+        this.scheduleRender(false); // Debounce leve para outras situações
+      }
+
+      // Auto-scroll APENAS se:
+      // 1. É a aba ativa
+      // 2. NÃO está preservando scroll (usuário não está lendo mensagens antigas)
+      // 3. Estava perto do final antes da mensagem chegar
+      if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
+        setTimeout(() => {
+          this.scrollToBottom(false);
+        }, 10);
+      } else {
+        // Resetar flag após render se estava preservando
+        if (this.preserveScrollOnRender) {
+          setTimeout(() => {
+            this.preserveScrollOnRender = false;
+          }, 100);
         }
       }
     }
@@ -1992,10 +2009,11 @@ export class ChatUI {
 
   /**
    * PERFORMANCE: Agendar renderização com debounce (evita múltiplas renderizações consecutivas)
+   * CORREÇÃO: Debounce mais agressivo apenas para muitas mensagens em sequência
    */
   private scheduleRender(force: boolean = false): void {
     if (force) {
-      // Render imediato (para mudanças críticas como mudar de aba)
+      // Render imediato (para mudanças críticas como mudar de aba, criar nova aba, etc)
       if (this.renderDebounceTimer) {
         clearTimeout(this.renderDebounceTimer);
         this.renderDebounceTimer = null;
@@ -2010,17 +2028,18 @@ export class ChatUI {
 
     // Se já existe um timer, cancelar e criar um novo
     if (this.renderDebounceTimer) {
-      clearTimeout(this.renderDebounceTimer);
+      // Já tem um timer rodando, apenas marcar como pendente
+      return;
     }
 
-    // Agendar renderização após 16ms (~60fps)
+    // CORREÇÃO: Debounce muito leve (5ms) para manter responsividade, mas ainda evitar spam
     this.renderDebounceTimer = window.setTimeout(() => {
       if (this.pendingRender) {
         this.pendingRender = false;
         this.render();
       }
       this.renderDebounceTimer = null;
-    }, 16);
+    }, 5); // Reduzido de 16ms para 5ms - muito mais responsivo
   }
 
   /**
@@ -2057,15 +2076,21 @@ export class ChatUI {
 
   /**
    * PERFORMANCE: Adicionar mensagem incrementalmente ao DOM (ao invés de recriar todo HTML)
+   * CORREÇÃO: Mais seguro, verifica melhor se pode usar incremental
    */
   private appendMessageToDOM(msg: ChatMessage, tabId: string, forceFullRender: boolean = false): boolean {
-    // Se não é a aba ativa ou precisa de render completo, retornar false para usar render() completo
-    if (forceFullRender || tabId !== this.activeTabId || this.activeTabId === 'friends') {
+    // Se precisa de render completo, retornar false
+    if (forceFullRender) {
+      return false;
+    }
+
+    // CORREÇÃO: Verificações mais rigorosas antes de usar incremental
+    if (tabId !== this.activeTabId || this.activeTabId === 'friends') {
       return false;
     }
 
     const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
-    if (!messagesContainer) {
+    if (!messagesContainer || !messagesContainer.parentElement) {
       return false;
     }
 
@@ -2074,31 +2099,40 @@ export class ChatUI {
       return true; // Já existe, não precisa adicionar
     }
 
-    // Criar elemento da mensagem
-    const messageDiv = document.createElement('div');
-    messageDiv.innerHTML = this.formatMessageHTML(msg).trim();
-    const actualDiv = messageDiv.firstElementChild as HTMLElement;
-    
-    if (!actualDiv) {
+    try {
+      // Criar elemento da mensagem
+      const messageDiv = document.createElement('div');
+      messageDiv.innerHTML = this.formatMessageHTML(msg).trim();
+      const actualDiv = messageDiv.firstElementChild as HTMLElement;
+      
+      if (!actualDiv) {
+        return false;
+      }
+
+      // Adicionar ao final do container
+      messagesContainer.appendChild(actualDiv);
+
+      // Atualizar tracking de mensagens renderizadas
+      if (!this.lastRenderedMessageIds.has(tabId)) {
+        this.lastRenderedMessageIds.set(tabId, new Set());
+      }
+      this.lastRenderedMessageIds.get(tabId)!.add(msg.id);
+
+      // PERFORMANCE: Limpar mensagens antigas do DOM (manter apenas últimas 50 visíveis)
+      // CORREÇÃO: Mais cuidadoso com limpeza
+      if (messagesContainer.children.length > 50) {
+        this.cleanupOldDOMMessages(messagesContainer, tabId, 50);
+      }
+
+      // Re-setup event listeners apenas para novos elementos
+      this.setupMessageEventListeners(actualDiv);
+
+      return true;
+    } catch (error) {
+      // Em caso de erro, usar render completo
+      console.warn('[ChatUI] Error in incremental render, falling back to full render:', error);
       return false;
     }
-
-    // Adicionar ao final do container
-    messagesContainer.appendChild(actualDiv);
-
-    // Atualizar tracking de mensagens renderizadas
-    if (!this.lastRenderedMessageIds.has(tabId)) {
-      this.lastRenderedMessageIds.set(tabId, new Set());
-    }
-    this.lastRenderedMessageIds.get(tabId)!.add(msg.id);
-
-    // PERFORMANCE: Limpar mensagens antigas do DOM (manter apenas últimas 50 visíveis)
-    this.cleanupOldDOMMessages(messagesContainer, tabId, 50);
-
-    // Re-setup event listeners apenas para novos elementos
-    this.setupMessageEventListeners(actualDiv);
-
-    return true;
   }
 
   /**
