@@ -360,10 +360,10 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === 3D Ranch preenche até além do centro ===
+    // === 3D Ranch: lado esquerdo + centro (layout do exemplo) ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = 1400; // Preenche toda largura (UI overlay por cima)
+    const scene3DWidth = 900; // Lado esquerdo até antes dos painéis
     const scene3DHeight = 710;
     
     // Criar/atualizar Ranch Scene 3D como background
@@ -371,14 +371,14 @@ export class GameUI {
       this.createOrUpdateRanchScene3D(scene3DX, scene3DY, scene3DWidth, scene3DHeight, beast);
     }
     
-    // Painel compacto de info (overlay sobre o 3D)
-    const infoX = 20;
-    const infoY = 100;
-    const infoWidth = 380;
-    const infoHeight = 170;
+    // Painel de info - topo esquerdo sobre o 3D (compacto como no exemplo)
+    const infoX = 10;
+    const infoY = 95;
+    const infoWidth = 350;
+    const infoHeight = 160;
     
     drawPanel(this.ctx, infoX, infoY, infoWidth, infoHeight, {
-      bgColor: 'rgba(10, 10, 25, 0.90)',
+      bgColor: 'rgba(10, 10, 25, 0.88)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
@@ -610,14 +610,14 @@ export class GameUI {
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
     
-    // Painel ATRIBUTOS/STATUS - mais compacto
+    // Painel ATRIBUTOS/STATUS - lado direito (como no exemplo)
     const x = 910;
-    const y = 100;
-    const width = 470;
-    const height = 360; // Reduzido para caber AÇÕES abaixo
+    const y = 95;
+    const width = 480;
+    const height = 350;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(10, 10, 25, 0.90)',
+      bgColor: 'rgba(10, 10, 25, 0.88)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
@@ -722,19 +722,14 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // NOVO: Painel AÇÕES no lado direito, abaixo do painel STATUS
-    // Isso libera o lado esquerdo inteiro para o 3D Ranch!
-    const statusPanelX = 910;
-    const statusPanelY = 100;
-    const statusPanelHeight = 360; // Altura do painel STATUS + ATRIBUTOS
-    
-    const x = statusPanelX;
-    const y = statusPanelY + statusPanelHeight + 10; // Logo abaixo do STATUS
-    const width = 470;
-    const height = 310;
+    // Painel AÇÕES - lado direito, abaixo do STATUS (como no exemplo)
+    const x = 910;
+    const y = 450; // Logo abaixo do STATUS
+    const width = 480;
+    const height = 280;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(10, 10, 25, 0.90)',
+      bgColor: 'rgba(10, 10, 25, 0.88)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
@@ -956,29 +951,30 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Week Info - EMBAIXO do painel AÇÕES DISPONÍVEIS (lado direito)
-    const acoesPanelX = 910;
-    const acoesPanelY = 470;
-    const acoesPanelHeight = 310;
-    
-    const x = acoesPanelX;
-    const y = acoesPanelY + acoesPanelHeight; // Logo abaixo de AÇÕES
-    const width = 470;
-    const height = 20; // Bem compacto
+    // Week Info - embaixo de AÇÕES (como no exemplo)
+    const x = 910;
+    const y = 735; // Abaixo de AÇÕES (450 + 280 = 730, +5 de gap)
+    const width = 480;
+    const height = 60;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(10, 10, 25, 0.90)',
+      bgColor: 'rgba(10, 10, 25, 0.88)',
       borderColor: COLORS.primary.gold,
       borderWidth: 2,
     });
 
-    // Info em uma linha só (bem compacto)
+    // Info em 2 linhas (mais legível)
     const ageInfo = calculateBeastAge(beast, serverTime);
     const explorationCount = beast.explorationCount || 0;
     
-    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias • Explorações: ${explorationCount}/10`, x + 10, y + 5, {
-      font: '12px monospace',
+    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 10, y + 10, {
+      font: 'bold 14px monospace',
       color: COLORS.primary.gold,
+    });
+    
+    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 10, y + 35, {
+      font: '13px monospace',
+      color: explorationCount >= 10 ? COLORS.ui.error : COLORS.ui.success,
     });
     
     // Mostrar cooldown de torneio se ativo
