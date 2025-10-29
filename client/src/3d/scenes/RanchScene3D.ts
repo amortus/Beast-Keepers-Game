@@ -34,9 +34,10 @@ export class RanchScene3D {
     const camera = this.threeScene.getCamera() as THREE.PerspectiveCamera;
     
     // Setup PS1-style camera (fixed position, Monster Rancher style)
-    camera.fov = 65;
-    camera.position.set(0, 2.5, 5);
-    camera.lookAt(0, 0.8, 0);
+    // Ajustado para melhor enquadramento do rancho
+    camera.fov = 60;
+    camera.position.set(0, 3, 6.5); // Mais alto e mais longe
+    camera.lookAt(0, 0.5, 0); // Olhando levemente para baixo
     camera.updateProjectionMatrix();
     
     // PS1 Background elements (cores naturais do concept art)

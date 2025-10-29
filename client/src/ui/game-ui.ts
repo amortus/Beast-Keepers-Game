@@ -360,12 +360,12 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // 3D Ranch Scene ocupa toda área de conteúdo (background)
-    // Área: do início até antes dos painéis de status (direita)
+    // === NOVO LAYOUT: 3D Ranch ocupa lado esquerdo INTEIRO ===
+    // UI compacta à direita libera máximo de espaço para o 3D
     const scene3DX = 0;
-    const scene3DY = 90; // Abaixo do menu
-    const scene3DWidth = 900; // Largura do lado esquerdo
-    const scene3DHeight = 710; // Altura até o bottom menu
+    const scene3DY = 90;
+    const scene3DWidth = 880; // Mais espaço para o 3D!
+    const scene3DHeight = 710;
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
@@ -611,11 +611,11 @@ export class GameUI {
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
     
-    // Painel ATRIBUTOS/STATUS - alinhado à direita
+    // Painel ATRIBUTOS/STATUS - mais compacto
     const x = 910;
     const y = 100;
     const width = 470;
-    const height = 680;
+    const height = 360; // Reduzido para caber AÇÕES abaixo
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.90)',
@@ -723,11 +723,16 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Painel AÇÕES - abaixo do painel de info, alinhado
-    const x = 20;
-    const y = 290;
-    const width = 880;
-    const height = 490;
+    // NOVO: Painel AÇÕES no lado direito, abaixo do painel STATUS
+    // Isso libera o lado esquerdo inteiro para o 3D Ranch!
+    const statusPanelX = 910;
+    const statusPanelY = 100;
+    const statusPanelHeight = 360; // Altura do painel STATUS + ATRIBUTOS
+    
+    const x = statusPanelX;
+    const y = statusPanelY + statusPanelHeight + 10; // Logo abaixo do STATUS
+    const width = 470;
+    const height = 310;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.90)',
@@ -742,36 +747,41 @@ export class GameUI {
     }
 
     // Se não tem ação, mostrar menu de ações
-    drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 10, y + 10, {
-      font: 'bold 18px monospace',
+    drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 10, y + 8, {
+      font: 'bold 16px monospace',
       color: COLORS.primary.gold,
     });
 
-    // Category buttons (mais compactos)
-    const buttonWidth = 140;
-    const buttonHeight = 40;
-    const buttonY = y + 45;
-    const buttonSpacing = 165;
+    // Category buttons (2x2 grid compacto)
+    const buttonWidth = 220;
+    const buttonHeight = 45;
+    const buttonStartX = x + 10;
+    const buttonStartY = y + 38;
+    const buttonSpacingX = 230;
+    const buttonSpacingY = 52;
 
+    // Grid 2x2 de botões de categoria
     const categories = [
-      { id: 'train', label: '🏋️ Treinar', x: x + 10 },
-      { id: 'work', label: '💼 Trabalhar', x: x + 10 + buttonSpacing },
-      { id: 'rest', label: '😴 Descansar', x: x + 10 + buttonSpacing * 2 },
-      { id: 'tournament', label: '🏆 Torneio', x: x + 10 + buttonSpacing * 3 },
+      { id: 'train', label: '🏋️ Treinar', row: 0, col: 0 },
+      { id: 'work', label: '💼 Trabalhar', row: 0, col: 1 },
+      { id: 'rest', label: '😴 Descansar', row: 1, col: 0 },
+      { id: 'tournament', label: '🏆 Torneio', row: 1, col: 1 },
     ];
 
     categories.forEach((cat) => {
-      const isHovered = isMouseOver(this.mouseX, this.mouseY, cat.x, buttonY, buttonWidth, buttonHeight);
+      const btnX = buttonStartX + (cat.col * buttonSpacingX);
+      const btnY = buttonStartY + (cat.row * buttonSpacingY);
+      const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, buttonWidth, buttonHeight);
       const isSelected = this.actionCategory === cat.id;
 
-      drawButton(this.ctx, cat.x, buttonY, buttonWidth, buttonHeight, cat.label, {
+      drawButton(this.ctx, btnX, btnY, buttonWidth, buttonHeight, cat.label, {
         bgColor: isSelected ? COLORS.primary.purpleDark : COLORS.primary.purple,
         isHovered,
       });
 
       this.buttons.set(`category_${cat.id}`, {
-        x: cat.x,
-        y: buttonY,
+        x: btnX,
+        y: btnY,
         width: buttonWidth,
         height: buttonHeight,
         action: () => {
