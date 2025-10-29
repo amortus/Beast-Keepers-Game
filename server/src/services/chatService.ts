@@ -438,9 +438,9 @@ export function initializeChatService(server: HttpServer) {
         return;
       }
 
-      // Buscar userId do destinatário
+      // Buscar userId do destinatário (case-insensitive, igual ao sistema de amigos)
       const recipientResult = await query(
-        'SELECT id, display_name FROM users WHERE display_name = $1',
+        'SELECT id, display_name FROM users WHERE LOWER(TRIM(display_name)) = LOWER(TRIM($1))',
         [recipient]
       );
 
@@ -449,16 +449,18 @@ export function initializeChatService(server: HttpServer) {
         return;
       }
 
+      // Usar o display_name real do banco (preservar case original)
+      const recipientRealName = recipientResult.rows[0].display_name;
       const recipientUserId = recipientResult.rows[0].id;
 
       // Criar mensagem de whisper (para remetente)
-      // O recipient indica para quem foi enviado
+      // O recipient indica para quem foi enviado (usar nome real do banco)
       const whisperToSender: ChatMessage = {
         id: `whisper-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         channel: 'whisper',
         sender: username,
         senderUserId: userId,
-        recipient: recipient, // Para quem enviei
+        recipient: recipientRealName, // Usar nome real do banco (preserva case correto)
         message: message.trim(),
         timestamp: Date.now(),
         color: CHAT_COLORS.whisper,
@@ -471,7 +473,7 @@ export function initializeChatService(server: HttpServer) {
         channel: 'whisper',
         sender: username, // Quem enviou (remetente)
         senderUserId: userId,
-        recipient: recipient, // Para quem foi enviado (ele próprio)
+        recipient: recipientRealName, // Usar nome real do banco (preserva case correto)
         message: message.trim(),
         timestamp: Date.now(),
         color: CHAT_COLORS.whisper,
