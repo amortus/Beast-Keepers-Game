@@ -333,6 +333,10 @@ async function init() {
       // CORREÇÃO: Esconder completamente o AuthUI após login
       authUI.hide();
       
+      // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
+      // Isso garante que o canvas esteja configurado corretamente para o GameUI
+      resizeCanvas();
+      
       // Salvar username no localStorage para o chat
       localStorage.setItem('username', user.displayName);
       
@@ -346,6 +350,9 @@ async function init() {
       }
       
       await loadGameFromServer();
+      
+      // CORREÇÃO: Redimensionar novamente após setupGame para garantir canvas correto
+      resizeCanvas();
     };
 
     authUI.onRegisterSuccess = async (token, user) => {
@@ -355,6 +362,9 @@ async function init() {
       
       // CORREÇÃO: Esconder completamente o AuthUI após registro
       authUI.hide();
+      
+      // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
+      resizeCanvas();
       
       // Salvar username no localStorage para o chat
       localStorage.setItem('username', user.displayName);
@@ -378,6 +388,8 @@ async function init() {
           console.log('[GameInit] Game initialized successfully');
           // Carregar o jogo do servidor após inicialização
           await loadGameFromServer();
+          // CORREÇÃO: Redimensionar novamente após setupGame
+          resizeCanvas();
         } else {
           // Se falhar, mostrar tela de init como fallback
           needsGameInit = true;
@@ -654,6 +666,8 @@ async function loadGameFromServer() {
       console.log('[Game] Loaded from server:', gameState.guardian.name);
       
       await setupGame();
+      // CORREÇÃO: Garantir que canvas está redimensionado após setupGame
+      resizeCanvas();
     } else {
       // No game save found - should trigger game init
       needsGameInit = true;
@@ -671,6 +685,8 @@ async function loadGameFromServer() {
     }
   } finally {
     loadingEl.style.display = 'none';
+    // CORREÇÃO: Garantir resizeCanvas após carregar (sucesso ou erro)
+    resizeCanvas();
   }
 }
 

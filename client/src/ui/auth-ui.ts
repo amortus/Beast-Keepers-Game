@@ -695,22 +695,15 @@ export class AuthUI {
     // Limpar botões
     this.buttons.clear();
     
-    // CORREÇÃO: Resetar z-index e posicionamento do canvas para não interferir
+    // CORREÇÃO: NÃO resetar estilos do canvas aqui - o resizeCanvas() do main.ts cuidará disso
+    // Apenas limpar o conteúdo visualmente, mas manter o canvas intacto para o GameUI
     if (this.canvas) {
-      // Remover z-index específico do AuthUI
-      this.canvas.style.zIndex = '';
-      // Resetar posicionamento para o GameUI controlar
-      this.canvas.style.position = '';
-      this.canvas.style.top = '';
-      this.canvas.style.left = '';
-      this.canvas.style.transform = '';
-      
-      // Limpar canvas (apenas o conteúdo do AuthUI, não esconder)
-      // O canvas será usado pelo GameUI para renderizar o jogo
+      // Limpar apenas o conteúdo visual do AuthUI
       const ctx = this.canvas.getContext('2d');
       if (ctx) {
-        ctx.fillStyle = '#0f0f1e';
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        // Não fazer nada aqui - deixar o resizeCanvas() do main.ts reconfigurar tudo
+        // Apenas garantir que o contexto está sem transformações do AuthUI
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
       }
     }
     
