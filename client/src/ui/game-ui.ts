@@ -550,12 +550,12 @@ export class GameUI {
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
     
-    // Painel INFO + ATRIBUTOS + STATUS (lado direito - ajustado)
+    // Painel INFO + ATRIBUTOS + STATUS (lado direito - AUMENTADO para mostrar STATUS)
     const headerHeight = 80; // Mesmo valor do drawHeader()
     const x = this.canvas.width - 510;
     const y = headerHeight; // Começa LOGO APÓS o header
     const width = 510;
-    const height = 350;
+    const height = 430; // Aumentado de 350 → 430 (+80px para STATUS)
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
@@ -723,12 +723,12 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Painel AÇÕES - lado direito, abaixo do STATUS
+    // Painel AÇÕES - lado direito, abaixo do STATUS (REDUZIDO)
     const headerHeight = 80;
     const x = this.canvas.width - 510;
-    const y = headerHeight + 355; // Logo após STATUS (80 + 350 + 5 gap)
+    const y = headerHeight + 435; // Logo após STATUS (80 + 430 + 5 gap)
     const width = 510;
-    const height = 290;
+    const height = 210; // Reduzido de 290 → 210 (-80px)
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
@@ -956,7 +956,7 @@ export class GameUI {
     // Week Info - embaixo de AÇÕES
     const headerHeight = 80;
     const x = this.canvas.width - 510;
-    const y = headerHeight + 355 + 295; // Logo após AÇÕES (80 + 350 + 5 + 290 + 5)
+    const y = headerHeight + 435 + 215; // Logo após AÇÕES (80 + 430 + 5 + 210 + 5)
     const width = 510;
     const height = 60;
 
