@@ -26,6 +26,7 @@ export class ChatUI {
   private inputValue: string = '';
   private scrollPosition: number = 0;
   private maxScroll: number = 0;
+  private preserveScrollOnRender: boolean = false; // Flag para preservar scroll durante render
   private onlineUsers: Set<string> = new Set();
   
   // Autocomplete state
@@ -44,6 +45,10 @@ export class ChatUI {
   private friendsActiveTab: 'list' | 'requests' | 'add' = 'list';
   private addFriendInput: string = '';
   private pendingRemoveFriendId: number | null = null; // ID do amigo pendente para remover
+  
+  // Notification system (popups)
+  private notifications: Array<{ id: string; message: string; isError: boolean; timestamp: number }> = [];
+  private notificationContainer: HTMLDivElement | null = null;
 
   // Callbacks
   public onMessageReceived?: (msg: ChatMessage) => void;
@@ -127,6 +132,28 @@ export class ChatUI {
     // Carregar amigos
     this.loadFriends();
     this.loadFriendRequests();
+    
+    // Criar container de notificações
+    this.createNotificationContainer();
+  }
+  
+  /**
+   * Cria container para notificações popup
+   */
+  private createNotificationContainer(): void {
+    this.notificationContainer = document.createElement('div');
+    this.notificationContainer.id = 'chat-notifications';
+    this.notificationContainer.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    `;
+    document.body.appendChild(this.notificationContainer);
   }
 
   private createDefaultTabs(): void {
@@ -397,6 +424,8 @@ export class ChatUI {
           // Só renderizar se o estado do autocomplete mudou (apareceu/desapareceu)
           // ou se há sugestões para atualizar o dropdown
           if (wasAutocompleteVisible !== this.autocompleteVisible || this.autocompleteVisible) {
+            // Preservar scroll quando está digitando
+            this.preserveScrollOnRender = true;
             this.render();
             // Preservar foco e cursor após render
             setTimeout(() => {
@@ -414,6 +443,8 @@ export class ChatUI {
           // Espaço após @ - fechar autocomplete
           if (this.autocompleteVisible) {
             this.autocompleteVisible = false;
+            // Preservar scroll quando está digitando
+            this.preserveScrollOnRender = true;
             this.render();
             // Preservar foco
             setTimeout(() => {
@@ -429,6 +460,8 @@ export class ChatUI {
         // Sem @ - fechar autocomplete se estava aberto
         if (this.autocompleteVisible) {
           this.autocompleteVisible = false;
+          // Preservar scroll quando está digitando
+          this.preserveScrollOnRender = true;
           this.render();
           // Preservar foco
           setTimeout(() => {
@@ -868,42 +901,121 @@ export class ChatUI {
    * @param message Mensagem a ser exibida
    * @param isError Se é uma mensagem de erro (vermelho)
    * @param keepTab Se true, não muda para aba Global (útil para mensagens de amigos)
+   * @param showInChat Se true, também mostra no feed do chat (padrão false - só popup)
    */
-  private addSystemMessage(message: string, isError: boolean = false, keepTab: boolean = false): void {
-    // Garantir que chat esteja expandido para mostrar mensagens importantes
-    if (isError && !this.isExpanded) {
-      this.toggleExpanded();
+  private addSystemMessage(message: string, isError: boolean = false, keepTab: boolean = false, showInChat: boolean = false): void {
+    // Mostrar notificação popup (sempre)
+    this.showNotification(message, isError);
+    
+    // Se showInChat for true, também adicionar ao feed do chat (para mensagens importantes)
+    if (showInChat) {
+      // Garantir que chat esteja expandido para mostrar mensagens importantes
+      if (isError && !this.isExpanded) {
+        this.toggleExpanded();
+      }
+      
+      // Só mudar para Global se não for para manter a aba atual
+      if (!keepTab && this.activeTabId !== 'global') {
+        const globalTab = this.tabs.find(t => t.id === 'global');
+        if (globalTab) {
+          this.activeTabId = 'global';
+        }
+      }
+      
+      const systemMsg: ChatMessage = {
+        id: `sys-${Date.now()}`,
+        channel: 'system',
+        sender: 'Sistema',
+        senderUserId: 0,
+        message,
+        timestamp: Date.now(),
+        color: isError ? CHAT_COLORS.error : CHAT_COLORS.system,
+      };
+
+      // Adicionar a todas as abas
+      this.tabs.forEach(tab => {
+        tab.messages.push(systemMsg);
+        if (tab.messages.length > 100) {
+          tab.messages.shift();
+        }
+      });
+
+      this.render();
+      // Não forçar scroll - apenas se já estiver perto do final
+      setTimeout(() => this.scrollToBottom(false), 10);
+    }
+  }
+  
+  /**
+   * Mostra notificação popup discreta
+   */
+  private showNotification(message: string, isError: boolean = false): void {
+    if (!this.notificationContainer) {
+      this.createNotificationContainer();
     }
     
-    // Só mudar para Global se não for para manter a aba atual
-    if (!keepTab && this.activeTabId !== 'global') {
-      const globalTab = this.tabs.find(t => t.id === 'global');
-      if (globalTab) {
-        this.activeTabId = 'global';
-      }
+    const notificationId = `notif-${Date.now()}-${Math.random()}`;
+    const notification = document.createElement('div');
+    notification.id = notificationId;
+    notification.style.cssText = `
+      background: ${isError ? 'rgba(245, 101, 101, 0.95)' : 'rgba(74, 85, 104, 0.95)'};
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid ${isError ? '#ff0000' : '#4FD1C7'};
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      font-family: monospace;
+      font-size: 13px;
+      max-width: 350px;
+      word-wrap: break-word;
+      animation: slideInRight 0.3s ease-out;
+      pointer-events: auto;
+    `;
+    notification.textContent = message;
+    
+    // Adicionar estilo de animação se não existir
+    if (!document.getElementById('chat-notification-styles')) {
+      const style = document.createElement('style');
+      style.id = 'chat-notification-styles';
+      style.textContent = `
+        @keyframes slideInRight {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOutRight {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+      `;
+      document.head.appendChild(style);
     }
     
-    const systemMsg: ChatMessage = {
-      id: `sys-${Date.now()}`,
-      channel: 'system',
-      sender: 'Sistema',
-      senderUserId: 0,
-      message,
-      timestamp: Date.now(),
-      color: isError ? CHAT_COLORS.error : CHAT_COLORS.system,
-    };
-
-    // Adicionar a todas as abas
-    this.tabs.forEach(tab => {
-      tab.messages.push(systemMsg);
-      if (tab.messages.length > 100) {
-        tab.messages.shift();
+    this.notificationContainer.appendChild(notification);
+    
+    // Remover após 4 segundos (erros ficam mais tempo)
+    const duration = isError ? 6000 : 4000;
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
       }
-    });
-
-    this.render();
-    // Não forçar scroll - apenas se já estiver perto do final
-    setTimeout(() => this.scrollToBottom(false), 10);
+    }, duration);
   }
 
   /**
@@ -951,7 +1063,7 @@ export class ChatUI {
     // Add friend command
     if (command === 'add' || command === 'adicionar') {
       if (args.length < 1) {
-        this.addSystemMessage('Uso: /add <usuário>', true);
+        this.addSystemMessage('Uso: /add <usuário>', true, false, false); // Só popup, não no chat
         return null;
       }
       const username = args[0];
@@ -1415,7 +1527,32 @@ export class ChatUI {
       
       const response = await friendsApi.acceptRequest(friendId);
       if (response.success) {
+        // Recarregar amigos e verificar status online
         await this.loadFriends();
+        
+        // Verificar se o novo amigo está online
+        try {
+          const onlineResponse = await friendsApi.getOnlineFriends();
+          if (onlineResponse.success && onlineResponse.data) {
+            // Atualizar status online de todos os amigos
+            onlineResponse.data.forEach(friend => {
+              this.onlineFriends.add(friend.friendName);
+              const friendInList = this.friends.find(f => f.friendId === friend.friendId);
+              if (friendInList) {
+                friendInList.isOnline = true;
+              }
+            });
+            
+            // Verificar se o novo amigo está na lista de online
+            const newFriend = this.friends.find(f => f.friendName === friendName);
+            if (newFriend) {
+              newFriend.isOnline = this.onlineFriends.has(friendName);
+            }
+          }
+        } catch (error) {
+          console.error('[ChatUI] Error checking online friends:', error);
+        }
+        
         await this.loadFriendRequests();
         this.render();
         // Mensagem de sucesso no chat (manter aba atual)
@@ -1494,6 +1631,16 @@ export class ChatUI {
    * Renderiza a UI
    */
   private render(): void {
+    // Preservar posição do scroll ANTES de renderizar
+    const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+    let savedScrollTop = 0;
+    let savedScrollHeight = 0;
+    
+    if (messagesContainer && this.preserveScrollOnRender) {
+      savedScrollTop = messagesContainer.scrollTop;
+      savedScrollHeight = messagesContainer.scrollHeight;
+    }
+    
     const activeTab = this.tabs.find(t => t.id === this.activeTabId);
 
     this.container.innerHTML = `
@@ -1675,6 +1822,24 @@ export class ChatUI {
 
     // Re-setup event listeners após render
     this.setupEventListeners();
+    
+    // Restaurar posição do scroll se estava preservando
+    if (this.preserveScrollOnRender && savedScrollTop > 0) {
+      setTimeout(() => {
+        const newMessagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
+        if (newMessagesContainer) {
+          // Calcular diferença de altura
+          const newScrollHeight = newMessagesContainer.scrollHeight;
+          const heightDiff = newScrollHeight - savedScrollHeight;
+          
+          // Restaurar posição relativa ao topo, ajustando pela diferença de altura
+          newMessagesContainer.scrollTop = savedScrollTop + heightDiff;
+          
+          // Desativar flag após restaurar
+          this.preserveScrollOnRender = false;
+        }
+      }, 0);
+    }
   }
 
   /**
@@ -1709,6 +1874,12 @@ export class ChatUI {
     if (this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }
+    
+    // Remover container de notificações
+    if (this.notificationContainer && this.notificationContainer.parentNode) {
+      this.notificationContainer.parentNode.removeChild(this.notificationContainer);
+    }
+    
     document.title = 'Beast Keepers'; // Resetar título
   }
 }
