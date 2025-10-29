@@ -1187,13 +1187,9 @@ export class ChatUI {
     const text = input.value.trim();
     if (!text) return;
     
-    // SEMPRE preservar scroll ao enviar mensagem
-    // A mensagem será adicionada e renderizada depois, mas não queremos que o scroll mude
-    const messagesContainer = this.container.querySelector('.chat-messages') as HTMLDivElement;
-    if (messagesContainer) {
-      // Salvar posição atual do scroll ANTES de enviar
-      this.preserveScrollOnRender = true;
-    }
+    // CORREÇÃO: NÃO preservar scroll ao enviar mensagem - sempre ir para o final após enviar
+    // O scroll será ajustado quando a mensagem chegar via addMessage()
+    this.preserveScrollOnRender = false;
 
     // Verificar se é comando
     const command = this.parseCommand(text);
@@ -1206,6 +1202,10 @@ export class ChatUI {
         // Enviar whisper apenas se aba foi criada (usuário está online)
         if (tabCreated && getConnectionStatus()) {
           sendWhisper(command.target, command.message);
+          // CORREÇÃO: Após enviar, forçar scroll para o final
+          setTimeout(() => {
+            this.scrollToBottom(true);
+          }, 50);
         }
         input.value = '';
         this.inputValue = '';
@@ -1221,6 +1221,10 @@ export class ChatUI {
 
         if (getConnectionStatus()) {
           sendMessage(command.channel, command.message);
+          // CORREÇÃO: Após enviar, forçar scroll para o final
+          setTimeout(() => {
+            this.scrollToBottom(true);
+          }, 50);
         }
         input.value = '';
         this.inputValue = '';
@@ -1238,6 +1242,10 @@ export class ChatUI {
       } else {
         sendMessage(activeTab.channel, text);
       }
+      // CORREÇÃO: Após enviar, forçar scroll para o final
+      setTimeout(() => {
+        this.scrollToBottom(true);
+      }, 50);
     }
 
     input.value = '';
