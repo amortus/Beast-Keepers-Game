@@ -789,7 +789,7 @@ export class GameUI {
 
     // Show actions for selected category
     if (this.actionCategory) {
-      this.drawActionList(x + 10, y + 150, beast, serverTime);
+      this.drawActionList(x + 10, y + 120, beast, serverTime); // Ajustado de 150 → 120px
     }
   }
   
