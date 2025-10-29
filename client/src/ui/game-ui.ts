@@ -360,10 +360,10 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === 3D Ranch: lado esquerdo + centro (layout do exemplo) ===
+    // === 3D Ranch centralizado (como no exemplo) ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = 900; // Lado esquerdo até antes dos painéis
+    const scene3DWidth = 880; // Centralizado
     const scene3DHeight = 710;
     
     // Criar/atualizar Ranch Scene 3D como background
@@ -371,112 +371,9 @@ export class GameUI {
       this.createOrUpdateRanchScene3D(scene3DX, scene3DY, scene3DWidth, scene3DHeight, beast);
     }
     
-    // Painel de info - topo esquerdo sobre o 3D (compacto como no exemplo)
-    const infoX = 10;
-    const infoY = 95;
-    const infoWidth = 350;
-    const infoHeight = 160;
-    
-    drawPanel(this.ctx, infoX, infoY, infoWidth, infoHeight, {
-      bgColor: 'rgba(10, 10, 25, 0.88)',
-      borderColor: COLORS.primary.gold,
-      borderWidth: 2,
-    });
+    // SEM painel flutuante - info vai para o painel STATUS (direita)
 
-    // Beast name and line
-    const lineData = getBeastLineData(beast.line);
-    const formattedName = `${beast.name} - ${lineData.name}`;
-    drawText(this.ctx, formattedName, infoX + 10, infoY + 8, {
-      font: 'bold 18px monospace',
-      color: COLORS.primary.gold,
-    });
-
-    // Info compacta em 2 colunas
-    const leftCol = infoX + 10;
-    const rightCol = infoX + 195;
-    let rowY = infoY + 35;
-    
-    // Coluna esquerda: Idade e Fase
-    const phase = getLifePhase(beast);
-    const phaseNames = {
-      infant: 'Filhote',
-      young: 'Jovem',
-      adult: 'Adulto',
-      mature: 'Maduro',
-      elder: 'Idoso',
-    };
-
-    drawText(this.ctx, `Idade: ${beast.secondaryStats.age}/${beast.secondaryStats.maxAge} sem`, leftCol, rowY, {
-      font: '13px monospace',
-      color: COLORS.ui.text,
-    });
-    
-    drawText(this.ctx, `Fase: ${phaseNames[phase]}`, leftCol, rowY + 20, {
-      font: '13px monospace',
-      color: COLORS.ui.info,
-    });
-
-    // Coluna direita: Humor
-    const moodEmoji: Record<string, string> = {
-      happy: '😊',
-      neutral: '😐',
-      sad: '😢',
-      angry: '😠',
-      tired: '😴',
-    };
-    
-    const mood = beast.mood || 'neutral';
-    const moodDisplay = moodEmoji[mood] || moodEmoji.neutral;
-
-    drawText(this.ctx, `Humor: ${moodDisplay}`, rightCol, rowY, {
-      font: '13px monospace',
-      color: COLORS.status[mood] || COLORS.status.neutral,
-    });
-
-    // Barras (HP, Essência, Fadiga) - compactas
-    rowY = infoY + 75;
-    
-    drawBar(
-      this.ctx,
-      infoX + 10,
-      rowY,
-      infoWidth - 20,
-      18,
-      beast.currentHp,
-      beast.maxHp,
-      {
-        fillColor: COLORS.attributes.vitality,
-        label: `HP: ${beast.currentHp}/${beast.maxHp}`,
-      }
-    );
-
-    drawBar(
-      this.ctx,
-      infoX + 10,
-      rowY + 25,
-      infoWidth - 20,
-      18,
-      beast.essence,
-      beast.maxEssence,
-      {
-        fillColor: COLORS.primary.purple,
-        label: `Essência: ${beast.essence}/${beast.maxEssence}`,
-      }
-    );
-
-    drawBar(
-      this.ctx,
-      infoX + 10,
-      rowY + 50,
-      infoWidth - 20,
-      14,
-      beast.secondaryStats.fatigue,
-      100,
-      {
-        fillColor: COLORS.ui.warning,
-        label: `Fadiga: ${beast.secondaryStats.fatigue}`,
-      }
-    );
+    // Info da besta vai para o painel STATUS (não mais flutuante)
   }
 
   private drawBeastSprite(x: number, y: number, width: number, height: number, beast: Beast) {
@@ -610,11 +507,11 @@ export class GameUI {
   private drawStatusPanel() {
     const beast = this.gameState.activeBeast!;
     
-    // Painel ATRIBUTOS/STATUS - lado direito (como no exemplo)
-    const x = 910;
-    const y = 95;
-    const width = 480;
-    const height = 350;
+    // Painel INFO + ATRIBUTOS + STATUS (tudo junto no lado direito)
+    const x = 890;
+    const y = 90;
+    const width = 510;
+    const height = 360;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
@@ -622,9 +519,69 @@ export class GameUI {
       borderWidth: 2,
     });
 
-    // Título ATRIBUTOS
-    drawText(this.ctx, 'ATRIBUTOS', x + 10, y + 8, {
+    // Nome da besta (topo do painel)
+    const lineData = getBeastLineData(beast.line);
+    const formattedName = `${beast.name} - ${lineData.name}`;
+    drawText(this.ctx, formattedName, x + 10, y + 8, {
       font: 'bold 18px monospace',
+      color: COLORS.primary.gold,
+    });
+    
+    // Info básica em linha
+    const phase = getLifePhase(beast);
+    const phaseNames = {
+      infant: 'Filhote',
+      young: 'Jovem',
+      adult: 'Adulto',
+      mature: 'Maduro',
+      elder: 'Idoso',
+    };
+    
+    const mood = beast.mood || 'neutral';
+    const moodEmoji: Record<string, string> = {
+      happy: '😊',
+      neutral: '😐',
+      sad: '😢',
+      angry: '😠',
+      tired: '😴',
+    };
+    const moodDisplay = moodEmoji[mood] || moodEmoji.neutral;
+    
+    drawText(this.ctx, `${phaseNames[phase]} • Humor: ${moodDisplay} • ${beast.secondaryStats.age}/${beast.secondaryStats.maxAge} sem`, x + 10, y + 30, {
+      font: '12px monospace',
+      color: COLORS.ui.textDim,
+    });
+    
+    // Barras HP, Essência, Fadiga (compactas)
+    let barY = y + 50;
+    drawBar(this.ctx, x + 10, barY, width - 20, 16, beast.currentHp, beast.maxHp, {
+      fillColor: COLORS.attributes.vitality,
+      label: `HP: ${beast.currentHp}/${beast.maxHp}`,
+    });
+    
+    drawBar(this.ctx, x + 10, barY + 20, width - 20, 16, beast.essence, beast.maxEssence, {
+      fillColor: COLORS.primary.purple,
+      label: `Essência: ${beast.essence}/${beast.maxEssence}`,
+    });
+    
+    drawBar(this.ctx, x + 10, barY + 40, width - 20, 12, beast.secondaryStats.fatigue, 100, {
+      fillColor: COLORS.ui.warning,
+      label: `Fadiga: ${beast.secondaryStats.fatigue}`,
+    });
+    
+    // Divisor
+    barY += 60;
+    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + 10, barY);
+    this.ctx.lineTo(x + width - 10, barY);
+    this.ctx.stroke();
+    
+    // Título ATRIBUTOS
+    barY += 15;
+    drawText(this.ctx, 'ATRIBUTOS', x + 10, barY, {
+      font: 'bold 16px monospace',
       color: COLORS.primary.gold,
     });
 
@@ -637,15 +594,15 @@ export class GameUI {
       { key: 'vitality', name: 'Vitalidade', color: COLORS.attributes.vitality },
     ];
 
-    let yOffset = y + 40;
-    const labelWidth = 110;
-    const barWidth = 320;
+    let yOffset = barY + 25;
+    const labelWidth = 100;
+    const barWidth = 370;
     
     attrs.forEach((attr) => {
       const value = beast.attributes[attr.key as keyof typeof beast.attributes];
       
       drawText(this.ctx, attr.name, x + 10, yOffset, {
-        font: '14px monospace',
+        font: '13px monospace',
         color: COLORS.ui.text,
       });
 
@@ -654,7 +611,7 @@ export class GameUI {
         x + labelWidth + 10,
         yOffset - 3,
         barWidth,
-        18,
+        16,
         value,
         150,
         {
@@ -663,7 +620,7 @@ export class GameUI {
         }
       );
 
-      yOffset += 28;
+      yOffset += 24;
     });
 
     // Divisor
@@ -722,11 +679,11 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Painel AÇÕES - lado direito, abaixo do STATUS (como no exemplo)
-    const x = 910;
-    const y = 450; // Logo abaixo do STATUS
-    const width = 480;
-    const height = 280;
+    // Painel AÇÕES - lado direito, abaixo do STATUS
+    const x = 890;
+    const y = 455;
+    const width = 510;
+    const height = 285;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
@@ -951,11 +908,11 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Week Info - embaixo de AÇÕES (como no exemplo)
-    const x = 910;
-    const y = 735; // Abaixo de AÇÕES (450 + 280 = 730, +5 de gap)
-    const width = 480;
-    const height = 60;
+    // Week Info - embaixo de AÇÕES
+    const x = 890;
+    const y = 745;
+    const width = 510;
+    const height = 55;
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
