@@ -2227,8 +2227,8 @@ function startTournamentBattle(rank: TournamentRank) {
 }
 
 function resizeCanvas() {
-  // CORREÇÃO: Resolução lógica fixa 1400x800 (como era antes)
-  // Mas garantir que o canvas preencha toda a largura disponível
+  // CORREÇÃO: Resolução lógica fixa 1400x800 (como era antes do AuthUI)
+  // Canvas deve manter aspecto correto e preencher largura
   const logicalWidth = 1400;
   const logicalHeight = 800;
   const aspectRatio = logicalWidth / logicalHeight;
@@ -2236,35 +2236,41 @@ function resizeCanvas() {
   // Espaço disponível na janela
   const containerWidth = window.innerWidth;
   const containerHeight = window.innerHeight;
+  const containerAspect = containerWidth / containerHeight;
 
-  // CORREÇÃO: SEMPRE preencher toda a largura disponível
-  // Se necessário, ter barras pretas em cima/embaixo, mas nunca cortar lateralmente
-  const renderWidth = containerWidth;
-  const renderHeight = containerWidth / aspectRatio; // Altura baseada na largura
+  // Calcular tamanho visual mantendo aspect ratio
+  let renderWidth = containerWidth;
+  let renderHeight = containerHeight;
 
-  // Canvas deve preencher toda a largura
+  // Manter proporção do canvas lógico
+  if (containerAspect > aspectRatio) {
+    // Janela mais larga: ajustar pela altura (barras laterais)
+    renderWidth = containerHeight * aspectRatio;
+  } else {
+    // Janela mais alta: ajustar pela largura (barras superior/inferior)
+    renderHeight = containerWidth / aspectRatio;
+  }
+
+  // Canvas centralizado e preenchendo espaço disponível
   canvas.style.position = 'fixed';
   canvas.style.top = '50%';
-  canvas.style.left = '0'; // Começar do canto esquerdo
+  canvas.style.left = '50%';
   canvas.style.margin = '0';
   canvas.style.padding = '0';
   canvas.style.width = `${renderWidth}px`;
   canvas.style.height = `${renderHeight}px`;
-  canvas.style.transform = 'translateY(-50%)'; // Centralizar verticalmente apenas
+  canvas.style.transform = 'translate(-50%, -50%)'; // Centralizar
   canvas.style.zIndex = '1';
-  canvas.style.marginLeft = '0';
-  canvas.style.marginRight = '0';
 
-  // Tamanho interno do canvas (resolução lógica fixa)
+  // Tamanho interno do canvas (resolução lógica fixa - NÃO ESCALAR CONTEXTO)
   canvas.width = logicalWidth;
   canvas.height = logicalHeight;
   
-  // Escalar o contexto para mapear coordenadas lógicas para pixels visuais
+  // CORREÇÃO: NÃO aplicar escala no contexto - GameUI desenha direto nas coordenadas lógicas
+  // O browser escala automaticamente do canvas interno para o tamanho visual
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    const scaleX = renderWidth / logicalWidth;
-    const scaleY = renderHeight / logicalHeight;
-    ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Sem escala
   }
 }
 
