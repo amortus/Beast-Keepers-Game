@@ -360,11 +360,10 @@ export class GameUI {
   private drawBeastDisplay() {
     const beast = this.gameState.activeBeast!;
     
-    // === NOVO LAYOUT: 3D Ranch ocupa lado esquerdo INTEIRO ===
-    // UI compacta à direita libera máximo de espaço para o 3D
+    // === 3D Ranch preenche até além do centro ===
     const scene3DX = 0;
     const scene3DY = 90;
-    const scene3DWidth = 880; // Mais espaço para o 3D!
+    const scene3DWidth = 1400; // Preenche toda largura (UI overlay por cima)
     const scene3DHeight = 710;
     
     // Criar/atualizar Ranch Scene 3D como background
@@ -793,12 +792,7 @@ export class GameUI {
 
     // Show actions for selected category
     if (this.actionCategory) {
-      this.drawActionList(x + 10, y + 95, beast, serverTime);
-    } else {
-      drawText(this.ctx, 'Selecione uma categoria acima', x + 10, y + 100, {
-        font: '16px monospace',
-        color: COLORS.ui.textDim,
-      });
+      this.drawActionList(x + 10, y + 150, beast, serverTime);
     }
   }
   
