@@ -98,9 +98,10 @@ export class GameUI {
   
   // Create or update Ranch Scene 3D
   private createOrUpdateRanchScene3D(x: number, y: number, width: number, height: number, beast: Beast) {
-    // Only create once or when beast changes
-    if (!this.ranchScene3D || this.currentBeastForViewer?.line !== beast.line) {
-      console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line);
+    // Recreate if beast changes OR if container doesn't exist
+    // (Force recreate to apply new size)
+    if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line) {
+      console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line, `Size: ${width}x${height}`);
       this.cleanupRanchScene3D();
       
       // Calculate position based on canvas scale/transform
