@@ -724,12 +724,12 @@ export class GameUI {
     const beast = this.gameState.activeBeast;
     const serverTime = this.gameState.serverTime || Date.now();
     
-    // Painel AÇÕES - lado direito, abaixo do STATUS (REDUZIDO)
+    // Painel AÇÕES - lado direito, abaixo do STATUS (ATÉ O FUNDO)
     const headerHeight = 80;
     const x = this.canvas.width - 510;
     const y = headerHeight + 435; // Logo após STATUS (80 + 430 + 5 gap)
     const width = 510;
-    const height = 210; // Reduzido de 290 → 210 (-80px)
+    const height = this.canvas.height - y; // ATÉ O FUNDO (sem Week Info)
 
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(10, 10, 25, 0.88)',
