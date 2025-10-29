@@ -292,8 +292,12 @@ async function init() {
 
     // Setup canvas
     resizeCanvas();
+    // Resize handler com debounce para garantir atualização final
+    let resizeTimeout: number | null = null;
     window.addEventListener('resize', () => {
+      // Atualização imediata durante o drag
       resizeCanvas();
+      
       // Update 3D viewer position on resize
       if (gameUI) {
         gameUI.update3DViewerPosition();
@@ -302,6 +306,25 @@ async function init() {
       if (battleUI && inBattle) {
         battleUI.update3DViewersPosition();
       }
+      
+      // Atualização final após soltar (debounce de 150ms)
+      if (resizeTimeout !== null) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = window.setTimeout(() => {
+        resizeCanvas();
+        // Força redesenho completo após layout estabilizar
+        if (gameUI && !inAuth) {
+          gameUI.forceRedraw();
+        }
+        if (gameUI) {
+          gameUI.update3DViewerPosition();
+        }
+        if (battleUI && inBattle) {
+          battleUI.update3DViewersPosition();
+        }
+        resizeTimeout = null;
+      }, 150); // 150ms após parar de redimensionar
     });
 
     // Register Service Worker
