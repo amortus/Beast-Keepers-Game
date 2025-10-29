@@ -30,43 +30,38 @@ export class ThreeScene {
     this.camera.position.set(0, 2, 5);
     this.camera.lookAt(0, 0, 0);
 
-    // Create renderer
+    // Create renderer with PS1 optimizations
     this.renderer = new THREE.WebGLRenderer({ 
       canvas,
-      antialias: false, // PS1 style - no antialiasing
-      alpha: false
+      antialias: false,          // No antialiasing (PS1 pixelated look)
+      alpha: false,
+      powerPreference: 'high-performance'
     });
     this.renderer.setSize(canvas.width, canvas.height);
-    this.renderer.setPixelRatio(1); // Low-poly style - keep it pixelated
-
+    this.renderer.setPixelRatio(0.5);     // Low resolution for PS1 effect (320x240 feel)
+    this.renderer.shadowMap.enabled = false; // Disable shadows for performance
+    
     // Add basic lighting
     this.setupLighting();
-
-    // Add grid for reference
-    this.setupGrid();
   }
 
   private setupLighting() {
-    // Ambient light
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    // PS1-style lighting (simple and strong)
+    
+    // Ambient light (base illumination)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambient);
 
-    // Directional light (main light)
-    const directional = new THREE.DirectionalLight(0xffffff, 0.8);
-    directional.position.set(5, 10, 5);
-    directional.castShadow = true;
+    // Main directional light (sun-like, PS1 games had strong directional lighting)
+    const directional = new THREE.DirectionalLight(0xffffff, 1.0);
+    directional.position.set(5, 8, 5);
+    directional.castShadow = false; // No shadows for PS1 style
     this.scene.add(directional);
 
-    // Rim light (para destacar silhuetas)
-    const rim = new THREE.DirectionalLight(0x4444ff, 0.3);
-    rim.position.set(-5, 5, -5);
-    this.scene.add(rim);
-  }
-
-  private setupGrid() {
-    // Grid helper (pode ser removido depois)
-    const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
-    this.scene.add(gridHelper);
+    // Fill light (subtle, to prevent too dark shadows)
+    const fill = new THREE.DirectionalLight(0x8888ff, 0.2);
+    fill.position.set(-3, 2, -3);
+    this.scene.add(fill);
   }
 
   public addObject(object: THREE.Object3D) {

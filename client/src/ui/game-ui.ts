@@ -9,6 +9,7 @@ import { getLifePhase, calculateBeastAge } from '../systems/beast';
 import { getBeastLineData } from '../data/beasts';
 import { getBeastSprite } from '../utils/beast-images';
 import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
+import { RanchScene3D } from '../3d/scenes/RanchScene3D';
 import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';
 import { formatTime } from '../utils/time-format';
 
@@ -33,6 +34,11 @@ export class GameUI {
   private miniViewer3DContainer: HTMLDivElement | null = null;
   private currentBeastForViewer: Beast | null = null;
   private is3DViewerVisible: boolean = true; // ← Flag para controlar visibilidade
+  
+  // 3D Ranch Scene (full PS1 environment)
+  private ranchScene3D: RanchScene3D | null = null;
+  private ranchScene3DContainer: HTMLDivElement | null = null;
+  private useFullRanchScene: boolean = true; // Toggle to use full ranch vs mini viewer
   
   // Public callbacks
   public onView3D: () => void = () => {};
@@ -70,26 +76,109 @@ export class GameUI {
     console.log('[GameUI] ✓ Cleanup complete');
   }
   
+  // Cleanup Ranch Scene 3D
+  private cleanupRanchScene3D() {
+    console.log('[GameUI] Ranch Scene 3D cleanup started...');
+    
+    if (this.ranchScene3D) {
+      console.log('[GameUI] Disposing Ranch Scene 3D...');
+      this.ranchScene3D.stopLoop();
+      this.ranchScene3D.dispose();
+      this.ranchScene3D = null;
+    }
+    
+    if (this.ranchScene3DContainer && this.ranchScene3DContainer.parentNode) {
+      console.log('[GameUI] Removing Ranch Scene 3D container from DOM...');
+      this.ranchScene3DContainer.parentNode.removeChild(this.ranchScene3DContainer);
+      this.ranchScene3DContainer = null;
+    }
+    
+    console.log('[GameUI] ✓ Ranch Scene 3D cleanup complete');
+  }
+  
+  // Create or update Ranch Scene 3D
+  private createOrUpdateRanchScene3D(x: number, y: number, width: number, height: number, beast: Beast) {
+    // Only create once or when beast changes
+    if (!this.ranchScene3D || this.currentBeastForViewer?.line !== beast.line) {
+      console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line);
+      this.cleanupRanchScene3D();
+      
+      // Create container for Ranch Scene 3D
+      this.ranchScene3DContainer = document.createElement('div');
+      this.ranchScene3DContainer.id = 'ranch-scene-3d-container';
+      this.ranchScene3DContainer.style.cssText = `
+        position: fixed;
+        left: ${x}px;
+        top: ${y}px;
+        width: ${width}px;
+        height: ${height}px;
+        pointer-events: none;
+        z-index: 100;
+        border-radius: 8px;
+        overflow: hidden;
+      `;
+      
+      // Create canvas for Three.js
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      this.ranchScene3DContainer.appendChild(canvas);
+      
+      document.body.appendChild(this.ranchScene3DContainer);
+      
+      // Create Ranch Scene 3D
+      this.ranchScene3D = new RanchScene3D(canvas);
+      this.ranchScene3D.setBeast(beast.line);
+      this.ranchScene3D.startLoop();
+      
+      this.currentBeastForViewer = beast;
+      console.log('[GameUI] ✓ Ranch Scene 3D created successfully');
+    }
+    
+    // Update container position if canvas was resized
+    if (this.ranchScene3DContainer) {
+      this.ranchScene3DContainer.style.left = `${x}px`;
+      this.ranchScene3DContainer.style.top = `${y}px`;
+      this.ranchScene3DContainer.style.width = `${width}px`;
+      this.ranchScene3DContainer.style.height = `${height}px`;
+    }
+  }
+  
   // Call this when UI is destroyed or beast changes significantly
   public dispose() {
     this.cleanup3DMiniViewer();
+    this.cleanupRanchScene3D();
   }
 
   // Public method to hide 3D viewer when changing screens
   public hide3DViewer() {
     this.is3DViewerVisible = false;
+    
     if (this.miniViewer3DContainer) {
       this.miniViewer3DContainer.style.display = 'none';
-      console.log('[GameUI] 3D viewer hidden');
+      console.log('[GameUI] 3D mini viewer hidden');
+    }
+    
+    if (this.ranchScene3DContainer) {
+      this.ranchScene3DContainer.style.display = 'none';
+      console.log('[GameUI] Ranch Scene 3D hidden');
     }
   }
 
   // Public method to show 3D viewer when returning to ranch
   public show3DViewer() {
     this.is3DViewerVisible = true;
+    
     if (this.miniViewer3DContainer) {
       this.miniViewer3DContainer.style.display = 'block';
-      console.log('[GameUI] 3D viewer shown');
+      console.log('[GameUI] 3D mini viewer shown');
+    }
+    
+    if (this.ranchScene3DContainer) {
+      this.ranchScene3DContainer.style.display = 'block';
+      console.log('[GameUI] Ranch Scene 3D shown');
     }
   }
 
@@ -404,6 +493,12 @@ export class GameUI {
       this.ctx.strokeStyle = COLORS.primary.purple;
       this.ctx.lineWidth = 3;
       this.ctx.strokeRect(x, y, width, height);
+      return;
+    }
+    
+    // Use full Ranch Scene 3D or mini viewer
+    if (this.useFullRanchScene) {
+      this.createOrUpdateRanchScene3D(x, y, width, height, beast);
       return;
     }
     
