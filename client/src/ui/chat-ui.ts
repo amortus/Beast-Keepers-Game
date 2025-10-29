@@ -130,6 +130,9 @@ export class ChatUI {
     // Setup chat client callbacks
     this.setupChatCallbacks();
     
+    // CORREÇÃO: Minimizar chat ao clicar fora da janela
+    this.setupOutsideClickHandler();
+    
     // Carregar amigos
     this.loadFriends();
     this.loadFriendRequests();
@@ -257,6 +260,7 @@ export class ChatUI {
     if (target.classList.contains('friends-whisper-btn')) {
       const friendName = target.getAttribute('data-friend');
       if (friendName) {
+        // CORREÇÃO: Verificar se usuário está online antes de criar aba
         this.createWhisperTab(friendName);
       }
       return;
@@ -532,6 +536,31 @@ export class ChatUI {
     }
   };
 
+  /**
+   * CORREÇÃO: Configura handler para minimizar chat ao clicar fora
+   */
+  private setupOutsideClickHandler(): void {
+    // Adicionar listener no document para detectar cliques fora do chat
+    document.addEventListener('click', (e: MouseEvent) => {
+      // Se chat não está expandido, não fazer nada
+      if (!this.isExpanded) {
+        return;
+      }
+
+      // Verificar se o clique foi dentro do container do chat
+      const target = e.target as HTMLElement;
+      if (this.container && this.container.contains(target)) {
+        // Clique foi dentro do chat, não minimizar
+        return;
+      }
+
+      // Clique foi fora do chat - minimizar
+      if (this.isExpanded) {
+        this.toggleExpanded();
+      }
+    });
+  }
+
   private setupEventListeners(): void {
     // Remover listeners anteriores se existirem
     this.container.removeEventListener('click', this.clickHandler);
@@ -794,7 +823,7 @@ export class ChatUI {
   /**
    * Cria uma nova aba de whisper
    */
-  public createWhisperTab(targetUsername: string): void {
+  public createWhisperTab(targetUsername: string): boolean {
     // Verificar se já existe
     const existing = this.tabs.find(t => t.channel === 'whisper' && t.target === targetUsername);
     if (existing) {
@@ -803,7 +832,19 @@ export class ChatUI {
       if (!this.isExpanded) {
         this.toggleExpanded();
       }
-      return;
+      return true;
+    }
+
+    // CORREÇÃO: Verificar se usuário está online antes de criar aba
+    // Verificar tanto em onlineUsers (todos os usuários) quanto em onlineFriends (amigos)
+    const normalizedTarget = targetUsername.toLowerCase().trim();
+    const isOnline = Array.from(this.onlineUsers).some(u => u.toLowerCase().trim() === normalizedTarget) ||
+                     Array.from(this.onlineFriends).some(f => f.toLowerCase().trim() === normalizedTarget);
+
+    if (!isOnline) {
+      // Usuário não está online
+      this.showNotification(`Usuário "${targetUsername}" não está online`, true);
+      return false;
     }
 
     // Criar nova aba
@@ -832,6 +873,8 @@ export class ChatUI {
         input.placeholder = 'Digite sua mensagem... (Enter para enviar)';
       }
     }, 100);
+    
+    return true;
   }
 
   /**
@@ -912,12 +955,15 @@ export class ChatUI {
         const wasAppended = this.appendMessageToDOM(msg, targetTab.id, false);
         
         if (wasAppended) {
-          // Mensagem adicionada incrementalmente - apenas fazer scroll se necessário
-          const shouldPreserveScroll = this.preserveScrollOnRender || !this.isNearBottom();
+          // CORREÇÃO: Se é a aba ativa, SEMPRE fazer scroll para o final quando nova mensagem chega
+          // (a menos que usuário esteja ativamente lendo mensagens antigas)
+          const isActiveTab = targetTab.id === this.activeTabId;
+          const shouldPreserveScroll = this.preserveScrollOnRender && !isActiveTab;
           
-          if (!shouldPreserveScroll && this.isNearBottom()) {
+          if (isActiveTab && !shouldPreserveScroll) {
+            // Sempre scroll para final se é a aba ativa e não está preservando
             setTimeout(() => {
-              this.scrollToBottom(false);
+              this.scrollToBottom(true); // Forçar scroll
             }, 10);
           }
           // Não precisa render completo, sair aqui
@@ -939,21 +985,23 @@ export class ChatUI {
         this.scheduleRender(false); // Debounce leve para outras situações
       }
 
-      // Auto-scroll APENAS se:
-      // 1. É a aba ativa
-      // 2. NÃO está preservando scroll (usuário não está lendo mensagens antigas)
-      // 3. Estava perto do final antes da mensagem chegar
-      if (targetTab.id === this.activeTabId && !shouldPreserveScroll && this.isNearBottom()) {
-        setTimeout(() => {
-          this.scrollToBottom(false);
-        }, 10);
-      } else {
-        // Resetar flag após render se estava preservando
-        if (this.preserveScrollOnRender) {
+      // CORREÇÃO: Auto-scroll para final SEMPRE se é a aba ativa (a menos que usuário esteja lendo mensagens antigas)
+      // Se não está preservando scroll E é a aba ativa, ir para o final
+      if (targetTab.id === this.activeTabId) {
+        if (!shouldPreserveScroll) {
+          // Não está preservando = usuário estava perto do final ou foi uma nova mensagem
+          // Sempre scroll para o final
           setTimeout(() => {
-            this.preserveScrollOnRender = false;
-          }, 100);
+            this.scrollToBottom(true); // Forçar scroll
+          }, 10);
         }
+      }
+      
+      // Resetar flag após render se estava preservando
+      if (this.preserveScrollOnRender) {
+        setTimeout(() => {
+          this.preserveScrollOnRender = false;
+        }, 100);
       }
     }
   }
@@ -1152,11 +1200,11 @@ export class ChatUI {
     
     if (command) {
       if (command.type === 'whisper' && command.target) {
-        // Criar aba de whisper se necessário
-        this.createWhisperTab(command.target);
+        // CORREÇÃO: Criar aba de whisper apenas se usuário estiver online
+        const tabCreated = this.createWhisperTab(command.target);
         
-        // Enviar whisper
-        if (getConnectionStatus()) {
+        // Enviar whisper apenas se aba foi criada (usuário está online)
+        if (tabCreated && getConnectionStatus()) {
           sendWhisper(command.target, command.message);
         }
         input.value = '';
