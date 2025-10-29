@@ -43,6 +43,7 @@ export class ChatUI {
   private friendRequests: FriendRequest[] = [];
   private friendsActiveTab: 'list' | 'requests' | 'add' = 'list';
   private addFriendInput: string = '';
+  private pendingRemoveFriendId: number | null = null; // ID do amigo pendente para remover
 
   // Callbacks
   public onMessageReceived?: (msg: ChatMessage) => void;
@@ -259,8 +260,31 @@ export class ChatUI {
     if (target.classList.contains('friends-remove-btn')) {
       const friendId = parseInt(target.getAttribute('data-friend-id') || '0');
       if (friendId) {
-        // Sem confirmação - ação direta com mensagem no chat
-        this.removeOrRejectFriend(friendId, 'remove');
+        // Se já havia um pedido pendente, cancelar e remover o novo
+        if (this.pendingRemoveFriendId !== null && this.pendingRemoveFriendId !== friendId) {
+          this.pendingRemoveFriendId = null;
+        }
+        
+        // Se é o mesmo amigo, confirmar remoção
+        if (this.pendingRemoveFriendId === friendId) {
+          this.pendingRemoveFriendId = null;
+          this.removeOrRejectFriend(friendId, 'remove');
+        } else {
+          // Primeira vez - pedir confirmação
+          const friend = this.friends.find(f => f.friendId === friendId);
+          const friendName = friend?.friendName || 'este amigo';
+          this.pendingRemoveFriendId = friendId;
+          
+          // Mensagem de confirmação no chat (manter aba atual)
+          this.addSystemMessage(`⚠️ Deseja remover ${friendName} da lista de amigos? Clique novamente no botão × para confirmar.`, false, true);
+          
+          // Cancelar confirmação após 10 segundos
+          setTimeout(() => {
+            if (this.pendingRemoveFriendId === friendId) {
+              this.pendingRemoveFriendId = null;
+            }
+          }, 10000);
+        }
       }
       return;
     }
@@ -1203,13 +1227,15 @@ export class ChatUI {
           ` : ''}
           <button class="friends-remove-btn" data-friend-id="${friend.friendId}" style="
             padding: 4px 8px;
-            background: #f56565;
-            border: none;
+            background: ${this.pendingRemoveFriendId === friend.friendId ? '#ff6b6b' : '#f56565'};
+            border: ${this.pendingRemoveFriendId === friend.friendId ? '2px solid #fff' : 'none'};
             border-radius: 4px;
             color: #fff;
             cursor: pointer;
             font-size: 10px;
-          ">×</button>
+            font-weight: ${this.pendingRemoveFriendId === friend.friendId ? 'bold' : 'normal'};
+            animation: ${this.pendingRemoveFriendId === friend.friendId ? 'pulse 1s infinite' : 'none'};
+          " title="${this.pendingRemoveFriendId === friend.friendId ? 'Clique novamente para confirmar' : 'Remover amigo'}">×</button>
         </div>
       </div>
     `).join('');
