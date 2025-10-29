@@ -39,6 +39,8 @@ export class GameUI {
   private ranchScene3D: RanchScene3D | null = null;
   private ranchScene3DContainer: HTMLDivElement | null = null;
   private useFullRanchScene: boolean = true; // Toggle to use full ranch vs mini viewer
+  private lastRanchSceneWidth: number = 0; // Cache para detectar mudança de tamanho
+  private lastRanchSceneHeight: number = 0;
   
   // Public callbacks
   public onView3D: () => void = () => {};
@@ -98,11 +100,20 @@ export class GameUI {
   
   // Create or update Ranch Scene 3D
   private createOrUpdateRanchScene3D(x: number, y: number, width: number, height: number, beast: Beast) {
-    // Recreate if beast changes OR if container doesn't exist
-    // (Force recreate to apply new size)
-    if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line) {
+    // Detecta se tamanho mudou (eficiente, sem overhead)
+    const sizeChanged = (width !== this.lastRanchSceneWidth || height !== this.lastRanchSceneHeight);
+    
+    // Recreate if: beast changes OR container doesn't exist OR size changed
+    if (!this.ranchScene3D || !this.ranchScene3DContainer || this.currentBeastForViewer?.line !== beast.line || sizeChanged) {
+      if (sizeChanged) {
+        console.log('[GameUI] Ranch Scene 3D size changed:', `${this.lastRanchSceneWidth}x${this.lastRanchSceneHeight}`, '→', `${width}x${height}`);
+      }
       console.log('[GameUI] Creating Ranch Scene 3D for:', beast.name, beast.line, `Size: ${width}x${height}`);
       this.cleanupRanchScene3D();
+      
+      // Atualiza cache de tamanho
+      this.lastRanchSceneWidth = width;
+      this.lastRanchSceneHeight = height;
       
       // Calculate position based on canvas scale/transform
       const canvasRect = this.canvas.getBoundingClientRect();
@@ -265,14 +276,8 @@ export class GameUI {
   }
 
   /**
-   * Força recriação do container 3D ao redimensionar janela
+   * REMOVIDO: Não precisa mais forçar redraw, detecção automática de mudança de tamanho
    */
-  public forceRedraw() {
-    // Remove container 3D para forçar recriação com novo tamanho
-    this.cleanupRanchScene3D();
-    this.cleanup3DMiniViewer();
-    // Próximo draw() vai recriar tudo com tamanho correto
-  }
 
   public draw() {
     this.buttons.clear();

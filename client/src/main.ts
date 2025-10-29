@@ -292,12 +292,9 @@ async function init() {
 
     // Setup canvas
     resizeCanvas();
-    // Resize handler com debounce para garantir atualização final
-    let resizeTimeout: number | null = null;
+    // Resize handler - SEM debounce (detecção automática de mudança no draw)
     window.addEventListener('resize', () => {
-      // Atualização imediata durante o drag
       resizeCanvas();
-      
       // Update 3D viewer position on resize
       if (gameUI) {
         gameUI.update3DViewerPosition();
@@ -306,25 +303,7 @@ async function init() {
       if (battleUI && inBattle) {
         battleUI.update3DViewersPosition();
       }
-      
-      // Atualização final após soltar (debounce de 150ms)
-      if (resizeTimeout !== null) {
-        clearTimeout(resizeTimeout);
-      }
-      resizeTimeout = window.setTimeout(() => {
-        resizeCanvas();
-        // Força redesenho completo após layout estabilizar
-        if (gameUI && !inAuth) {
-          gameUI.forceRedraw();
-        }
-        if (gameUI) {
-          gameUI.update3DViewerPosition();
-        }
-        if (battleUI && inBattle) {
-          battleUI.update3DViewersPosition();
-        }
-        resizeTimeout = null;
-      }, 150); // 150ms após parar de redimensionar
+      // Próximo draw() detectará mudança de tamanho automaticamente
     });
 
     // Register Service Worker
@@ -2311,11 +2290,7 @@ function resizeCanvas() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
   
-  // ✅ FORÇAR ATUALIZAÇÃO DO CONTAINER 3D NO RESIZE
-  if (gameUI && !inAuth) {
-    // Força redesenho para recriar o container 3D com novo tamanho
-    gameUI.forceRedraw();
-  }
+  // Container 3D detecta mudança de tamanho automaticamente no próximo draw()
 }
 
 function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {
