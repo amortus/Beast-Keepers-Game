@@ -762,10 +762,20 @@ export class GameUI {
       borderWidth: 2,
     });
 
-    // Se tem ação em progresso, mostrar progresso
+    // Se tem ação em progresso, verificar se já completou
     if (beast.currentAction) {
-      this.drawActionProgress(beast, serverTime, x, y, width, height);
-      return;
+      // Se a ação já completou (100%), disparar callback de completude
+      if (serverTime >= beast.currentAction.completesAt) {
+        // Disparar completude automaticamente
+        if (this.onCompleteAction) {
+          this.onCompleteAction();
+        }
+        // Não mostrar mais o progresso, voltar ao menu
+      } else {
+        // Ação ainda em andamento, mostrar progresso
+        this.drawActionProgress(beast, serverTime, x, y, width, height);
+        return;
+      }
     }
 
     // Se não tem ação, mostrar menu de ações
@@ -1102,6 +1112,7 @@ export class GameUI {
   public onAdvanceWeek: (action: WeeklyAction) => void = () => {};
   public onStartAction: (action: BeastAction['type']) => void = () => {};
   public onCancelAction: () => void = () => {};
+  public onCompleteAction?: () => void; // Callback quando ação completa
   public onOpenTemple: () => void = () => {};
   public onOpenVillage: () => void = () => {};
   public onOpenInventory: () => void = () => {};

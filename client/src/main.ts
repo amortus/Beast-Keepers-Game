@@ -898,6 +898,36 @@ async function setupGame() {
       }
     };
     
+    // Setup action complete callback (chamado automaticamente quando tempo acaba)
+    gameUI.onCompleteAction = async () => {
+      if (!gameState || !gameState.activeBeast) return;
+      
+      const beast = gameState.activeBeast;
+      if (!beast.currentAction) return;
+      
+      // Completar ação no cliente
+      const result = completeActionClient(beast, gameState);
+      
+      if (result.success) {
+        // Mostrar mensagem inline no painel por 3 segundos
+        if (gameUI) {
+          gameUI.showCompletionMessage(result.message);
+        }
+        console.log(`[Action Complete] ${result.message}`);
+        
+        // Enviar para servidor
+        try {
+          await gameApi.completeBeastAction(beast.id);
+          await saveGame(gameState);
+        } catch (error) {
+          console.error('[Action] Failed to complete action on server:', error);
+        }
+        
+        // Atualizar UI
+        gameUI?.updateGameState(gameState);
+      }
+    };
+    
     // Setup action cancel callback
     gameUI.onCancelAction = async () => {
       if (!gameState || !gameState.activeBeast) return;
