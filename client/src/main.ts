@@ -1915,9 +1915,6 @@ function startExplorationBattle(enemy: WildEnemy) {
       inBattle = false;
       isExplorationBattle = false;
       
-      // Return to ranch music
-      AudioManager.playMusic('ranch', 1500);
-      
       // DON'T show 3D viewer yet - modal will be open
       console.log('[Main] Defeat - keeping 3D hidden until modal closes');
       
@@ -2398,9 +2395,6 @@ function startTournamentBattle(rank: TournamentRank) {
   };
   
   inBattle = true;
-  
-  // Play battle music
-  AudioManager.playMusic('battle', 1000);
   
   showMessage(`Torneio ${rank.toUpperCase()} iniciado!`);
 }
