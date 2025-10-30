@@ -146,7 +146,11 @@ function startRealtimeSync() {
           const result = completeActionClient(gameState.activeBeast, gameState);
           
           if (result.success) {
-            showMessage(result.message, '✅ Ação Completa');
+            // Mostrar mensagem inline no painel por 3 segundos
+            if (gameUI) {
+              gameUI.showCompletionMessage(result.message);
+            }
+            console.log(`[Action] ${result.message}`);
             
             // Salvar no servidor
             await gameApi.completeBeastAction(gameState.activeBeast.id);
@@ -872,10 +876,8 @@ async function setupGame() {
           action.completesAt
         );
         
-        showMessage(
-          `${getRealtimeActionName(action.type)} iniciado! Tempo: ${formatTime(action.duration)}`,
-          '⏳ Ação Iniciada'
-        );
+        // Mensagem inline no painel (sem popup)
+        console.log(`[Action] ${getRealtimeActionName(action.type)} iniciado! Tempo: ${formatTime(action.duration)}`);
         
         // Salvar estado
         await saveGame(gameState);

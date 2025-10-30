@@ -21,6 +21,10 @@ export class GameUI {
   private mouseX = 0;
   private mouseY = 0;
   
+  // Completion message state (inline no painel)
+  private completionMessage: string | null = null;
+  private completionMessageTimeout: number | null = null;
+  
   // UI state
   private selectedAction: WeeklyAction | null = null;
   private actionCategory: 'train' | 'work' | 'rest' | 'tournament' | null = null;
@@ -742,7 +746,8 @@ export class GameUI {
     if (!this.gameState.activeBeast) return;
     
     const beast = this.gameState.activeBeast;
-    const serverTime = this.gameState.serverTime || Date.now();
+    // Usar Date.now() para progresso em tempo real
+    const serverTime = Date.now();
     
     // Painel AÇÕES - lado direito, abaixo do STATUS (ATÉ O FUNDO)
     const headerHeight = 80;
@@ -815,6 +820,25 @@ export class GameUI {
   }
   
   private drawActionProgress(beast: Beast, serverTime: number, x: number, y: number, width: number, height: number) {
+    // Se tem mensagem de completude, mostrar ela no lugar do progresso
+    if (this.completionMessage) {
+      drawText(this.ctx, '✅ AÇÃO COMPLETA', x + 10, y + 10, {
+        font: 'bold 20px monospace',
+        color: COLORS.primary.green,
+      });
+      
+      // Mensagem com quebra de linha automática
+      const messageLines = this.completionMessage.split('\n');
+      messageLines.forEach((line, index) => {
+        drawText(this.ctx, line, x + 10, y + 50 + (index * 25), {
+          font: 'bold 16px monospace',
+          color: COLORS.ui.text,
+        });
+      });
+      
+      return;
+    }
+    
     if (!beast.currentAction) return;
     
     const action = beast.currentAction;
@@ -955,17 +979,17 @@ export class GameUI {
       ];
     } else if (this.actionCategory === 'work') {
       return [
-        { id: 'work_warehouse', label: 'Armazém (10min, 400💰)' },
-        { id: 'work_farm', label: 'Fazenda (10min, 350💰)' },
-        { id: 'work_guard', label: 'Guarda (10min, 500💰)' },
-        { id: 'work_library', label: 'Biblioteca (10min, 350💰)' },
+        { id: 'work_warehouse', label: 'Armazém (1.5min, 400💰)' },
+        { id: 'work_farm', label: 'Fazenda (1.5min, 350💰)' },
+        { id: 'work_guard', label: 'Guarda (1.5min, 500💰)' },
+        { id: 'work_library', label: 'Biblioteca (1.5min, 350💰)' },
       ];
     } else if (this.actionCategory === 'rest') {
       return [
-        { id: 'rest_sleep', label: 'Dormir (4h)' },
-        { id: 'rest_freetime', label: 'Tempo Livre (10min)' },
-        { id: 'rest_walk', label: 'Passeio (10min)' },
-        { id: 'rest_eat', label: 'Comer Bem (10min)' },
+        { id: 'rest_sleep', label: 'Dormir (2min)' },
+        { id: 'rest_freetime', label: 'Tempo Livre (1min)' },
+        { id: 'rest_walk', label: 'Passeio (1min)' },
+        { id: 'rest_eat', label: 'Comer Bem (1min)' },
       ];
     } else if (this.actionCategory === 'tournament') {
       return [
@@ -1054,6 +1078,24 @@ export class GameUI {
       font: 'bold 24px monospace',
       color: COLORS.ui.error,
     });
+  }
+  
+  /**
+   * Mostra mensagem de ação completa inline no painel por 3 segundos
+   */
+  public showCompletionMessage(message: string) {
+    // Limpar timeout anterior se existir
+    if (this.completionMessageTimeout) {
+      clearTimeout(this.completionMessageTimeout);
+    }
+    
+    this.completionMessage = message;
+    
+    // Remover mensagem após 3 segundos
+    this.completionMessageTimeout = window.setTimeout(() => {
+      this.completionMessage = null;
+      this.completionMessageTimeout = null;
+    }, 3000);
   }
 
   // Callbacks
