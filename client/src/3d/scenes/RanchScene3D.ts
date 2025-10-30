@@ -65,8 +65,11 @@ export class RanchScene3D {
     // Casa 3D melhorada
     this.createImprovedHouse();
     
-    // Cerca de madeira cartoon
+    // Cerca frontal de madeira cartoon
     this.createPokemonFences();
+    
+    // Cerca de fundo separando rancho das terras selvagens
+    this.createBackgroundFence();
     
     // Food bowl colorido
     const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 8);
@@ -425,16 +428,17 @@ export class RanchScene3D {
   }
   
   /**
-   * Colinas VISÍVEIS no horizonte (cartoon)
+   * Colinas VISÍVEIS no horizonte (marrom/terra)
    */
   private createVisibleHills() {
     const scene = this.threeScene.getScene();
     this.mountains = new THREE.Group();
     
+    // Cores MARROM/TERRA (matching com a borda do chão)
     const hillColors = [
-      0x6b9b6b, // Verde médio
-      0x7aaa7a, // Verde claro
-      0x5a8a5a, // Verde escuro
+      0x8b7355, // Marrom terra médio
+      0xa08060, // Marrom claro
+      0x7a6348, // Marrom escuro
     ];
     
     // Criar 6 colinas AO REDOR do rancho (mais próximas)
@@ -443,8 +447,8 @@ export class RanchScene3D {
       const angle = (i / hillCount) * Math.PI * 2;
       
       // Colinas cartoon (cones arredondados)
-      const height = 3 + Math.random() * 2;
-      const width = 2 + Math.random() * 1;
+      const height = 3.5 + Math.random() * 2;
+      const width = 2.5 + Math.random() * 1.5;
       
       const geometry = new THREE.ConeGeometry(width, height, 8);
       const material = new THREE.MeshToonMaterial({ 
@@ -453,11 +457,11 @@ export class RanchScene3D {
       
       const hill = new THREE.Mesh(geometry, material);
       
-      // Posicionar MAIS PERTO (12-15 unidades)
-      const distance = 12 + Math.random() * 3;
+      // Posicionar MAIS PERTO (11-14 unidades)
+      const distance = 11 + Math.random() * 3;
       hill.position.set(
         Math.cos(angle) * distance,
-        height / 2 - 0.3, // Levemente enterrado no chão
+        height / 2 - 0.4, // Mais enterrado no chão
         Math.sin(angle) * distance
       );
       
@@ -468,7 +472,7 @@ export class RanchScene3D {
   }
   
   /**
-   * Nuvens VISÍVEIS no céu (cartoon)
+   * Nuvens VISÍVEIS no céu (cartoon) - CORRIGIDO
    */
   private createVisibleClouds() {
     const scene = this.threeScene.getScene();
@@ -476,43 +480,111 @@ export class RanchScene3D {
     
     const cloudMaterial = new THREE.MeshToonMaterial({
       color: 0xffffff,
-      transparent: true,
-      opacity: 0.9, // Mais opacas
+      transparent: false, // SEM transparência para ficar bem visível
     });
     
-    // Criar 6 nuvens VISÍVEIS
-    const cloudCount = 6;
+    // Criar 5 nuvens GRANDES e VISÍVEIS
+    const cloudCount = 5;
     for (let i = 0; i < cloudCount; i++) {
       const cloudGroup = new THREE.Group();
       
-      // 3 esferas para fazer nuvem fofa
-      for (let j = 0; j < 3; j++) {
+      // 4 esferas para fazer nuvem MAIOR e fofa
+      for (let j = 0; j < 4; j++) {
         const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 6, 6),
+          new THREE.SphereGeometry(0.6 + Math.random() * 0.4, 8, 6),
           cloudMaterial
         );
         sphere.position.set(
-          (j - 1) * 0.6,
-          Math.random() * 0.2,
-          Math.random() * 0.2
+          (j - 1.5) * 0.7,
+          Math.random() * 0.3,
+          Math.random() * 0.3
         );
-        sphere.scale.set(1.2, 0.7, 1); // Achatar
+        sphere.scale.set(1.4, 0.8, 1.2); // Achatar e alargar
         cloudGroup.add(sphere);
       }
       
-      // Posicionar nuvens MAIS PERTO e VISÍVEIS
-      const angle = (i / cloudCount) * Math.PI * 2;
-      const distance = 8 + Math.random() * 4; // BEM MAIS PERTO
+      // Posicionar nuvens DENTRO DO CAMPO DE VISÃO
+      const angle = (i / cloudCount) * Math.PI * 2 + Math.PI / 4;
+      const distance = 6 + Math.random() * 3; // MUITO PERTO
       cloudGroup.position.set(
         Math.cos(angle) * distance,
-        6 + Math.random() * 2, // Mais alto mas visível
+        5 + Math.random() * 1.5, // Altura média (não muito alto)
         Math.sin(angle) * distance
       );
+      
+      cloudGroup.scale.set(1.5, 1.5, 1.5); // MAIORES
       
       this.clouds.add(cloudGroup);
     }
     
     scene.add(this.clouds);
+  }
+  
+  /**
+   * Cerca de fundo separando rancho das terras selvagens
+   */
+  private createBackgroundFence() {
+    const scene = this.threeScene.getScene();
+    const fenceMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x8b6f47, // Marrom madeira escura
+    });
+    
+    // Cerca circular ao redor (mais longe que a cerca frontal)
+    const fenceRadius = 9;
+    const postCount = 24; // Mais postes para cobrir o círculo
+    
+    for (let i = 0; i < postCount; i++) {
+      const angle = (i / postCount) * Math.PI * 2;
+      
+      // Poste vertical
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.15, 1.2, 0.15),
+        fenceMaterial
+      );
+      post.position.set(
+        Math.cos(angle) * fenceRadius,
+        0.6,
+        Math.sin(angle) * fenceRadius
+      );
+      scene.add(post);
+      
+      // Travessa horizontal conectando postes
+      if (i < postCount - 1) {
+        const nextAngle = ((i + 1) / postCount) * Math.PI * 2;
+        const midX = (Math.cos(angle) + Math.cos(nextAngle)) * fenceRadius / 2;
+        const midZ = (Math.sin(angle) + Math.sin(nextAngle)) * fenceRadius / 2;
+        
+        const rail = new THREE.Mesh(
+          new THREE.BoxGeometry(0.1, 0.12, 1.5),
+          fenceMaterial
+        );
+        rail.position.set(midX, 0.8, midZ);
+        rail.lookAt(
+          Math.cos(nextAngle) * fenceRadius,
+          0.8,
+          Math.sin(nextAngle) * fenceRadius
+        );
+        scene.add(rail);
+      }
+    }
+    
+    // Última conexão (fechar o círculo)
+    const lastAngle = ((postCount - 1) / postCount) * Math.PI * 2;
+    const firstAngle = 0;
+    const midX = (Math.cos(lastAngle) + Math.cos(firstAngle)) * fenceRadius / 2;
+    const midZ = (Math.sin(lastAngle) + Math.sin(firstAngle)) * fenceRadius / 2;
+    
+    const lastRail = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.12, 1.5),
+      fenceMaterial
+    );
+    lastRail.position.set(midX, 0.8, midZ);
+    lastRail.lookAt(
+      Math.cos(firstAngle) * fenceRadius,
+      0.8,
+      Math.sin(firstAngle) * fenceRadius
+    );
+    scene.add(lastRail);
   }
 
   public setBeast(beastLine: string) {
