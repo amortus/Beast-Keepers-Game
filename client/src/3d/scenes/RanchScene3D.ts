@@ -65,11 +65,11 @@ export class RanchScene3D {
     // Casa 3D melhorada
     this.createImprovedHouse();
     
-    // Cerca frontal de madeira cartoon
-    this.createPokemonFences();
-    
     // Cerca de fundo separando rancho das terras selvagens
     this.createBackgroundFence();
+    
+    // Floresta densa ao fundo (longe, entre colinas e cerca)
+    this.createBackgroundForest();
     
     // Food bowl colorido
     const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 8);
@@ -585,6 +585,74 @@ export class RanchScene3D {
       Math.sin(firstAngle) * fenceRadius
     );
     scene.add(lastRail);
+  }
+  
+  /**
+   * Floresta densa ao fundo (entre cerca e colinas)
+   */
+  private createBackgroundForest() {
+    const scene = this.threeScene.getScene();
+    
+    // Árvores ao fundo: entre cerca (raio 9) e colinas (raio 11-14)
+    // Posicionar em raio 9.5-10.8 para cobrir o azul do fundo
+    
+    const treeCount = 40; // MUITAS árvores para floresta densa
+    const minDistance = 9.5; // Logo após a cerca
+    const maxDistance = 10.8; // Antes das colinas
+    
+    for (let i = 0; i < treeCount; i++) {
+      // Distribuição circular ao redor
+      const angle = (Math.random() * Math.PI * 2);
+      const distance = minDistance + Math.random() * (maxDistance - minDistance);
+      
+      const x = Math.cos(angle) * distance;
+      const z = Math.sin(angle) * distance;
+      
+      // Árvore de fundo (mais escura, menor)
+      const treeGroup = new THREE.Group();
+      
+      // Tronco
+      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.25, 1.5, 6);
+      const trunkMaterial = new THREE.MeshToonMaterial({ 
+        color: 0x5a4332, // Marrom mais escuro
+      });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.y = 0.75;
+      treeGroup.add(trunk);
+      
+      // Folhagem (3 esferas, mais escuras)
+      const foliageMaterial = new THREE.MeshToonMaterial({ 
+        color: 0x2d5a2d, // Verde floresta escuro
+      });
+      
+      const foliage1 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.6, 6, 6), 
+        foliageMaterial
+      );
+      foliage1.position.y = 1.8;
+      treeGroup.add(foliage1);
+      
+      const foliage2 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 6, 6), 
+        foliageMaterial
+      );
+      foliage2.position.set(-0.3, 2.1, 0);
+      treeGroup.add(foliage2);
+      
+      const foliage3 = new THREE.Mesh(
+        new THREE.SphereGeometry(0.45, 6, 6), 
+        foliageMaterial
+      );
+      foliage3.position.set(0.3, 2.1, 0);
+      treeGroup.add(foliage3);
+      
+      // Variação de escala
+      const scale = 0.7 + Math.random() * 0.5;
+      treeGroup.scale.set(scale, scale, scale);
+      
+      treeGroup.position.set(x, 0, z);
+      scene.add(treeGroup);
+    }
   }
 
   public setBeast(beastLine: string) {
