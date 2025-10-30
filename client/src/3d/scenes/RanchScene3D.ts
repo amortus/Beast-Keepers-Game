@@ -97,7 +97,7 @@ export class RanchScene3D {
   }
   
   /**
-   * Grama blade real usando PS1Grass
+   * Grama blade real usando PS1Grass (evitando lago)
    */
   private createRealGrass() {
     const scene = this.threeScene.getScene();
@@ -109,6 +109,8 @@ export class RanchScene3D {
       height: 0.25,
       windSpeed: 0.3,
       windStrength: 0.015,
+      lakePosition: { x: 1.5, z: 3.5 }, // Posição do lago
+      lakeRadius: 1.7, // Raio do lago
     });
     scene.add(this.grass.getMesh());
   }

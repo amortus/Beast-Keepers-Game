@@ -12,6 +12,8 @@ export interface PS1GrassOptions {
   height?: number;
   windSpeed?: number;
   windStrength?: number;
+  lakePosition?: { x: number; z: number }; // Posição do lago para evitar colisão
+  lakeRadius?: number; // Raio do lago
 }
 
 export class PS1Grass {
@@ -30,6 +32,8 @@ export class PS1Grass {
       height = 0.3,
       windSpeed = 0.5,
       windStrength = 0.02,
+      lakePosition = null,
+      lakeRadius = 0,
     } = options;
     
     this.windSpeed = windSpeed;
@@ -53,21 +57,53 @@ export class PS1Grass {
     // Store positions for wind animation
     this.positions = new Float32Array(count * 3);
     
-    // Distribute grass randomly
-    for (let i = 0; i < count; i++) {
+    // Distribute grass randomly (EVITANDO LAGO)
+    let successfulPlacements = 0;
+    let attempts = 0;
+    const maxAttempts = count * 10; // Tentar até 10x mais para encontrar posições válidas
+    
+    while (successfulPlacements < count && attempts < maxAttempts) {
       const x = (Math.random() - 0.5) * area;
       const z = (Math.random() - 0.5) * area;
       
-      this.positions[i * 3] = x;
-      this.positions[i * 3 + 1] = 0;
-      this.positions[i * 3 + 2] = z;
+      // Verificar colisão com lago
+      let isValidPosition = true;
+      if (lakePosition && lakeRadius > 0) {
+        const distToLake = Math.sqrt(
+          (x - lakePosition.x) ** 2 + 
+          (z - lakePosition.z) ** 2
+        );
+        
+        // Se muito perto do lago, rejeitar posição
+        if (distToLake < lakeRadius + 0.3) { // +0.3 margem de segurança
+          isValidPosition = false;
+        }
+      }
+      
+      attempts++;
+      
+      if (!isValidPosition) {
+        continue; // Tentar nova posição
+      }
+      
+      // Posição válida! Usar
+      this.positions[successfulPlacements * 3] = x;
+      this.positions[successfulPlacements * 3 + 1] = 0;
+      this.positions[successfulPlacements * 3 + 2] = z;
       
       this.dummy.position.set(x, 0, z);
       this.dummy.rotation.y = Math.random() * Math.PI * 2;
       this.dummy.scale.setScalar(0.7 + Math.random() * 0.6);
       
       this.dummy.updateMatrix();
-      this.instancedMesh.setMatrixAt(i, this.dummy.matrix);
+      this.instancedMesh.setMatrixAt(successfulPlacements, this.dummy.matrix);
+      
+      successfulPlacements++;
+    }
+    
+    // Se não conseguiu colocar todas as gramas, avisar (mas não quebrar)
+    if (successfulPlacements < count) {
+      console.warn(`[PS1Grass] Only placed ${successfulPlacements}/${count} grass blades (lake collision)`);
     }
     
     this.instancedMesh.instanceMatrix.needsUpdate = true;
