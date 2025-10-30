@@ -21,9 +21,15 @@ export class RanchCritters {
   private critters: Critter[] = [];
   private nextSpawnTime: number = 0;
   
+  // Sistema separado para chuva
+  private nextRainTime: number = 0;
+  private isRaining: boolean = false;
+  private rainDuration: number = 0;
+  
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.nextSpawnTime = this.getRandomSpawnDelay();
+    this.nextRainTime = this.getRandomRainDelay(); // 10min-1h até primeira chuva
   }
   
   /**
@@ -34,10 +40,41 @@ export class RanchCritters {
   }
   
   /**
+   * Tempo aleatório até próxima chuva (10min - 1h)
+   */
+  private getRandomRainDelay(): number {
+    const minMinutes = 10;
+    const maxMinutes = 60;
+    const minutes = minMinutes + Math.random() * (maxMinutes - minMinutes);
+    return minutes * 60; // Converter para segundos
+  }
+  
+  /**
    * Update - spawnar e atualizar critters
    */
   public update(delta: number) {
-    // Countdown para próximo spawn
+    // Sistema de CHUVA separado (10min-1h de intervalo, 2min de duração)
+    this.nextRainTime -= delta;
+    
+    if (!this.isRaining && this.nextRainTime <= 0) {
+      // Iniciar chuva!
+      this.spawnRain();
+      this.isRaining = true;
+      this.rainDuration = 120; // 2 minutos (120 segundos)
+    }
+    
+    if (this.isRaining) {
+      this.rainDuration -= delta;
+      
+      if (this.rainDuration <= 0) {
+        // Parar chuva e agendar próxima
+        this.isRaining = false;
+        this.removeAllRain(); // Limpar todas as gotas
+        this.nextRainTime = this.getRandomRainDelay(); // 10min-1h até próxima chuva
+      }
+    }
+    
+    // Countdown para próximo spawn (outros critters, SEM chuva)
     this.nextSpawnTime -= delta;
     
     if (this.nextSpawnTime <= 0) {
@@ -65,10 +102,10 @@ export class RanchCritters {
   }
   
   /**
-   * Spawnar critter aleatório
+   * Spawnar critter aleatório (SEM chuva - chuva tem sistema próprio)
    */
   private spawnRandomCritter() {
-    const types: CritterType[] = ['fly', 'bee', 'bird', 'ant', 'hummingbird', 'leaf', 'rain'];
+    const types: CritterType[] = ['fly', 'bee', 'bird', 'ant', 'hummingbird', 'leaf'];
     const type = types[Math.floor(Math.random() * types.length)];
     
     switch (type) {
@@ -90,9 +127,18 @@ export class RanchCritters {
       case 'leaf':
         this.spawnLeaf();
         break;
-      case 'rain':
-        this.spawnRain();
-        break;
+    }
+  }
+  
+  /**
+   * Remover todas as gotas de chuva quando a chuva parar
+   */
+  private removeAllRain() {
+    for (let i = this.critters.length - 1; i >= 0; i--) {
+      if (this.critters[i].type === 'rain') {
+        this.scene.remove(this.critters[i].mesh);
+        this.critters.splice(i, 1);
+      }
     }
   }
   
@@ -404,8 +450,8 @@ export class RanchCritters {
         mesh: dropGroup,
         type: 'rain',
         velocity,
-        lifetime: 20, // Dura 20 segundos total
-        maxLifetime: 20
+        lifetime: 999, // Lifetime muito alto (controlado por rainDuration)
+        maxLifetime: 999
       });
     }
   }
