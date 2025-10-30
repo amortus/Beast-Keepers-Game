@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 
 // Tipos de critters
-type CritterType = 'fly' | 'bee' | 'bird' | 'squirrel' | 'ant';
+type CritterType = 'fly' | 'bee' | 'bird' | 'ant' | 'hummingbird' | 'leaf' | 'rain';
 
 interface Critter {
   mesh: THREE.Group;
@@ -68,7 +68,7 @@ export class RanchCritters {
    * Spawnar critter aleatório
    */
   private spawnRandomCritter() {
-    const types: CritterType[] = ['fly', 'bee', 'bird', 'squirrel', 'ant'];
+    const types: CritterType[] = ['fly', 'bee', 'bird', 'ant', 'hummingbird', 'leaf', 'rain'];
     const type = types[Math.floor(Math.random() * types.length)];
     
     switch (type) {
@@ -81,11 +81,17 @@ export class RanchCritters {
       case 'bird':
         this.spawnBird();
         break;
-      case 'squirrel':
-        this.spawnSquirrel();
-        break;
       case 'ant':
         this.spawnAnt();
+        break;
+      case 'hummingbird':
+        this.spawnHummingbird();
+        break;
+      case 'leaf':
+        this.spawnLeaf();
+        break;
+      case 'rain':
+        this.spawnRain();
         break;
     }
   }
@@ -261,52 +267,147 @@ export class RanchCritters {
   }
   
   /**
-   * Esquilo - corre no chão
+   * Beija-flor - voa rápido com hover
    */
-  private spawnSquirrel() {
-    const squirrelGroup = new THREE.Group();
+  private spawnHummingbird() {
+    const hummingbirdGroup = new THREE.Group();
     
-    // Corpo (marrom claro)
-    const bodyGeometry = new THREE.SphereGeometry(0.15, 6, 6);
-    bodyGeometry.scale(1, 0.8, 1.2);
-    const bodyMaterial = new THREE.MeshToonMaterial({ color: 0xc4a574 });
+    // Corpo pequeno (verde iridescente)
+    const bodyGeometry = new THREE.SphereGeometry(0.06, 6, 6);
+    bodyGeometry.scale(1, 0.8, 1.5); // Alongar
+    const bodyMaterial = new THREE.MeshToonMaterial({ color: 0x2ecc71 }); // Verde vibrante
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = 0.1;
-    squirrelGroup.add(body);
+    hummingbirdGroup.add(body);
     
-    // Cabeça
-    const headGeometry = new THREE.SphereGeometry(0.1, 6, 6);
-    const head = new THREE.Mesh(headGeometry, bodyMaterial);
-    head.position.set(0, 0.12, 0.15);
-    squirrelGroup.add(head);
+    // Bico fino (cone)
+    const beakGeometry = new THREE.ConeGeometry(0.01, 0.08, 4);
+    const beakMaterial = new THREE.MeshToonMaterial({ color: 0x000000 });
+    const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+    beak.rotation.x = Math.PI / 2;
+    beak.position.set(0, 0, 0.1);
+    hummingbirdGroup.add(beak);
     
-    // Cauda fofa (cone)
-    const tailGeometry = new THREE.ConeGeometry(0.12, 0.3, 6);
-    const tail = new THREE.Mesh(tailGeometry, bodyMaterial);
-    tail.position.set(0, 0.2, -0.2);
-    tail.rotation.x = Math.PI / 3;
-    squirrelGroup.add(tail);
+    // Asas minúsculas (vibram muito rápido - representadas menores)
+    const wingGeometry = new THREE.PlaneGeometry(0.08, 0.04);
+    const wingMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x16a085,
+      transparent: true,
+      opacity: 0.6
+    });
     
-    // Posição na borda
-    const startX = Math.random() < 0.5 ? -6 : 6;
-    const z = (Math.random() - 0.5) * 8;
+    const wing1 = new THREE.Mesh(wingGeometry, wingMaterial);
+    wing1.position.set(-0.05, 0, 0);
+    hummingbirdGroup.add(wing1);
     
-    squirrelGroup.position.set(startX, 0, z);
-    this.scene.add(squirrelGroup);
+    const wing2 = new THREE.Mesh(wingGeometry, wingMaterial);
+    wing2.position.set(0.05, 0, 0);
+    hummingbirdGroup.add(wing2);
+    
+    // Posição inicial
+    const startX = Math.random() < 0.5 ? -7 : 7;
+    const z = (Math.random() - 0.5) * 10;
+    
+    hummingbirdGroup.position.set(startX, 1.5 + Math.random() * 1, z);
+    this.scene.add(hummingbirdGroup);
     
     const velocity = new THREE.Vector3(
-      startX < 0 ? 2 : -2, // Corre rápido
-      0,
-      (Math.random() - 0.5) * 0.3
+      startX < 0 ? 2.5 : -2.5, // Rápido
+      Math.sin(Math.random() * Math.PI) * 0.4,
+      (Math.random() - 0.5) * 0.6
     );
     
     this.critters.push({
-      mesh: squirrelGroup,
-      type: 'squirrel',
+      mesh: hummingbirdGroup,
+      type: 'hummingbird',
       velocity,
-      lifetime: 6,
-      maxLifetime: 6
+      lifetime: 7,
+      maxLifetime: 7
     });
+  }
+  
+  /**
+   * Folha voando com o vento
+   */
+  private spawnLeaf() {
+    const leafGroup = new THREE.Group();
+    
+    // Folha (plano alongado marrom/laranja)
+    const leafGeometry = new THREE.PlaneGeometry(0.12, 0.18);
+    const leafColors = [0xd4a574, 0xc49060, 0xe8b856, 0xc85a42]; // Tons de outono
+    const color = leafColors[Math.floor(Math.random() * leafColors.length)];
+    const leafMaterial = new THREE.MeshToonMaterial({ 
+      color,
+      side: THREE.DoubleSide
+    });
+    const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+    leafGroup.add(leaf);
+    
+    // Posição inicial alta
+    const x = (Math.random() - 0.5) * 12;
+    const z = (Math.random() - 0.5) * 12;
+    
+    leafGroup.position.set(x, 3 + Math.random() * 2, z);
+    this.scene.add(leafGroup);
+    
+    // Velocidade: cai devagar girando
+    const velocity = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.5, // Vento leve horizontal
+      -0.3, // Cai devagar
+      (Math.random() - 0.5) * 0.5
+    );
+    
+    this.critters.push({
+      mesh: leafGroup,
+      type: 'leaf',
+      velocity,
+      lifetime: 12, // Tempo até chegar no chão
+      maxLifetime: 12
+    });
+  }
+  
+  /**
+   * Chuva - múltiplas gotas caindo
+   */
+  private spawnRain() {
+    // Spawnar múltiplas gotas de chuva de uma vez
+    const dropCount = 15 + Math.floor(Math.random() * 10); // 15-25 gotas
+    
+    for (let i = 0; i < dropCount; i++) {
+      const dropGroup = new THREE.Group();
+      
+      // Gota (cilindro fino e alongado)
+      const dropGeometry = new THREE.CylinderGeometry(0.02, 0.015, 0.15, 4);
+      const dropMaterial = new THREE.MeshToonMaterial({ 
+        color: 0x87ceeb,
+        transparent: true,
+        opacity: 0.6
+      });
+      const drop = new THREE.Mesh(dropGeometry, dropMaterial);
+      dropGroup.add(drop);
+      
+      // Posição inicial aleatória alta
+      const x = (Math.random() - 0.5) * 16;
+      const z = (Math.random() - 0.5) * 16;
+      const startY = 8 + Math.random() * 3;
+      
+      dropGroup.position.set(x, startY, z);
+      this.scene.add(dropGroup);
+      
+      // Velocidade: cai rápido
+      const velocity = new THREE.Vector3(
+        0,
+        -6 - Math.random() * 2, // Cai rápido (6-8 u/s)
+        0
+      );
+      
+      this.critters.push({
+        mesh: dropGroup,
+        type: 'rain',
+        velocity,
+        lifetime: 2, // Desaparece rápido
+        maxLifetime: 2
+      });
+    }
   }
   
   /**
@@ -395,19 +496,58 @@ export class RanchCritters {
         }
         break;
         
-      case 'squirrel':
-        // Leve pulo (hop)
-        if (Math.random() < delta * 3) {
-          critter.velocity.y = 0.5; // Pula
-        } else {
-          critter.velocity.y -= 2 * delta; // Gravidade
-          critter.velocity.y = Math.max(critter.velocity.y, 0);
+      case 'hummingbird':
+        // Hover errático (beija-flor paira e muda direção)
+        critter.velocity.y = Math.sin(critter.lifetime * 8) * 0.4; // Hover rápido
+        
+        // Asas vibram MUITO rápido
+        if (critter.mesh.children.length >= 4) {
+          const wing1 = critter.mesh.children[2];
+          const wing2 = critter.mesh.children[3];
+          const flapAngle = Math.sin(critter.lifetime * 30) * 0.2; // Vibração rápida
+          wing1.rotation.y = flapAngle;
+          wing2.rotation.y = -flapAngle;
         }
         
-        // Balançar cauda
-        if (critter.mesh.children.length > 2) {
-          const tail = critter.mesh.children[2];
-          tail.rotation.x = Math.PI / 3 + Math.sin(critter.lifetime * 5) * 0.2;
+        // Muda direção horizontal às vezes
+        if (Math.random() < delta * 1.5) {
+          critter.velocity.x += (Math.random() - 0.5) * 0.8;
+          critter.velocity.z += (Math.random() - 0.5) * 0.8;
+        }
+        break;
+        
+      case 'leaf':
+        // Gira enquanto cai
+        critter.mesh.rotation.x += delta * 2;
+        critter.mesh.rotation.y += delta * 1.5;
+        critter.mesh.rotation.z += delta * 0.5;
+        
+        // Vento ocasional (muda direção horizontal)
+        if (Math.random() < delta * 2) {
+          critter.velocity.x += (Math.random() - 0.5) * 0.3;
+          critter.velocity.z += (Math.random() - 0.5) * 0.3;
+        }
+        
+        // Para de cair quando chega no chão
+        if (critter.mesh.position.y <= 0.1) {
+          critter.velocity.y = 0;
+          critter.lifetime = Math.min(critter.lifetime, 1); // Some em 1 segundo
+          
+          // Fade out
+          critter.mesh.children.forEach(child => {
+            if (child instanceof THREE.Mesh && child.material instanceof THREE.Material) {
+              (child.material as THREE.MeshToonMaterial).opacity = critter.lifetime;
+              (child.material as THREE.MeshToonMaterial).transparent = true;
+            }
+          });
+        }
+        break;
+        
+      case 'rain':
+        // Cai reto e rápido
+        // Desaparece quando chega no chão
+        if (critter.mesh.position.y <= 0.1) {
+          critter.lifetime = 0; // Remove imediatamente
         }
         break;
         
@@ -430,8 +570,8 @@ export class RanchCritters {
     pos.y += critter.velocity.y * delta;
     pos.z += critter.velocity.z * delta;
     
-    // Manter altura mínima (chão)
-    if (critter.type === 'squirrel' || critter.type === 'ant') {
+    // Manter altura mínima (chão) para critters terrestres
+    if (critter.type === 'ant') {
       pos.y = Math.max(pos.y, 0);
     }
     
