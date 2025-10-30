@@ -9,7 +9,7 @@ import { BeastModel } from '../models/BeastModel';
 import { PS1Terrain } from '../terrain/PS1Terrain';
 import { PS1Water } from '../water/PS1Water';
 import { PS1Grass } from '../vegetation/PS1Grass';
-import { createPS1Skybox, createDistantMountains, setupPS1Fog } from '../environments/PS1Background';
+import { createPS1Skybox, createDistantMountains, setupPS1Fog, createPS1Clouds } from '../environments/PS1Background';
 
 export class RanchScene3D {
   private threeScene: ThreeScene;
@@ -23,6 +23,7 @@ export class RanchScene3D {
   private grass: PS1Grass | null = null;
   private skybox: THREE.Mesh | null = null;
   private mountains: THREE.Group | null = null;
+  private clouds: THREE.Group | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.threeScene = new ThreeScene(canvas);
@@ -43,41 +44,42 @@ export class RanchScene3D {
     // PS1 Background elements (cores naturais do concept art)
     this.skybox = createPS1Skybox(scene);
     this.mountains = createDistantMountains(scene);
+    this.clouds = createPS1Clouds(scene, 6); // Adicionar nuvens para profundidade
     setupPS1Fog(scene, 0x9fb8d9, 20, 50); // Fog azul claro
     
-    // Procedural terrain (replaces flat ground) - cores verdes do concept art
+    // Procedural terrain (replaces flat ground) - cores vibrantes e saturadas
     this.terrain = new PS1Terrain({
       size: 20,
       segments: 40, // Mais segmentos para suavizar
-      heightVariation: 0.4,
+      heightVariation: 0.5, // Mais variação de altura
       seed: 12345,
       colors: {
-        base: 0x4a9c3a,  // Verde grama mais claro
-        high: 0x6abc5a, // Verde claro (colinas)
-        low: 0x3a7c2a,  // Verde médio (vales)
+        base: 0x5db84f,  // Verde grama vibrante
+        high: 0x7dd86e, // Verde amarelado (colinas iluminadas)
+        low: 0x3d8f31,  // Verde escuro (vales com sombra)
       }
     });
     scene.add(this.terrain.getMesh());
     
-    // Water feature (bebedouro/lago)
+    // Water feature (bebedouro/lago) - azul vibrante
     this.water = new PS1Water({
       size: 1.5,
       segments: 8,
-      color: 0x4299e1,
-      waveSpeed: 0.8,
-      waveHeight: 0.04,
+      color: 0x3ab5f5, // Azul mais vibrante e claro
+      waveSpeed: 0.9,
+      waveHeight: 0.06,
     });
     this.water.getMesh().position.set(3.5, 0.05, 3.5);
     scene.add(this.water.getMesh());
     
-    // Grass around the ranch
+    // Grass around the ranch - mais densa e vibrante
     this.grass = new PS1Grass({
-      count: 300,
+      count: 400, // Mais grama para densidade
       area: 12,
-      color: 0x2a5518,
-      height: 0.25,
-      windSpeed: 0.3,
-      windStrength: 0.015,
+      color: 0x3d7a25, // Verde mais saturado
+      height: 0.3,
+      windSpeed: 0.4,
+      windStrength: 0.02,
     });
     scene.add(this.grass.getMesh());
     
@@ -97,10 +99,10 @@ export class RanchScene3D {
     this.createTree(-3.5, 0, 4);
     this.createTree(2, 0, 4.5);
 
-    // Food bowl (bebedouro)
+    // Food bowl (bebedouro) - amarelo mais vibrante
     const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.25, 6);
     const foodBowl = new THREE.Mesh(bowlGeometry, new THREE.MeshLambertMaterial({ 
-      color: 0xd4a56a,
+      color: 0xe8b856, // Amarelo dourado mais vibrante
       flatShading: true 
     }));
     foodBowl.position.set(-3.5, 0.12, 3.5);
@@ -114,20 +116,20 @@ export class RanchScene3D {
     const scene = this.threeScene.getScene();
     const barnGroup = new THREE.Group();
     
-    // Main body
+    // Main body - vermelho vibrante
     const bodyGeometry = new THREE.BoxGeometry(3, 2, 2.5);
     const bodyMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xa0522d,
+      color: 0xc85a42, // Vermelho barn mais vibrante
       flatShading: false // Smooth
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 1;
     barnGroup.add(body);
     
-    // Roof (pyramid)
+    // Roof (pyramid) - marrom mais escuro
     const roofGeometry = new THREE.ConeGeometry(2.3, 1.5, 6);
     const roofMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8b4513,
+      color: 0x7a3e1f, // Marrom mais escuro
       flatShading: false // Smooth
     });
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
@@ -203,20 +205,20 @@ export class RanchScene3D {
   private createTree(x: number, y: number, z: number) {
     const scene = this.threeScene.getScene();
 
-    // Trunk (low-poly mas smooth)
+    // Trunk (low-poly mas smooth) - marrom mais rico
     const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.25, 1.5, 8);
     const trunkMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x6d4423,
+      color: 0x8b5a3c, // Marrom mais quente
       flatShading: false // Smooth para não ficar muito blocky
     });
     const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
     trunk.position.set(x, 0.75, z);
     scene.add(trunk);
 
-    // Foliage (pyramid/cone - PS1 style)
+    // Foliage (pyramid/cone - PS1 style) - verde vibrante
     const foliageGeometry = new THREE.ConeGeometry(0.9, 1.6, 8);
     const foliageMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x3a9c4a,
+      color: 0x4db85f, // Verde mais vibrante
       flatShading: false // Smooth para não ficar muito blocky
     });
     const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
@@ -299,6 +301,15 @@ export class RanchScene3D {
     
     if (this.mountains) {
       this.mountains.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          (child.material as THREE.Material).dispose();
+        }
+      });
+    }
+    
+    if (this.clouds) {
+      this.clouds.children.forEach(child => {
         if (child instanceof THREE.Mesh) {
           child.geometry.dispose();
           (child.material as THREE.Material).dispose();
