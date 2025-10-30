@@ -202,21 +202,7 @@ function startRenderLoop() {
     ctx.fillStyle = '#0f0f1e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Debug log every 60 frames (1 second)
-    if (frameCount % 60 === 0) {
-      console.log('[Render] State:', {
-        inDialogue,
-        inShop,
-        inInventory,
-        inCraft,
-        inQuests,
-        inAchievements,
-        inExploration,
-        inBattle,
-        inTemple,
-        inRanch3D
-      });
-    }
+    // Debug logs removed for performance (loop é necessário, logs não)
 
     // Render based on state
     // CORREÇÃO: inAuth já garante que não renderizamos AuthUI após login
@@ -230,7 +216,6 @@ function startRenderLoop() {
       templeUI.draw(gameState);
     } else if (inDialogue && dialogueUI) {
       // Draw dialogue UI (Vila) - NO gameUI underneath!
-      if (frameCount % 60 === 0) console.log('[Render] Drawing DIALOGUE ONLY');
       dialogueUI.draw();
     } else if (inShop && shopUI && gameState) {
       shopUI.draw(gameState);
@@ -254,9 +239,7 @@ function startRenderLoop() {
       // Only draw GameUI when NO other menu is active AND modal is not showing
       if (modalUI && modalUI.isShowing()) {
         // Skip drawing GameUI when modal is open (e.g., Vila menu)
-        if (frameCount % 60 === 0) console.log('[Render] Skipping GAMEUI - Modal is open');
       } else {
-        if (frameCount % 60 === 0) console.log('[Render] Drawing GAMEUI (Ranch)');
         gameUI.draw();
       }
     }
