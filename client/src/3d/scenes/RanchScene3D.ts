@@ -68,9 +68,6 @@ export class RanchScene3D {
     // Cerca de fundo separando rancho das terras selvagens
     this.createBackgroundFence();
     
-    // Floresta densa ao fundo (longe, entre colinas e cerca)
-    this.createBackgroundForest();
-    
     // Food bowl colorido
     const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 8);
     const foodBowl = new THREE.Mesh(bowlGeometry, new THREE.MeshToonMaterial({ 
@@ -428,27 +425,29 @@ export class RanchScene3D {
   }
   
   /**
-   * Colinas VISÍVEIS no horizonte (marrom/terra)
+   * Montanhas GRANDES que cobrem o azul do céu ao fundo
    */
   private createVisibleHills() {
     const scene = this.threeScene.getScene();
     this.mountains = new THREE.Group();
     
-    // Cores MARROM/TERRA (matching com a borda do chão)
+    // Cores MARROM/TERRA variadas
     const hillColors = [
       0x8b7355, // Marrom terra médio
       0xa08060, // Marrom claro
       0x7a6348, // Marrom escuro
+      0x9a8570, // Bege terra
     ];
     
-    // Criar 6 colinas AO REDOR do rancho (mais próximas)
-    const hillCount = 6;
+    // Criar MUITAS montanhas/colinas para cobrir TODO o horizonte
+    const hillCount = 12; // DOBRO para cobrir mais
+    
     for (let i = 0; i < hillCount; i++) {
       const angle = (i / hillCount) * Math.PI * 2;
       
-      // Colinas cartoon (cones arredondados)
-      const height = 3.5 + Math.random() * 2;
-      const width = 2.5 + Math.random() * 1.5;
+      // Montanhas GRANDES (cobrindo o céu)
+      const height = 6 + Math.random() * 4; // MUITO MAIS ALTAS (6-10)
+      const width = 4 + Math.random() * 3; // MUITO MAIS LARGAS (4-7)
       
       const geometry = new THREE.ConeGeometry(width, height, 8);
       const material = new THREE.MeshToonMaterial({ 
@@ -457,11 +456,11 @@ export class RanchScene3D {
       
       const hill = new THREE.Mesh(geometry, material);
       
-      // Posicionar MAIS PERTO (11-14 unidades)
-      const distance = 11 + Math.random() * 3;
+      // Posicionar longe (10-13 unidades)
+      const distance = 10 + Math.random() * 3;
       hill.position.set(
         Math.cos(angle) * distance,
-        height / 2 - 0.4, // Mais enterrado no chão
+        height / 2 - 0.5, // Enterrado para parecer montanha natural
         Math.sin(angle) * distance
       );
       
@@ -587,74 +586,6 @@ export class RanchScene3D {
     scene.add(lastRail);
   }
   
-  /**
-   * Floresta densa ao fundo (entre cerca e colinas)
-   */
-  private createBackgroundForest() {
-    const scene = this.threeScene.getScene();
-    
-    // Árvores ao fundo: entre cerca (raio 9) e colinas (raio 11-14)
-    // Posicionar em raio 9.5-10.8 para cobrir o azul do fundo
-    
-    const treeCount = 40; // MUITAS árvores para floresta densa
-    const minDistance = 9.5; // Logo após a cerca
-    const maxDistance = 10.8; // Antes das colinas
-    
-    for (let i = 0; i < treeCount; i++) {
-      // Distribuição circular ao redor
-      const angle = (Math.random() * Math.PI * 2);
-      const distance = minDistance + Math.random() * (maxDistance - minDistance);
-      
-      const x = Math.cos(angle) * distance;
-      const z = Math.sin(angle) * distance;
-      
-      // Árvore de fundo (mais escura, menor)
-      const treeGroup = new THREE.Group();
-      
-      // Tronco
-      const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.25, 1.5, 6);
-      const trunkMaterial = new THREE.MeshToonMaterial({ 
-        color: 0x5a4332, // Marrom mais escuro
-      });
-      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      trunk.position.y = 0.75;
-      treeGroup.add(trunk);
-      
-      // Folhagem (3 esferas, mais escuras)
-      const foliageMaterial = new THREE.MeshToonMaterial({ 
-        color: 0x2d5a2d, // Verde floresta escuro
-      });
-      
-      const foliage1 = new THREE.Mesh(
-        new THREE.SphereGeometry(0.6, 6, 6), 
-        foliageMaterial
-      );
-      foliage1.position.y = 1.8;
-      treeGroup.add(foliage1);
-      
-      const foliage2 = new THREE.Mesh(
-        new THREE.SphereGeometry(0.45, 6, 6), 
-        foliageMaterial
-      );
-      foliage2.position.set(-0.3, 2.1, 0);
-      treeGroup.add(foliage2);
-      
-      const foliage3 = new THREE.Mesh(
-        new THREE.SphereGeometry(0.45, 6, 6), 
-        foliageMaterial
-      );
-      foliage3.position.set(0.3, 2.1, 0);
-      treeGroup.add(foliage3);
-      
-      // Variação de escala
-      const scale = 0.7 + Math.random() * 0.5;
-      treeGroup.scale.set(scale, scale, scale);
-      
-      treeGroup.position.set(x, 0, z);
-      scene.add(treeGroup);
-    }
-  }
-
   public setBeast(beastLine: string) {
     // Remove previous model
     if (this.beastGroup) {
