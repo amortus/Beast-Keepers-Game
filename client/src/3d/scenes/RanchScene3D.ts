@@ -8,6 +8,13 @@ import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
 
+// Obstáculos no rancho (para pathfinding)
+interface Obstacle {
+  x: number;
+  z: number;
+  radius: number;
+}
+
 export class RanchScene3D {
   private threeScene: ThreeScene;
   private beastModel: BeastModel | null = null;
@@ -16,6 +23,13 @@ export class RanchScene3D {
   private grass: PS1Grass | null = null; // Grama procedural
   private mountains: THREE.Group | null = null; // Colinas distantes
   private clouds: THREE.Group | null = null; // Nuvens
+  
+  // Sistema de movimento
+  private obstacles: Obstacle[] = [];
+  private currentTarget: THREE.Vector3 | null = null;
+  private isMoving: boolean = false;
+  private moveSpeed: number = 1.5; // Unidades por segundo
+  private nextMoveTime: number = 0; // Tempo até próximo movimento
 
   constructor(canvas: HTMLCanvasElement) {
     this.threeScene = new ThreeScene(canvas);
@@ -75,6 +89,108 @@ export class RanchScene3D {
     }));
     foodBowl.position.set(-3, 0.15, 3);
     scene.add(foodBowl);
+    
+    // Definir obstáculos para pathfinding
+    this.setupObstacles();
+  }
+  
+  /**
+   * Definir todos os obstáculos do rancho
+   */
+  private setupObstacles() {
+    this.obstacles = [
+      // Lago
+      { x: 1.5, z: 3.5, radius: 1.8 },
+      
+      // Casa
+      { x: 0, z: -7, radius: 2.5 },
+      
+      // Árvores
+      { x: -4, z: -3, radius: 0.8 },
+      { x: 4, z: -3, radius: 0.8 },
+      { x: -4, z: 3.5, radius: 0.8 },
+      
+      // Food bowl
+      { x: -3, z: 3, radius: 0.5 },
+      
+      // Pedras (principais)
+      { x: -2, z: -4, radius: 0.4 },
+      { x: 3, z: -3.5, radius: 0.4 },
+      { x: -4, z: 2, radius: 0.4 },
+      { x: 4.5, z: 1, radius: 0.4 },
+      
+      // Cerca de fundo (evitar área externa)
+      // Múltiplos pontos ao redor da cerca
+    ];
+    
+    // Adicionar pontos de colisão ao redor da cerca (raio 9)
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      this.obstacles.push({
+        x: Math.cos(angle) * 9,
+        z: Math.sin(angle) * 9,
+        radius: 0.5
+      });
+    }
+  }
+  
+  /**
+   * Verificar se uma posição é válida (não colide com obstáculos)
+   */
+  private isPositionValid(x: number, z: number, minClearance: number = 0.5): boolean {
+    // Verificar limites do rancho (dentro da cerca de fundo)
+    const distFromCenter = Math.sqrt(x * x + z * z);
+    if (distFromCenter > 7.5) { // Manter dentro de raio seguro
+      return false;
+    }
+    
+    // Verificar colisão com cada obstáculo
+    for (const obstacle of this.obstacles) {
+      const dist = Math.sqrt(
+        (x - obstacle.x) ** 2 + 
+        (z - obstacle.z) ** 2
+      );
+      
+      if (dist < obstacle.radius + minClearance) {
+        return false; // Colidiu!
+      }
+    }
+    
+    return true; // Posição válida!
+  }
+  
+  /**
+   * Escolher próximo ponto de movimento aleatório (válido)
+   */
+  private chooseNextMovePoint(): THREE.Vector3 | null {
+    const maxAttempts = 30;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Ponto aleatório dentro da área do rancho
+      const x = (Math.random() - 0.5) * 12; // -6 a 6
+      const z = (Math.random() - 0.5) * 12; // -6 a 6
+      
+      if (this.isPositionValid(x, z, 0.8)) {
+        return new THREE.Vector3(x, 0, z);
+      }
+    }
+    
+    return null; // Não encontrou posição válida
+  }
+  
+  /**
+   * Iniciar movimento para próximo ponto
+   */
+  private startNextMove() {
+    const target = this.chooseNextMovePoint();
+    
+    if (target) {
+      this.currentTarget = target;
+      this.isMoving = true;
+    } else {
+      // Não encontrou ponto válido, tentar novamente em breve
+      this.nextMoveTime = 2;
+    }
   }
   
   /**
@@ -604,6 +720,9 @@ export class RanchScene3D {
 
     // Setup idle animation
     this.idleAnimation = this.beastModel.playIdleAnimation();
+    
+    // Iniciar sistema de movimento
+    this.nextMoveTime = 2 + Math.random() * 3; // Primeiro movimento em 2-5 segundos
   }
 
   public update(delta: number) {
@@ -617,7 +736,67 @@ export class RanchScene3D {
       this.grass.update(delta);
     }
     
+    // Sistema de movimento da criatura
+    if (this.beastGroup) {
+      this.updateBeastMovement(delta);
+    }
+    
     // Câmera fixa estilo Pokémon (sem rotação automática)
+  }
+  
+  /**
+   * Atualizar movimento da criatura pelo rancho
+   */
+  private updateBeastMovement(delta: number) {
+    if (!this.beastGroup) return;
+    
+    // Se não está se movendo, aguardar um tempo e escolher novo destino
+    if (!this.isMoving) {
+      this.nextMoveTime -= delta;
+      
+      if (this.nextMoveTime <= 0) {
+        // Tempo para se mover!
+        this.startNextMove();
+        this.nextMoveTime = 3 + Math.random() * 4; // Próximo movimento em 3-7 segundos
+      }
+      return;
+    }
+    
+    // Está se movendo! Mover em direção ao alvo
+    if (this.currentTarget) {
+      const currentPos = this.beastGroup.position;
+      const target = this.currentTarget;
+      
+      // Calcular direção
+      const direction = new THREE.Vector3(
+        target.x - currentPos.x,
+        0,
+        target.z - currentPos.z
+      );
+      const distance = direction.length();
+      
+      // Se chegou perto o suficiente, parar
+      if (distance < 0.2) {
+        this.isMoving = false;
+        this.currentTarget = null;
+        this.nextMoveTime = 2 + Math.random() * 3; // Ficar parado 2-5 segundos
+        return;
+      }
+      
+      // Normalizar direção e mover
+      direction.normalize();
+      const moveDistance = this.moveSpeed * delta;
+      
+      // Não ultrapassar o alvo
+      const actualMove = Math.min(moveDistance, distance);
+      
+      currentPos.x += direction.x * actualMove;
+      currentPos.z += direction.z * actualMove;
+      
+      // Rotacionar criatura na direção do movimento
+      const targetAngle = Math.atan2(direction.x, direction.z);
+      this.beastGroup.rotation.y = targetAngle;
+    }
   }
 
   public render() {
