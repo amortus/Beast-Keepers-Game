@@ -7,7 +7,6 @@ import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { getLifePhase, calculateBeastAge } from '../systems/beast';
 import { getBeastLineData } from '../data/beasts';
-import { getBeastSprite } from '../utils/beast-images';
 import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
 import { RanchScene3D } from '../3d/scenes/RanchScene3D';
 import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';

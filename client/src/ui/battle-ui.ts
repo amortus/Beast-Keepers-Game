@@ -7,7 +7,6 @@ import type { BattleContext, CombatAction } from '../types';
 import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { canUseTechnique } from '../systems/combat';
-import { getBeastBattlePose } from '../utils/beast-images';
 import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
 
 export class BattleUI {

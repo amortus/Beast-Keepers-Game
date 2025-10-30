@@ -53,7 +53,6 @@ import { executeCraft } from './systems/craft';
 import { getItemById } from './data/shop';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item, BeastAction } from './types';
-import { preloadBeastImages } from './utils/beast-images';
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
 import { TECHNIQUES, getStartingTechniques } from './data/techniques';
@@ -458,8 +457,7 @@ async function init() {
     // Start render loop early
     startRenderLoop();
 
-    // Preload beast images in background
-    preloadBeastImages();
+    // Imagens 2D removidas - jogo usa apenas modelos 3D
 
     // Check if already authenticated
     const token = localStorage.getItem('auth_token');
