@@ -8,35 +8,25 @@ import { query } from '../db/connection';
 
 // ===== UTILITÁRIOS DE TEMPO =====
 
+// Cache para evitar múltiplas chamadas à API
+let lastAPICall: number = 0;
+const API_CACHE_DURATION = 60 * 60 * 1000; // 1 hora
+
 /**
- * Busca a hora atual de Brasília via API externa (WorldTimeAPI)
- * Fallback para hora local se a API estiver indisponível
+ * Retorna hora atual (usa servidor local, mais confiável que API externa)
+ * Evita rate limiting e problemas de rede
  */
-async function getBrasiliaTimeFromAPI(): Promise<Date> {
-  try {
-    const response = await fetch('https://worldtimeapi.org/api/timezone/America/Sao_Paulo');
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
-    }
-    const data = await response.json() as { datetime: string };
-    const brasiliaTime = new Date(data.datetime);
-    console.log(`[EventScheduler] Got Brasilia time from API: ${brasiliaTime.toISOString()}`);
-    return brasiliaTime;
-  } catch (error: any) {
-    console.warn('[EventScheduler] Failed to get time from API, using local time calculation:', error.message);
-    // Fallback: usar cálculo local se API falhar
-    const now = new Date();
-    return now;
-  }
+function getBrasiliaTime(): Date {
+  // Usar horário do servidor diretamente (mais confiável e rápido)
+  return new Date();
 }
 
 /**
  * Calcula o timestamp da meia-noite de hoje (timezone de Brasília)
  * Retorna timestamp UTC da meia-noite (00:00:00) em Brasília
- * Usa API externa para garantir precisão
  */
-async function getMidnightTimestamp(): Promise<number> {
-  const now = await getBrasiliaTimeFromAPI();
+function getMidnightTimestamp(): number {
+  const now = getBrasiliaTime();
   
   // Obter data em Brasília usando formatação com timezone
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -116,7 +106,7 @@ async function processDailyCycle() {
       return;
     }
     
-    const midnightTimestamp = await getMidnightTimestamp();
+    const midnightTimestamp = getMidnightTimestamp();
     const now = Date.now();
     
     // Buscar todas as bestas ativas que ainda não foram processadas hoje
@@ -314,6 +304,7 @@ async function processCalendarEvents() {
 let midnightTimeout: NodeJS.Timeout | null = null;
 let lastProcessedMidnight: number = 0;
 let chatCleanupInterval: NodeJS.Timeout | null = null;
+let isProcessingCycle: boolean = false; // Flag para evitar processamento duplicado
 
 /**
  * Função para limpar o scheduler (útil para testes ou shutdown)
@@ -332,14 +323,15 @@ export function stopEventScheduler() {
 
 /**
  * Calcula o timestamp da próxima meia-noite (Brasília)
+ * SEMPRE retorna um horário no futuro
  */
-async function getNextMidnightTimestamp(): Promise<number> {
+function getNextMidnightTimestamp(): number {
   const now = Date.now();
-  const todayMidnight = await getMidnightTimestamp();
+  const todayMidnight = getMidnightTimestamp();
   
-  // Se já passou a meia-noite de hoje, retornar meia-noite de amanhã
-  if (now >= todayMidnight) {
-    // Adicionar 24 horas
+  // Se já passou a meia-noite de hoje (ou está muito próximo - 1 minuto), retornar amanhã
+  if (now >= (todayMidnight - 60000)) {
+    // Adicionar 24 horas para garantir que estamos no futuro
     return todayMidnight + (24 * 60 * 60 * 1000);
   }
   
@@ -348,23 +340,47 @@ async function getNextMidnightTimestamp(): Promise<number> {
 
 /**
  * Agenda o próximo processamento de ciclo diário
+ * COM PROTEÇÃO CONTRA LOOP INFINITO
  */
-async function scheduleNextMidnight() {
+function scheduleNextMidnight() {
   // Limpar timeout anterior se existir
   if (midnightTimeout) {
     clearTimeout(midnightTimeout);
     midnightTimeout = null;
   }
   
-  const nextMidnight = await getNextMidnightTimestamp();
+  const nextMidnight = getNextMidnightTimestamp();
   const now = Date.now();
   const msUntilMidnight = nextMidnight - now;
   
-  console.log(`[EventScheduler] Next daily cycle scheduled in ${Math.floor(msUntilMidnight / 1000 / 60)} minutes (at ${new Date(nextMidnight).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })})`);
+  // PROTEÇÃO: Se o tempo até meia-noite for menor que 5 minutos, aguardar 5 minutos
+  const safeDelay = Math.max(msUntilMidnight, 5 * 60 * 1000);
+  
+  const minutesUntil = Math.floor(safeDelay / 1000 / 60);
+  const nextMidnightDate = new Date(nextMidnight);
+  const nextMidnightStr = nextMidnightDate.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  
+  console.log(`[EventScheduler] ⏰ Next daily cycle scheduled in ${minutesUntil} minutes (at ${nextMidnightStr})`);
   
   midnightTimeout = setTimeout(async () => {
+    // PROTEÇÃO: Evitar processamento duplicado
+    if (isProcessingCycle) {
+      console.log('[EventScheduler] ⚠️ Cycle already processing, skipping...');
+      scheduleNextMidnight(); // Reagendar
+      return;
+    }
+    
     try {
-      const currentMidnight = await getMidnightTimestamp();
+      isProcessingCycle = true;
+      const currentMidnight = getMidnightTimestamp();
+      
+      // PROTEÇÃO: Só processar se não processamos hoje ainda
+      if (lastProcessedMidnight >= currentMidnight) {
+        console.log('[EventScheduler] ⚠️ Cycle already processed today, skipping...');
+        isProcessingCycle = false;
+        scheduleNextMidnight();
+        return;
+      }
       
       // Processar ciclo diário de todas as bestas
       await processDailyCycle();
@@ -384,60 +400,64 @@ async function scheduleNextMidnight() {
       lastProcessedMidnight = currentMidnight;
       
       // Agendar próxima meia-noite
-      await scheduleNextMidnight();
+      scheduleNextMidnight();
       
     } catch (error) {
-      console.error('[EventScheduler] Midnight processing error:', error);
+      console.error('[EventScheduler] ❌ Midnight processing error:', error);
       // Reagendar mesmo em caso de erro
-      await scheduleNextMidnight();
+      scheduleNextMidnight();
+    } finally {
+      isProcessingCycle = false;
     }
-  }, Math.max(msUntilMidnight, 0)); // Garantir que não seja negativo
+  }, safeDelay);
 }
 
 /**
  * Inicia o scheduler de eventos
  * Usa alarmes baseados em timeout ao invés de polling
+ * COM PROTEÇÕES CONTRA LOOP E RATE LIMITING
  */
-export async function startEventScheduler() {
-  console.log('[EventScheduler] Starting event scheduler (alarm-based)...');
+export function startEventScheduler() {
+  console.log('[EventScheduler] 🚀 Starting event scheduler (alarm-based)...');
   
   // Processar imediatamente se já passou meia-noite e ainda não processamos hoje
   const now = Date.now();
-  const todayMidnight = await getMidnightTimestamp();
+  const todayMidnight = getMidnightTimestamp();
   
-  if (now >= todayMidnight && lastProcessedMidnight < todayMidnight) {
-    console.log('[EventScheduler] Processing missed daily cycle...');
-    processDailyCycle().then(async () => {
+  if (now >= todayMidnight && lastProcessedMidnight < todayMidnight && !isProcessingCycle) {
+    console.log('[EventScheduler] 📅 Processing missed daily cycle...');
+    isProcessingCycle = true;
+    processDailyCycle().then(() => {
       lastProcessedMidnight = todayMidnight;
-      await scheduleNextMidnight();
-    }).catch(async (error) => {
-      console.error('[EventScheduler] Initial processing error:', error);
-      await scheduleNextMidnight();
+      isProcessingCycle = false;
+      scheduleNextMidnight();
+    }).catch((error) => {
+      console.error('[EventScheduler] ❌ Initial processing error:', error);
+      isProcessingCycle = false;
+      scheduleNextMidnight();
     });
   } else {
     // Agendar próxima meia-noite
-    await scheduleNextMidnight();
+    scheduleNextMidnight();
   }
   
   // Processar eventos de calendário imediatamente ao iniciar
   processCalendarEvents().catch(error => {
-    console.error('[EventScheduler] Initial calendar events error:', error);
+    console.error('[EventScheduler] ❌ Initial calendar events error:', error);
   });
   
   // PERFORMANCE: Limpar mensagens antigas do chat a cada 1 hora (ao invés de apenas meia-noite)
   chatCleanupInterval = setInterval(async () => {
     try {
-      console.log('[EventScheduler] Running hourly chat cleanup...');
       const { cleanupOldChatMessages } = await import('./chatService');
       await cleanupOldChatMessages();
-      console.log('[EventScheduler] Hourly chat cleanup completed');
     } catch (error: any) {
-      console.error('[EventScheduler] Hourly chat cleanup error:', error?.message || error);
+      console.error('[EventScheduler] ❌ Hourly chat cleanup error:', error?.message || error);
     }
   }, 60 * 60 * 1000); // A cada 1 hora
   
-  console.log('[EventScheduler] Event scheduler started (alarm-based, no polling)');
-  console.log('[EventScheduler] Chat cleanup scheduled every 1 hour');
+  console.log('[EventScheduler] ✅ Event scheduler started');
+  console.log('[EventScheduler] 🧹 Chat cleanup scheduled every 1 hour');
 }
 
 /**

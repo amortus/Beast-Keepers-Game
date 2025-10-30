@@ -25,7 +25,6 @@ import { AuthUI } from './ui/auth-ui';
 import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { ChatUI } from './ui/chat-ui';
-import { SettingsUI } from './ui/settings-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
@@ -58,7 +57,6 @@ import { preloadBeastImages } from './utils/beast-images';
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
 import { TECHNIQUES, getStartingTechniques } from './data/techniques';
-import { AudioManager } from './audio/AudioManager';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -96,7 +94,6 @@ let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
 let ranch3DUI: Ranch3DUI | null = null;
 let chatUI: ChatUI | null = null;
-let settingsUI: SettingsUI | null = null;
 let optionsMenuUI: OptionsMenuUI | null = null;
 let inBattle = false;
 let inTemple = false;
@@ -259,11 +256,6 @@ function startRenderLoop() {
     if (optionsMenuUI && optionsMenuUI.isShowing()) {
       optionsMenuUI.draw(ctx);
     }
-    
-    // Draw settings UI on top of options menu
-    if (settingsUI && settingsUI.isShowing()) {
-      settingsUI.draw(ctx);
-    }
 
     // Draw chat and friends UI (HTML overlay, always on top)
     if (chatUI && isAuthenticated) {
@@ -305,43 +297,25 @@ async function init() {
       // Próximo draw() detectará mudança de tamanho automaticamente
     });
 
-    // Register Service Worker
-    if ('serviceWorker' in navigator) {
-      try {
-        await navigator.serviceWorker.register('/sw.js');
-        console.log('[SW] Service Worker registered');
-      } catch (err) {
-        console.warn('[SW] Registration failed:', err);
-      }
-    }
+    // Register Service Worker (DESATIVADO - causava problemas com cache)
+    // if ('serviceWorker' in navigator) {
+    //   try {
+    //     await navigator.serviceWorker.register('/sw.js');
+    //     console.log('[SW] Service Worker registered');
+    //   } catch (err) {
+    //     console.warn('[SW] Registration failed:', err);
+    //   }
+    // }
 
-    // Initialize Audio Manager (SFX only)
-    try {
-      await AudioManager.initialize();
-      console.log('[Audio] AudioManager initialized (SFX only)');
-    } catch (err) {
-      console.warn('[Audio] AudioManager initialization failed:', err);
-    }
+    // Sistema de áudio removido
     
-    // Setup global keyboard shortcuts (removido atalho 'M' - agora usa botão ⚙️)
-    // Atalhos futuros podem ser adicionados aqui
-    
-    // Setup global mouse handlers for options menu and settings UI
+    // Setup global mouse handlers for options menu
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
-      
-      // Settings UI has priority over options menu
-      if (settingsUI && settingsUI.isShowing()) {
-        if (settingsUI.handleClick(x, y)) {
-          e.stopPropagation();
-          e.preventDefault();
-          return;
-        }
-      }
       
       // Options Menu
       if (optionsMenuUI && optionsMenuUI.isShowing()) {
@@ -350,38 +324,6 @@ async function init() {
           e.preventDefault();
           return;
         }
-      }
-    });
-    
-    canvas.addEventListener('mousemove', (e) => {
-      if (settingsUI && settingsUI.isShowing()) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
-        settingsUI.handleMouseMove(x, y);
-      }
-    });
-    
-    canvas.addEventListener('mousedown', (e) => {
-      if (settingsUI && settingsUI.isShowing()) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
-        
-        if (settingsUI.handleMouseDown(x, y)) {
-          e.stopPropagation();
-          e.preventDefault();
-        }
-      }
-    });
-    
-    canvas.addEventListener('mouseup', () => {
-      if (settingsUI && settingsUI.isShowing()) {
-        settingsUI.handleMouseUp();
       }
     });
 
@@ -803,27 +745,14 @@ async function setupGame() {
     // Create UI
     gameUI = new GameUI(canvas, gameState!);
     
-    // Create Settings UI
-    settingsUI = new SettingsUI(canvas);
-    settingsUI.onClose = () => {
-      // Settings closed - voltar ao menu de opções se estava aberto
-      if (optionsMenuUI && optionsMenuUI.isShowing()) {
-        // Não fazer nada, deixar options menu aberto
-      }
-    };
-    
-    // Create Options Menu UI
+    // Create Options Menu UI (sem configurações de áudio)
     optionsMenuUI = new OptionsMenuUI(canvas);
     optionsMenuUI.onClose = () => {
       // Options menu closed
     };
     optionsMenuUI.onOpenAudioSettings = () => {
-      if (settingsUI) {
-        settingsUI.open();
-      }
+      // Sistema de áudio removido
     };
-    
-    // Música removida (SFX apenas)
     
     // Setup 3D viewer callback
     gameUI.onView3D = () => {
