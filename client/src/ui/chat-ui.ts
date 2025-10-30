@@ -117,6 +117,9 @@ export class ChatUI {
     // Criar abas iniciais
     this.createDefaultTabs();
     this.activeTabId = this.tabs[0].id;
+    
+    // Limpar todas as mensagens (comportamento WoW - sessão limpa)
+    this.clearAllMessages();
 
     // Verificar se há mensagens não lidas para notificar
     this.checkUnreadMessages();
@@ -155,6 +158,16 @@ export class ChatUI {
         messages: [],
       },
     ];
+  }
+  
+  /**
+   * Limpar todas as mensagens (comportamento WoW)
+   */
+  private clearAllMessages(): void {
+    this.tabs.forEach(tab => {
+      tab.messages = [];
+      tab.unreadCount = 0;
+    });
   }
 
   private clickHandler = (e: MouseEvent) => {
@@ -600,21 +613,12 @@ export class ChatUI {
       }
     });
 
-    // Histórico de canal
+    // Histórico de canal - IGNORAR (comportamento WoW - sem persistência)
     onHistory((data) => {
-      const tab = this.tabs.find(t => t.channel === data.channel);
-      if (tab) {
-        tab.messages = data.messages.reverse(); // Reverter para ordem cronológica (mais antiga primeiro)
-        // Se é a aba ativa, garantir renderização e scroll (sem forçar se já estava lendo)
-        if (tab.id === this.activeTabId) {
-          this.render();
-          setTimeout(() => {
-            this.scrollToBottom(false);
-          }, 50);
-        } else {
-          this.render();
-        }
-      }
+      // NÃO aceitar histórico do servidor
+      // Comportamento WoW: apenas mensagens da sessão atual
+      // Fechou client = perde mensagens antigas
+      console.log('[ChatUI] Ignorando histórico do servidor (comportamento WoW)');
     });
 
     // Usuário entrou - armazenar mas NÃO mostrar mensagem pública e NÃO notificar
