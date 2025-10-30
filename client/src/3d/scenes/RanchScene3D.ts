@@ -160,15 +160,34 @@ export class RanchScene3D {
   }
   
   /**
-   * Escolher próximo ponto de movimento aleatório (válido)
+   * Escolher próximo ponto de movimento aleatório (válido, preferindo centro)
    */
   private chooseNextMovePoint(): THREE.Vector3 | null {
     const maxAttempts = 30;
     
+    if (!this.beastGroup) return null;
+    
+    const currentPos = this.beastGroup.position;
+    const distFromCenter = Math.sqrt(currentPos.x ** 2 + currentPos.z ** 2);
+    
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // Ponto aleatório dentro da área do rancho
-      const x = (Math.random() - 0.5) * 12; // -6 a 6
-      const z = (Math.random() - 0.5) * 12; // -6 a 6
+      // Se longe do centro (>5), preferir pontos mais centrais
+      let x, z;
+      
+      if (distFromCenter > 5) {
+        // 80% chance de escolher ponto mais perto do centro
+        if (Math.random() < 0.8) {
+          x = (Math.random() - 0.5) * 6; // -3 a 3 (área central)
+          z = (Math.random() - 0.5) * 6;
+        } else {
+          x = (Math.random() - 0.5) * 12; // -6 a 6
+          z = (Math.random() - 0.5) * 12;
+        }
+      } else {
+        // Perto do centro, pode explorar mais
+        x = (Math.random() - 0.5) * 12; // -6 a 6
+        z = (Math.random() - 0.5) * 12;
+      }
       
       if (this.isPositionValid(x, z, 0.8)) {
         return new THREE.Vector3(x, 0, z);
@@ -785,17 +804,117 @@ export class RanchScene3D {
       // Normalizar direção e mover
       direction.normalize();
       const moveDistance = this.moveSpeed * delta;
-      
-      // Não ultrapassar o alvo
       const actualMove = Math.min(moveDistance, distance);
       
-      currentPos.x += direction.x * actualMove;
-      currentPos.z += direction.z * actualMove;
+      // Calcular NOVA posição
+      const newX = currentPos.x + direction.x * actualMove;
+      const newZ = currentPos.z + direction.z * actualMove;
+      
+      // VERIFICAR COLISÃO na nova posição!
+      if (!this.isPositionValid(newX, newZ, 0.6)) {
+        // COLIDIU! Virar e escolher nova direção
+        
+        // Calcular direção OPOSTA (bounce)
+        const bounceDirection = this.getBounceDirection(currentPos.x, currentPos.z, newX, newZ);
+        
+        // Escolher novo alvo na direção de bounce (preferindo o centro)
+        const bounceTarget = this.getTargetTowardsCenter(currentPos.x, currentPos.z, bounceDirection);
+        
+        if (bounceTarget) {
+          this.currentTarget = bounceTarget;
+        } else {
+          // Se não encontrou, parar
+          this.isMoving = false;
+          this.currentTarget = null;
+          this.nextMoveTime = 1;
+        }
+        
+        return;
+      }
+      
+      // Posição válida! Mover
+      currentPos.x = newX;
+      currentPos.z = newZ;
       
       // Rotacionar criatura na direção do movimento
       const targetAngle = Math.atan2(direction.x, direction.z);
       this.beastGroup.rotation.y = targetAngle;
     }
+  }
+  
+  /**
+   * Calcular direção de bounce quando colidir
+   */
+  private getBounceDirection(currentX: number, currentZ: number, blockedX: number, blockedZ: number): THREE.Vector3 {
+    // Encontrar obstáculo mais próximo
+    let closestObstacle: Obstacle | null = null;
+    let minDist = Infinity;
+    
+    for (const obstacle of this.obstacles) {
+      const dist = Math.sqrt(
+        (blockedX - obstacle.x) ** 2 + 
+        (blockedZ - obstacle.z) ** 2
+      );
+      
+      if (dist < minDist) {
+        minDist = dist;
+        closestObstacle = obstacle;
+      }
+    }
+    
+    if (!closestObstacle) {
+      // Fallback: direção oposta
+      return new THREE.Vector3(
+        -(blockedX - currentX),
+        0,
+        -(blockedZ - currentZ)
+      ).normalize();
+    }
+    
+    // Calcular vetor do obstáculo para a criatura (afastar)
+    const awayVector = new THREE.Vector3(
+      currentX - closestObstacle.x,
+      0,
+      currentZ - closestObstacle.z
+    ).normalize();
+    
+    return awayVector;
+  }
+  
+  /**
+   * Escolher alvo em direção ao centro (evitar afastamento)
+   */
+  private getTargetTowardsCenter(currentX: number, currentZ: number, direction: THREE.Vector3): THREE.Vector3 | null {
+    // Preferir direção que leva para o centro (0, 0)
+    const toCenter = new THREE.Vector3(-currentX, 0, -currentZ).normalize();
+    
+    // Blend: 70% bounce direction + 30% to center
+    const blendedDirection = new THREE.Vector3(
+      direction.x * 0.7 + toCenter.x * 0.3,
+      0,
+      direction.z * 0.7 + toCenter.z * 0.3
+    ).normalize();
+    
+    // Escolher ponto a 2-4 unidades na direção blended
+    const targetDistance = 2 + Math.random() * 2;
+    const targetX = currentX + blendedDirection.x * targetDistance;
+    const targetZ = currentZ + blendedDirection.z * targetDistance;
+    
+    // Verificar se é válido
+    if (this.isPositionValid(targetX, targetZ, 0.6)) {
+      return new THREE.Vector3(targetX, 0, targetZ);
+    }
+    
+    // Se não for válido, tentar apenas em direção ao centro
+    const centerDistance = 2;
+    const centerTargetX = currentX + toCenter.x * centerDistance;
+    const centerTargetZ = currentZ + toCenter.z * centerDistance;
+    
+    if (this.isPositionValid(centerTargetX, centerTargetZ, 0.6)) {
+      return new THREE.Vector3(centerTargetX, 0, centerTargetZ);
+    }
+    
+    return null;
   }
 
   public render() {
