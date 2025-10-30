@@ -8,6 +8,7 @@ import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
 import { PS1Water } from '../water/PS1Water';
+import { RanchCritters } from '../events/RanchCritters';
 
 // Obstáculos no rancho (para pathfinding)
 interface Obstacle {
@@ -25,6 +26,7 @@ export class RanchScene3D {
   private water: PS1Water | null = null; // Água animada
   private mountains: THREE.Group | null = null; // Colinas distantes
   private clouds: THREE.Group | null = null; // Nuvens
+  private critters: RanchCritters | null = null; // Bichinhos aleatórios
   
   // Sistema de movimento
   private obstacles: Obstacle[] = [];
@@ -93,6 +95,9 @@ export class RanchScene3D {
     
     // Definir obstáculos para pathfinding
     this.setupObstacles();
+    
+    // Iniciar sistema de bichinhos aleatórios
+    this.critters = new RanchCritters(scene);
   }
   
   /**
@@ -760,6 +765,11 @@ export class RanchScene3D {
       this.water.update(delta);
     }
     
+    // Update critters (bichinhos aleatórios)
+    if (this.critters) {
+      this.critters.update(delta);
+    }
+    
     // Sistema de movimento da criatura
     if (this.beastGroup) {
       this.updateBeastMovement(delta);
@@ -950,6 +960,9 @@ export class RanchScene3D {
     
     // Dispose water
     this.water?.dispose();
+    
+    // Dispose critters
+    this.critters?.dispose();
     
     // Dispose mountains
     if (this.mountains) {
