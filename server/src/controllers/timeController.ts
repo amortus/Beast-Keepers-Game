@@ -60,6 +60,17 @@ export async function startBeastAction(req: AuthRequest, res: Response) {
     const { beastId } = req.params;
     const { actionType, duration, completesAt } = req.body;
     
+    console.log(`[Time] Starting action for beast ${beastId}:`, { actionType, duration, completesAt });
+    
+    // Validar parâmetros
+    if (!actionType || !duration || !completesAt) {
+      console.error('[Time] Missing required parameters:', { actionType, duration, completesAt });
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: actionType, duration, completesAt',
+      } as ApiResponse);
+    }
+    
     // Verificar se besta pertence ao usuário
     const ownershipCheck = await query(
       `SELECT b.id, b.current_action FROM beasts b
@@ -69,6 +80,7 @@ export async function startBeastAction(req: AuthRequest, res: Response) {
     );
     
     if (ownershipCheck.rows.length === 0) {
+      console.error(`[Time] Beast ${beastId} not found for user ${userId}`);
       return res.status(404).json({
         success: false,
         error: 'Beast not found',
@@ -81,6 +93,7 @@ export async function startBeastAction(req: AuthRequest, res: Response) {
     if (beast.current_action) {
       const action = beast.current_action;
       if (action.completesAt > Date.now()) {
+        console.warn(`[Time] Beast ${beastId} already has action in progress:`, action.type);
         return res.status(400).json({
           success: false,
           error: 'Beast already has an action in progress',
@@ -97,6 +110,8 @@ export async function startBeastAction(req: AuthRequest, res: Response) {
       canCancel: true,
     };
     
+    console.log(`[Time] Saving action to database:`, newAction);
+    
     // Salvar ação no banco
     const result = await query(
       `UPDATE beasts
@@ -107,18 +122,25 @@ export async function startBeastAction(req: AuthRequest, res: Response) {
       [beastId, JSON.stringify(newAction), Date.now()]
     );
     
-    console.log(`[Time] Beast ${beastId} started action: ${actionType}`);
+    console.log(`[Time] ✅ Beast ${beastId} started action: ${actionType} successfully`);
     
     return res.status(200).json({
       success: true,
       data: result.rows[0],
     } as ApiResponse);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Time] Start action error:', error);
+    console.error('[Time] Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
     return res.status(500).json({
       success: false,
       error: 'Failed to start action',
+      details: error.message,
     } as ApiResponse);
   }
 }

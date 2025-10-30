@@ -15,6 +15,7 @@ import friendsRoutes from './routes/friends';
 import { pool } from './db/connection';
 import { startEventScheduler } from './services/eventScheduler';
 import { initializeChatService } from './services/chatService';
+import { autoFixSchema } from './db/auto-fix-schema';
 
 // Load environment variables
 dotenv.config();
@@ -119,6 +120,9 @@ async function startServer() {
     // Test database connection
     await pool.query('SELECT NOW()');
     console.log('[DB] Database connection established');
+
+    // Auto-fix schema (adiciona colunas necessárias se não existirem)
+    await autoFixSchema();
 
     // Create HTTP server for Socket.IO
     const server = createServer(app);

@@ -97,6 +97,8 @@ export interface GameState {
   inventory: Array<{ item: Item; quantity: number }>;
   quests: any[];
   achievements: any[];
+  dailyChallenges?: any[]; // Desafios diários
+  challengeStreak?: any; // Streak de desafios
   currentTitle: string;
   winStreak: number;
   loseStreak: number;

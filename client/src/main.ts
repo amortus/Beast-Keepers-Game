@@ -25,6 +25,8 @@ import { AuthUI } from './ui/auth-ui';
 import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { ChatUI } from './ui/chat-ui';
+import { SettingsUI } from './ui/settings-ui';
+import { OptionsMenuUI } from './ui/options-menu-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge } from './systems/beast';
@@ -36,7 +38,8 @@ import {
   applyPassiveRecovery,
   isActionComplete,
   getActionProgress,
-  updateExplorationCounter
+  updateExplorationCounter,
+  getActionName as getRealtimeActionName
 } from './systems/realtime-actions';
 import { formatTime } from './utils/time-format';
 import { initiateBattle, executePlayerAction, executeEnemyTurn, applyBattleRewards } from './systems/combat';
@@ -50,11 +53,12 @@ import { startExploration, advanceExploration, defeatEnemy, collectMaterials, en
 import { executeCraft } from './systems/craft';
 import { getItemById } from './data/shop';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
-import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item } from './types';
+import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item, BeastAction } from './types';
 import { preloadBeastImages } from './utils/beast-images';
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
 import { TECHNIQUES, getStartingTechniques } from './data/techniques';
+import { AudioManager } from './audio/AudioManager';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -92,6 +96,8 @@ let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
 let ranch3DUI: Ranch3DUI | null = null;
 let chatUI: ChatUI | null = null;
+let settingsUI: SettingsUI | null = null;
+let optionsMenuUI: OptionsMenuUI | null = null;
 let inBattle = false;
 let inTemple = false;
 let inDialogue = false;
@@ -248,6 +254,16 @@ function startRenderLoop() {
     if (modalUI && modalUI.isShowing()) {
       modalUI.draw();
     }
+    
+    // Draw options menu UI
+    if (optionsMenuUI && optionsMenuUI.isShowing()) {
+      optionsMenuUI.draw(ctx);
+    }
+    
+    // Draw settings UI on top of options menu
+    if (settingsUI && settingsUI.isShowing()) {
+      settingsUI.draw(ctx);
+    }
 
     // Draw chat and friends UI (HTML overlay, always on top)
     if (chatUI && isAuthenticated) {
@@ -299,6 +315,76 @@ async function init() {
       }
     }
 
+    // Initialize Audio Manager (SFX only)
+    try {
+      await AudioManager.initialize();
+      console.log('[Audio] AudioManager initialized (SFX only)');
+    } catch (err) {
+      console.warn('[Audio] AudioManager initialization failed:', err);
+    }
+    
+    // Setup global keyboard shortcuts (removido atalho 'M' - agora usa botão ⚙️)
+    // Atalhos futuros podem ser adicionados aqui
+    
+    // Setup global mouse handlers for options menu and settings UI
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      
+      // Settings UI has priority over options menu
+      if (settingsUI && settingsUI.isShowing()) {
+        if (settingsUI.handleClick(x, y)) {
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        }
+      }
+      
+      // Options Menu
+      if (optionsMenuUI && optionsMenuUI.isShowing()) {
+        if (optionsMenuUI.handleClick(x, y)) {
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        }
+      }
+    });
+    
+    canvas.addEventListener('mousemove', (e) => {
+      if (settingsUI && settingsUI.isShowing()) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        settingsUI.handleMouseMove(x, y);
+      }
+    });
+    
+    canvas.addEventListener('mousedown', (e) => {
+      if (settingsUI && settingsUI.isShowing()) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        
+        if (settingsUI.handleMouseDown(x, y)) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }
+    });
+    
+    canvas.addEventListener('mouseup', () => {
+      if (settingsUI && settingsUI.isShowing()) {
+        settingsUI.handleMouseUp();
+      }
+    });
+
     // Create Modal UI first
     modalUI = new ModalUI(canvas);
 
@@ -317,6 +403,15 @@ async function init() {
       
       // CORREÇÃO: Esconder completamente o AuthUI após login
       authUI.hide();
+      
+      // PROTEÇÃO EXTRA: Forçar remoção de qualquer container de auth residual
+      setTimeout(() => {
+        const authContainers = document.querySelectorAll('#auth-inputs-container');
+        if (authContainers.length > 0) {
+          console.warn('[Main] Found residual auth containers after login, removing:', authContainers.length);
+          authContainers.forEach(c => c.remove());
+        }
+      }, 100);
       
       // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
       // Isso garante que o canvas esteja configurado corretamente para o GameUI
@@ -338,6 +433,14 @@ async function init() {
       
       // CORREÇÃO: Redimensionar novamente após setupGame para garantir canvas correto
       resizeCanvas();
+      
+      // AVISO: Informar sobre múltiplas sessões
+      const hasOtherSessions = localStorage.getItem('had_active_session');
+      if (hasOtherSessions === 'true') {
+        console.warn('[Auth] ⚠️ AVISO: Você pode ter outras sessões ativas em outras abas/navegadores.');
+        console.warn('[Auth] ⚠️ Múltiplas sessões simultâneas podem causar problemas de sincronização!');
+      }
+      localStorage.setItem('had_active_session', 'true');
     };
 
     authUI.onRegisterSuccess = async (token, user) => {
@@ -347,6 +450,15 @@ async function init() {
       
       // CORREÇÃO: Esconder completamente o AuthUI após registro
       authUI.hide();
+      
+      // PROTEÇÃO EXTRA: Forçar remoção de qualquer container de auth residual
+      setTimeout(() => {
+        const authContainers = document.querySelectorAll('#auth-inputs-container');
+        if (authContainers.length > 0) {
+          console.warn('[Main] Found residual auth containers after register, removing:', authContainers.length);
+          authContainers.forEach(c => c.remove());
+        }
+      }, 100);
       
       // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
       resizeCanvas();
@@ -485,6 +597,7 @@ function handleLogout() {
         // Clear token and username
         localStorage.removeItem('auth_token');
         localStorage.removeItem('username');
+        localStorage.removeItem('had_active_session');
         
         // Clear game state
         gameState = null;
@@ -690,6 +803,28 @@ async function setupGame() {
     // Create UI
     gameUI = new GameUI(canvas, gameState!);
     
+    // Create Settings UI
+    settingsUI = new SettingsUI(canvas);
+    settingsUI.onClose = () => {
+      // Settings closed - voltar ao menu de opções se estava aberto
+      if (optionsMenuUI && optionsMenuUI.isShowing()) {
+        // Não fazer nada, deixar options menu aberto
+      }
+    };
+    
+    // Create Options Menu UI
+    optionsMenuUI = new OptionsMenuUI(canvas);
+    optionsMenuUI.onClose = () => {
+      // Options menu closed
+    };
+    optionsMenuUI.onOpenAudioSettings = () => {
+      if (settingsUI) {
+        settingsUI.open();
+      }
+    };
+    
+    // Música removida (SFX apenas)
+    
     // Setup 3D viewer callback
     gameUI.onView3D = () => {
       if (!gameState || !gameState.activeBeast) return;
@@ -717,6 +852,13 @@ async function setupGame() {
     // Setup village callback
     gameUI.onOpenVillage = () => {
       openVillage();
+    };
+    
+    // Setup settings callback (botão de engrenagem)
+    gameUI.onOpenSettings = () => {
+      if (optionsMenuUI) {
+        optionsMenuUI.open();
+      }
     };
     
     // Setup inventory callback
@@ -763,6 +905,13 @@ async function setupGame() {
       const serverTime = gameState.serverTime || Date.now();
       const beast = gameState.activeBeast;
       
+      // Validar beast ID
+      if (!beast.id) {
+        console.error('[Action] Beast ID is missing!', beast);
+        showMessage('Erro: ID da besta não encontrado. Recarregue o jogo.', '⚠️ Erro');
+        return;
+      }
+      
       // Verificar se pode iniciar
       const canStart = canStartAction(beast, actionType, serverTime);
       if (!canStart.can) {
@@ -787,6 +936,8 @@ async function setupGame() {
       
       // Enviar para servidor
       try {
+        console.log('[Action] Starting action:', { beastId: beast.id, actionType, duration: action.duration });
+        
         await gameApi.startBeastAction(
           beast.id,
           action.type,
@@ -805,10 +956,16 @@ async function setupGame() {
         // Atualizar UI
         gameUI?.updateGameState(gameState);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('[Action] Failed to start action:', error);
+        console.error('[Action] Beast ID:', beast.id);
+        console.error('[Action] Action type:', actionType);
+        console.error('[Action] Error details:', error?.message || error?.response?.data || error);
         beast.currentAction = undefined;
-        showMessage('Erro ao iniciar ação', '⚠️ Erro');
+        showMessage(
+          `Erro ao iniciar ação: ${error?.message || error?.response?.data?.error || 'Erro desconhecido'}\n\nVerifique o console para mais detalhes.`,
+          '⚠️ Erro'
+        );
       }
     };
     
@@ -959,11 +1116,15 @@ function openTemple() {
   };
 
   inTemple = true;
+  
+  // Música removida
 }
 
 function closeTemple() {
   templeUI = null;
   inTemple = false;
+  
+  // Música removida
 
   // Show 3D viewer when returning to ranch
   if (gameUI) {
@@ -1595,6 +1756,8 @@ function openExploration() {
   };
 
   inExploration = true;
+  
+  // Música removida
 }
 
 function startExplorationInZone(zone: ExplorationZone) {
@@ -1752,6 +1915,9 @@ function startExplorationBattle(enemy: WildEnemy) {
       inBattle = false;
       isExplorationBattle = false;
       
+      // Return to ranch music
+      AudioManager.playMusic('ranch', 1500);
+      
       // DON'T show 3D viewer yet - modal will be open
       console.log('[Main] Defeat - keeping 3D hidden until modal closes');
       
@@ -1786,6 +1952,8 @@ function startExplorationBattle(enemy: WildEnemy) {
     battleUI = null;
     inBattle = false;
     isExplorationBattle = false;
+    
+    // Música removida
 
     // Volta para exploração
     if (explorationUI && explorationState) {
@@ -1807,6 +1975,8 @@ function startExplorationBattle(enemy: WildEnemy) {
 
   inBattle = true;
   inExploration = false; // Temporariamente sai da exploração
+  
+  // Música removida
 }
 
 function collectTreasureInExploration(treasure: Item[]) {
@@ -2015,6 +2185,8 @@ function closeExploration() {
   explorationState = null;
   inExploration = false;
   isExplorationBattle = false;
+  
+  // Música removida
 
   // Show 3D viewer when returning to ranch (but only if no modal is open)
   if (gameUI && (!modalUI || !modalUI.isShowing())) {
@@ -2214,6 +2386,8 @@ function startTournamentBattle(rank: TournamentRank) {
     battleUI = null;
     inBattle = false;
     
+    // Música removida
+    
     // Save
     saveGame(gameState);
     
@@ -2224,6 +2398,10 @@ function startTournamentBattle(rank: TournamentRank) {
   };
   
   inBattle = true;
+  
+  // Play battle music
+  AudioManager.playMusic('battle', 1000);
+  
   showMessage(`Torneio ${rank.toUpperCase()} iniciado!`);
 }
 

@@ -577,9 +577,13 @@ export class AuthUI {
   }
 
   draw(force: boolean = false) {
-    // CORREÇÃO CRÍTICA: Se AuthUI foi escondido, não fazer NADA
+    // CORREÇÃO CRÍTICA: Se AuthUI foi escondido, não fazer NADA e limpar inputs
     if (this.isHidden) {
-      console.warn('[AuthUI] draw() called after hide() - ignoring completely');
+      // Garantir que inputs sejam removidos se ainda existirem
+      const authContainers = document.querySelectorAll('#auth-inputs-container');
+      if (authContainers.length > 0) {
+        authContainers.forEach(c => c.remove());
+      }
       return;
     }
     
@@ -694,7 +698,15 @@ export class AuthUI {
       this.clickHandler = undefined;
     }
     
-    // Remover container de inputs completamente do DOM (não apenas esconder)
+    // CORREÇÃO EXTRA: Remover TODOS os containers de auth-inputs do DOM
+    // Remover por ID para garantir que não fique nenhum
+    const allAuthContainers = document.querySelectorAll('#auth-inputs-container');
+    allAuthContainers.forEach(container => {
+      console.log('[AuthUI] Removing auth-inputs-container from DOM');
+      container.remove();
+    });
+    
+    // Remover também por referência
     if (this.inputsContainer && this.inputsContainer.parentElement) {
       this.inputsContainer.parentElement.removeChild(this.inputsContainer);
     }

@@ -334,6 +334,27 @@ export class GameUI {
       align: 'right',
     });
 
+    // Settings button (gear icon) - ao lado do botão Sair
+    const settingsBtnWidth = 40;
+    const settingsBtnHeight = 26;
+    const settingsBtnX = this.canvas.width - 110 - settingsBtnWidth - 10;
+    const settingsBtnY = 52;
+    const isSettingsHovered = isMouseOver(this.mouseX, this.mouseY, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight);
+    
+    drawButton(this.ctx, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight, '⚙️', {
+      bgColor: '#4a90e2',
+      hoverColor: '#357abd',
+      isHovered: isSettingsHovered,
+    });
+
+    this.buttons.set('settings', {
+      x: settingsBtnX,
+      y: settingsBtnY,
+      width: settingsBtnWidth,
+      height: settingsBtnHeight,
+      action: () => this.onOpenSettings(),
+    });
+    
     // Logout button (top right, below coronas)
     const logoutBtnX = this.canvas.width - 110;
     const logoutBtnY = 52;
@@ -1048,6 +1069,7 @@ export class GameUI {
   public onOpenAchievements: () => void = () => {};
   public onOpenExploration: () => void = () => {};
   public onNavigate: (screen: string) => void = () => {};
+  public onOpenSettings: () => void = () => {};
   public onLogout: () => void = () => {};
 
   public updateGameState(gameState: GameState) {

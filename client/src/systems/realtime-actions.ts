@@ -8,25 +8,25 @@ import type { Beast, BeastAction, GameState } from '../types';
 // ===== DURAÇÕES DAS AÇÕES =====
 
 export const ACTION_DURATIONS = {
-  // Treino - 2 minutos
-  train_might: 2 * 60 * 1000,
-  train_wit: 2 * 60 * 1000,
-  train_focus: 2 * 60 * 1000,
-  train_agility: 2 * 60 * 1000,
-  train_ward: 2 * 60 * 1000,
-  train_vitality: 2 * 60 * 1000,
+  // Treino - 1 minuto
+  train_might: 1 * 60 * 1000,
+  train_wit: 1 * 60 * 1000,
+  train_focus: 1 * 60 * 1000,
+  train_agility: 1 * 60 * 1000,
+  train_ward: 1 * 60 * 1000,
+  train_vitality: 1 * 60 * 1000,
   
-  // Trabalho - 10 minutos
-  work_warehouse: 10 * 60 * 1000,
-  work_farm: 10 * 60 * 1000,
-  work_guard: 10 * 60 * 1000,
-  work_library: 10 * 60 * 1000,
+  // Trabalho - 1.5 minutos
+  work_warehouse: 90 * 1000,
+  work_farm: 90 * 1000,
+  work_guard: 90 * 1000,
+  work_library: 90 * 1000,
   
   // Descanso
-  rest_sleep: 4 * 60 * 60 * 1000,    // 4 horas
-  rest_freetime: 10 * 60 * 1000,     // 10 minutos
-  rest_walk: 10 * 60 * 1000,         // 10 minutos
-  rest_eat: 10 * 60 * 1000,          // 10 minutos
+  rest_sleep: 2 * 60 * 1000,        // 2 minutos (o mais longo)
+  rest_freetime: 1 * 60 * 1000,     // 1 minuto
+  rest_walk: 1 * 60 * 1000,         // 1 minuto
+  rest_eat: 1 * 60 * 1000,          // 1 minuto
   
   // Cooldowns especiais
   tournament_cooldown: 4 * 60 * 60 * 1000,  // 4 horas entre torneios
