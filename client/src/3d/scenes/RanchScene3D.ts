@@ -567,6 +567,7 @@ export class RanchScene3D {
   
   /**
    * Montanhas GRANDES que cobrem o azul do céu ao fundo
+   * COM detecção de colisão para não aparecer dentro da casa
    */
   private createVisibleHills() {
     const scene = this.threeScene.getScene();
@@ -580,32 +581,53 @@ export class RanchScene3D {
       0x9a8570, // Bege terra
     ];
     
-    // Criar MUITAS montanhas/colinas para cobrir TODO o horizonte
-    const hillCount = 12; // DOBRO para cobrir mais
+    // Área proibida: Casa em (0, -7) com raio ~3 unidades
+    const houseX = 0;
+    const houseZ = -7;
+    const houseRadius = 3.5; // Área de exclusão
     
-    for (let i = 0; i < hillCount; i++) {
-      const angle = (i / hillCount) * Math.PI * 2;
+    // Criar MUITAS montanhas/colinas para cobrir TODO o horizonte
+    const hillCount = 12;
+    let successfulHills = 0;
+    let attempts = 0;
+    const maxAttempts = hillCount * 5;
+    
+    while (successfulHills < hillCount && attempts < maxAttempts) {
+      const angle = (successfulHills / hillCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
       
       // Montanhas GRANDES (cobrindo o céu)
-      const height = 6 + Math.random() * 4; // MUITO MAIS ALTAS (6-10)
-      const width = 4 + Math.random() * 3; // MUITO MAIS LARGAS (4-7)
-      
-      const geometry = new THREE.ConeGeometry(width, height, 8);
-      const material = new THREE.MeshToonMaterial({ 
-        color: hillColors[i % hillColors.length],
-      });
-      
-      const hill = new THREE.Mesh(geometry, material);
+      const height = 6 + Math.random() * 4; // 6-10
+      const width = 4 + Math.random() * 3; // 4-7
       
       // Posicionar longe (10-13 unidades)
       const distance = 10 + Math.random() * 3;
-      hill.position.set(
-        Math.cos(angle) * distance,
-        height / 2 - 0.5, // Enterrado para parecer montanha natural
-        Math.sin(angle) * distance
+      const x = Math.cos(angle) * distance;
+      const z = Math.sin(angle) * distance;
+      
+      // VERIFICAR COLISÃO COM A CASA
+      const distToHouse = Math.sqrt(
+        (x - houseX) ** 2 + 
+        (z - houseZ) ** 2
       );
       
+      attempts++;
+      
+      // Se muito perto da casa, pular essa colina
+      if (distToHouse < houseRadius + width) {
+        continue; // Tentar outra posição
+      }
+      
+      // Posição válida! Criar colina
+      const geometry = new THREE.ConeGeometry(width, height, 8);
+      const material = new THREE.MeshToonMaterial({ 
+        color: hillColors[successfulHills % hillColors.length],
+      });
+      
+      const hill = new THREE.Mesh(geometry, material);
+      hill.position.set(x, height / 2 - 0.5, z);
+      
       this.mountains.add(hill);
+      successfulHills++;
     }
     
     scene.add(this.mountains);
