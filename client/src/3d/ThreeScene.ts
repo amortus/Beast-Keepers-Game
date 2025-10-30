@@ -49,27 +49,22 @@ export class ThreeScene {
   }
 
   private setupLighting() {
-    // PS1-style lighting com golden hour atmosphere
+    // Lighting estilo Pokémon (clara, vibrante e alegre)
     
-    // Ambient light (base illumination - levemente amarelada)
-    const ambient = new THREE.AmbientLight(0xfff4e0, 0.6);
+    // Ambient light (iluminação base muito clara)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambient);
 
-    // Main directional light (sol - golden hour)
-    const directional = new THREE.DirectionalLight(0xfff5d9, 1.2);
-    directional.position.set(7, 10, 7);
-    directional.castShadow = false; // No shadows for PS1 style
+    // Main directional light (sol vibrante)
+    const directional = new THREE.DirectionalLight(0xffffff, 1.0);
+    directional.position.set(5, 10, 5);
+    directional.castShadow = false;
     this.scene.add(directional);
 
-    // Fill light (azul suave para contraste, simula céu)
-    const fill = new THREE.DirectionalLight(0x9fbfff, 0.3);
-    fill.position.set(-5, 3, -5);
+    // Fill light (azul céu suave)
+    const fill = new THREE.DirectionalLight(0xbbdefb, 0.4);
+    fill.position.set(-5, 5, -5);
     this.scene.add(fill);
-    
-    // Rim light (contorno sutil)
-    const rim = new THREE.DirectionalLight(0xffdaa0, 0.4);
-    rim.position.set(0, 5, -10);
-    this.scene.add(rim);
   }
 
   public addObject(object: THREE.Object3D) {

@@ -6,10 +6,6 @@
 import * as THREE from 'three';
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
-import { PS1Terrain } from '../terrain/PS1Terrain';
-import { PS1Water } from '../water/PS1Water';
-import { PS1Grass } from '../vegetation/PS1Grass';
-import { createPS1Skybox, createDistantMountains, setupPS1Fog, createPS1Clouds } from '../environments/PS1Background';
 
 export class RanchScene3D {
   private threeScene: ThreeScene;
@@ -17,13 +13,7 @@ export class RanchScene3D {
   private beastGroup: THREE.Group | null = null;
   private idleAnimation: (() => void) | null = null;
   
-  // New PS1 elements
-  private terrain: PS1Terrain | null = null;
-  private water: PS1Water | null = null;
-  private grass: PS1Grass | null = null;
-  private skybox: THREE.Mesh | null = null;
-  private mountains: THREE.Group | null = null;
-  private clouds: THREE.Group | null = null;
+  // Propriedades não mais necessárias (cena simples Pokémon)
 
   constructor(canvas: HTMLCanvasElement) {
     this.threeScene = new ThreeScene(canvas);
@@ -34,195 +24,278 @@ export class RanchScene3D {
     const scene = this.threeScene.getScene();
     const camera = this.threeScene.getCamera() as THREE.PerspectiveCamera;
     
-    // Setup PS1-style camera (fixed position, Monster Rancher style)
-    // Ajustado para melhor enquadramento do rancho
-    camera.fov = 60;
-    camera.position.set(0, 3, 6.5); // Mais alto e mais longe
-    camera.lookAt(0, 0.5, 0); // Olhando levemente para baixo
+    // Câmera estilo Pokémon (ângulo isométrico levemente alto)
+    camera.fov = 50;
+    camera.position.set(0, 5, 8);
+    camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     
-    // PS1 Background elements (cores naturais do concept art)
-    this.skybox = createPS1Skybox(scene);
-    this.mountains = createDistantMountains(scene);
-    this.clouds = createPS1Clouds(scene, 6); // Adicionar nuvens para profundidade
-    setupPS1Fog(scene, 0x9fb8d9, 20, 50); // Fog azul claro
+    // Skybox simples - céu azul claro vibrante
+    scene.background = new THREE.Color(0x87ceeb); // Azul céu brilhante
+    scene.fog = new THREE.Fog(0xa0d8ef, 15, 35); // Fog leve e claro
     
-    // Procedural terrain (replaces flat ground) - cores vibrantes e saturadas
-    this.terrain = new PS1Terrain({
-      size: 20,
-      segments: 40, // Mais segmentos para suavizar
-      heightVariation: 0.5, // Mais variação de altura
-      seed: 12345,
-      colors: {
-        base: 0x5db84f,  // Verde grama vibrante
-        high: 0x7dd86e, // Verde amarelado (colinas iluminadas)
-        low: 0x3d8f31,  // Verde escuro (vales com sombra)
-      }
-    });
-    scene.add(this.terrain.getMesh());
+    // Chão plano estilo Pokémon - grama verde vibrante
+    this.createPokemonGround();
     
-    // Water feature (bebedouro/lago) - azul vibrante, movido para esquerda
-    this.water = new PS1Water({
-      size: 1.5,
-      segments: 8,
-      color: 0x3ab5f5, // Azul mais vibrante e claro
-      waveSpeed: 0.9,
-      waveHeight: 0.06,
-    });
-    this.water.getMesh().position.set(1.5, 0.05, 3.5); // Movido mais para esquerda (3.5 → 1.5)
-    scene.add(this.water.getMesh());
+    // Flores coloridas espalhadas
+    this.createFlowers();
     
-    // Grass around the ranch - mais densa e vibrante
-    this.grass = new PS1Grass({
-      count: 400, // Mais grama para densidade
-      area: 12,
-      color: 0x3d7a25, // Verde mais saturado
-      height: 0.3,
-      windSpeed: 0.4,
-      windStrength: 0.02,
-    });
-    scene.add(this.grass.getMesh());
+    // Árvores cartoon arredondadas
+    this.createPokemonTree(-4, 0, -3);
+    this.createPokemonTree(4, 0, -3);
+    this.createPokemonTree(-3, 0, 4);
+    this.createPokemonTree(3, 0, 4);
     
-    // Barn (celeiro) in background
-    this.createBarn();
+    // Pedras decorativas
+    this.createRocks();
     
-    // Tents
-    this.createTent(4.5, 0, -3.5);
-    this.createTent(5.5, 0, -4);
+    // Lago/bebedouro estilo Pokémon
+    this.createPokemonLake();
     
-    // Fences (keep existing but adjust for terrain)
-    this.createFences();
+    // Casa/prédio colorido
+    this.createPokemonHouse();
     
-    // Trees (removida árvore que estava bloqueando o laguinho)
-    this.createTree(-4, 0, -4);
-    this.createTree(4.5, 0, -2);
-    this.createTree(-3.5, 0, 4);
-
-    // Food bowl (bebedouro) - amarelo mais vibrante
-    const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.25, 6);
-    const foodBowl = new THREE.Mesh(bowlGeometry, new THREE.MeshLambertMaterial({ 
-      color: 0xe8b856, // Amarelo dourado mais vibrante
-      flatShading: true 
+    // Cerca de madeira cartoon
+    this.createPokemonFences();
+    
+    // Food bowl colorido
+    const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 8);
+    const foodBowl = new THREE.Mesh(bowlGeometry, new THREE.MeshToonMaterial({ 
+      color: 0xff6b6b, // Vermelho vibrante
     }));
-    foodBowl.position.set(-3.5, 0.12, 3.5);
+    foodBowl.position.set(-3, 0.15, 3);
     scene.add(foodBowl);
   }
   
   /**
-   * Create barn (celeiro) in background
+   * Chão plano estilo Pokémon
    */
-  private createBarn() {
+  private createPokemonGround() {
     const scene = this.threeScene.getScene();
-    const barnGroup = new THREE.Group();
     
-    // Main body - vermelho vibrante
+    // Chão verde vibrante plano
+    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    const groundMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x5cd65c, // Verde grama Pokémon vibrante
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = 0;
+    scene.add(ground);
+    
+    // Borda do chão (marrom claro)
+    const borderGeometry = new THREE.PlaneGeometry(22, 22);
+    const borderMaterial = new THREE.MeshToonMaterial({ 
+      color: 0xc4a574, // Bege/marrom claro
+    });
+    const border = new THREE.Mesh(borderGeometry, borderMaterial);
+    border.rotation.x = -Math.PI / 2;
+    border.position.y = -0.05;
+    scene.add(border);
+  }
+  
+  /**
+   * Flores coloridas espalhadas
+   */
+  private createFlowers() {
+    const scene = this.threeScene.getScene();
+    const flowerColors = [
+      0xff6b9d, // Rosa
+      0xffd93d, // Amarelo
+      0x6bcfff, // Azul claro
+      0xff8c42, // Laranja
+      0xc44569, // Roxo
+    ];
+    
+    // Espalhar flores aleatoriamente
+    for (let i = 0; i < 30; i++) {
+      const x = (Math.random() - 0.5) * 16;
+      const z = (Math.random() - 0.5) * 16;
+      
+      // Pétalas (pequenas esferas)
+      const petalGeometry = new THREE.SphereGeometry(0.08, 6, 6);
+      const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const petalMaterial = new THREE.MeshToonMaterial({ color });
+      
+      const flower = new THREE.Mesh(petalGeometry, petalMaterial);
+      flower.position.set(x, 0.05, z);
+      scene.add(flower);
+    }
+  }
+  
+  /**
+   * Árvore cartoon estilo Pokémon
+   */
+  private createPokemonTree(x: number, y: number, z: number) {
+    const scene = this.threeScene.getScene();
+    const treeGroup = new THREE.Group();
+
+    // Tronco - marrom cartoon
+    const trunkGeometry = new THREE.CylinderGeometry(0.25, 0.3, 1.8, 8);
+    const trunkMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x8b6f47, // Marrom médio
+    });
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.y = 0.9;
+    treeGroup.add(trunk);
+
+    // Folhagem - esferas sobrepostas (estilo Pokémon)
+    const foliageMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x4db85f, // Verde vibrante
+    });
+    
+    // 3 esferas para folhagem volumosa
+    const foliage1 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), foliageMaterial);
+    foliage1.position.y = 2.2;
+    treeGroup.add(foliage1);
+    
+    const foliage2 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), foliageMaterial);
+    foliage2.position.set(-0.4, 2.5, 0);
+    treeGroup.add(foliage2);
+    
+    const foliage3 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), foliageMaterial);
+    foliage3.position.set(0.4, 2.5, 0);
+    treeGroup.add(foliage3);
+    
+    treeGroup.position.set(x, y, z);
+    scene.add(treeGroup);
+  }
+  
+  /**
+   * Pedras decorativas
+   */
+  private createRocks() {
+    const scene = this.threeScene.getScene();
+    const rockMaterial = new THREE.MeshToonMaterial({ color: 0x9e9e9e });
+    
+    // Pedras espalhadas
+    const rockPositions = [
+      [-2, 0, -4],
+      [3, 0, -3.5],
+      [-4, 0, 2],
+      [4.5, 0, 1],
+    ];
+    
+    rockPositions.forEach(([x, y, z]) => {
+      const rockGeometry = new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.2, 0);
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      rock.position.set(x, 0.2, z);
+      rock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      scene.add(rock);
+    });
+  }
+  
+  /**
+   * Lago estilo Pokémon
+   */
+  private createPokemonLake() {
+    const scene = this.threeScene.getScene();
+    
+    // Lago circular azul vibrante
+    const lakeGeometry = new THREE.CircleGeometry(1.5, 16);
+    const lakeMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x4fc3f7, // Azul água Pokémon
+    });
+    const lake = new THREE.Mesh(lakeGeometry, lakeMaterial);
+    lake.rotation.x = -Math.PI / 2;
+    lake.position.set(1.5, 0.02, 3.5);
+    scene.add(lake);
+    
+    // Borda do lago (azul mais escuro)
+    const borderGeometry = new THREE.CircleGeometry(1.7, 16);
+    const borderMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x2196f3, // Azul mais escuro
+    });
+    const border = new THREE.Mesh(borderGeometry, borderMaterial);
+    border.rotation.x = -Math.PI / 2;
+    border.position.set(1.5, 0.01, 3.5);
+    scene.add(border);
+  }
+  
+  /**
+   * Casa estilo Pokémon Center
+   */
+  private createPokemonHouse() {
+    const scene = this.threeScene.getScene();
+    const houseGroup = new THREE.Group();
+    
+    // Corpo principal - vermelho vibrante
     const bodyGeometry = new THREE.BoxGeometry(3, 2, 2.5);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xc85a42, // Vermelho barn mais vibrante
-      flatShading: false // Smooth
+    const bodyMaterial = new THREE.MeshToonMaterial({ 
+      color: 0xff5252, // Vermelho Pokémon Center
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 1;
-    barnGroup.add(body);
+    houseGroup.add(body);
     
-    // Roof (pyramid) - marrom mais escuro
-    const roofGeometry = new THREE.ConeGeometry(2.3, 1.5, 6);
-    const roofMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x7a3e1f, // Marrom mais escuro
-      flatShading: false // Smooth
+    // Telhado - laranja vibrante
+    const roofGeometry = new THREE.ConeGeometry(2.3, 1.5, 4);
+    const roofMaterial = new THREE.MeshToonMaterial({ 
+      color: 0xff6f00, // Laranja vibrante
     });
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
     roof.position.y = 2.75;
     roof.rotation.y = Math.PI / 4;
-    barnGroup.add(roof);
+    houseGroup.add(roof);
     
-    // Door
-    const doorGeometry = new THREE.BoxGeometry(0.8, 1.2, 0.1);
-    const doorMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x4d3317,
-      flatShading: false // Smooth
+    // Porta - branca com detalhes
+    const doorGeometry = new THREE.BoxGeometry(0.8, 1.3, 0.1);
+    const doorMaterial = new THREE.MeshToonMaterial({ 
+      color: 0xffffff, // Branco
     });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 0.6, 1.26);
-    barnGroup.add(door);
+    door.position.set(0, 0.65, 1.26);
+    houseGroup.add(door);
     
-    barnGroup.position.set(0, 0, -8);
-    scene.add(barnGroup);
+    // Janelas - azuis
+    const windowGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.05);
+    const windowMaterial = new THREE.MeshToonMaterial({ 
+      color: 0x64b5f6, // Azul claro
+    });
+    
+    const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
+    window1.position.set(-0.8, 1.2, 1.27);
+    houseGroup.add(window1);
+    
+    const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
+    window2.position.set(0.8, 1.2, 1.27);
+    houseGroup.add(window2);
+    
+    houseGroup.position.set(0, 0, -7);
+    scene.add(houseGroup);
   }
   
   /**
-   * Create tent (conica branca)
+   * Cercas cartoon
    */
-  private createTent(x: number, y: number, z: number) {
+  private createPokemonFences() {
     const scene = this.threeScene.getScene();
+    const fenceMaterial = new THREE.MeshToonMaterial({ 
+      color: 0xd4a574, // Marrom claro madeira
+    });
     
-    const tentGeometry = new THREE.ConeGeometry(0.6, 1.2, 6);
-    const tentMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xf5f5f5,
-      flatShading: true 
-    });
-    const tent = new THREE.Mesh(tentGeometry, tentMaterial);
-    tent.position.set(x, 0.6, z);
-    scene.add(tent);
-  }
-  
-  /**
-   * Create fences around ranch
-   */
-  private createFences() {
-    const scene = this.threeScene.getScene();
-    const fenceHeight = 0.8;
-    const fenceThickness = 0.1;
-    const fenceMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xa0612d,
-      flatShading: false // Smooth
-    });
-
-    // Front fence
-    const frontFenceGeometry = new THREE.BoxGeometry(12, fenceHeight, fenceThickness);
-    const frontFence = new THREE.Mesh(frontFenceGeometry, fenceMaterial);
-    frontFence.position.set(0, fenceHeight / 2, -6);
-    scene.add(frontFence);
-
-    // Back fence (lower, partial)
-    const backFence = new THREE.Mesh(new THREE.BoxGeometry(8, fenceHeight, fenceThickness), fenceMaterial);
-    backFence.position.set(0, fenceHeight / 2, 6);
-    scene.add(backFence);
-
-    // Side fences
-    const sideFenceGeometry = new THREE.BoxGeometry(fenceThickness, fenceHeight, 10);
-    
-    const leftFence = new THREE.Mesh(sideFenceGeometry, fenceMaterial);
-    leftFence.position.set(-6, fenceHeight / 2, 0);
-    scene.add(leftFence);
-    
-    const rightFence = new THREE.Mesh(sideFenceGeometry, fenceMaterial);
-    rightFence.position.set(6, fenceHeight / 2, 0);
-    scene.add(rightFence);
-  }
-
-  private createTree(x: number, y: number, z: number) {
-    const scene = this.threeScene.getScene();
-
-    // Trunk (low-poly mas smooth) - marrom mais rico
-    const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.25, 1.5, 8);
-    const trunkMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8b5a3c, // Marrom mais quente
-      flatShading: false // Smooth para não ficar muito blocky
-    });
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.set(x, 0.75, z);
-    scene.add(trunk);
-
-    // Foliage (pyramid/cone - PS1 style) - verde vibrante
-    const foliageGeometry = new THREE.ConeGeometry(0.9, 1.6, 8);
-    const foliageMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x4db85f, // Verde mais vibrante
-      flatShading: false // Smooth para não ficar muito blocky
-    });
-    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-    foliage.position.set(x, 2.3, z);
-    scene.add(foliage);
+    // Cerca frontal
+    for (let i = -5; i <= 5; i += 2) {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.15, 0.8, 0.15),
+        fenceMaterial
+      );
+      post.position.set(i, 0.4, -5);
+      scene.add(post);
+      
+      if (i < 5) {
+        const rail = new THREE.Mesh(
+          new THREE.BoxGeometry(1.8, 0.1, 0.1),
+          fenceMaterial
+        );
+        rail.position.set(i + 1, 0.6, -5);
+        scene.add(rail);
+      }
+    }
   }
 
   public setBeast(beastLine: string) {
@@ -251,18 +324,7 @@ export class RanchScene3D {
       this.idleAnimation();
     }
     
-    // Update water animation
-    if (this.water) {
-      this.water.update(delta);
-    }
-    
-    // Update grass animation (wind)
-    if (this.grass) {
-      this.grass.update(delta);
-    }
-    
-    // Camera stays fixed (Monster Rancher style - no auto-rotation)
-    // User can add manual camera controls later if needed
+    // Câmera fixa estilo Pokémon (sem rotação automática)
   }
 
   public render() {
@@ -287,36 +349,7 @@ export class RanchScene3D {
     // Dispose beast model
     this.beastModel?.dispose();
     
-    // Dispose PS1 elements
-    this.terrain?.dispose();
-    this.water?.dispose();
-    this.grass?.dispose();
-    
-    // Dispose skybox and mountains (geometry/materials)
-    if (this.skybox) {
-      this.skybox.geometry.dispose();
-      (this.skybox.material as THREE.Material).dispose();
-    }
-    
-    if (this.mountains) {
-      this.mountains.children.forEach(child => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          (child.material as THREE.Material).dispose();
-        }
-      });
-    }
-    
-    if (this.clouds) {
-      this.clouds.children.forEach(child => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          (child.material as THREE.Material).dispose();
-        }
-      });
-    }
-    
-    // Dispose Three.js scene
+    // Dispose Three.js scene (limpa todos os elementos automaticamente)
     this.threeScene.dispose();
   }
 }
