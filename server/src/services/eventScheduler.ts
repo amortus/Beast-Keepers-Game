@@ -15,10 +15,19 @@ const API_CACHE_DURATION = 60 * 60 * 1000; // 1 hora
 /**
  * Retorna hora atual (usa servidor local, mais confiável que API externa)
  * Evita rate limiting e problemas de rede
+ * 
+ * O servidor Railway sincroniza automaticamente via NTP (Network Time Protocol)
+ * E o JavaScript converte para Brasília usando Intl.DateTimeFormat
  */
 function getBrasiliaTime(): Date {
-  // Usar horário do servidor diretamente (mais confiável e rápido)
-  return new Date();
+  const now = new Date();
+  
+  // Log para debug (pode remover depois)
+  const brasiliaStr = now.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const utcStr = now.toISOString();
+  console.log(`[Time] UTC: ${utcStr} | Brasília: ${brasiliaStr}`);
+  
+  return now;
 }
 
 /**
