@@ -61,7 +61,7 @@ export class RanchScene3D {
     });
     scene.add(this.terrain.getMesh());
     
-    // Water feature (bebedouro/lago) - azul vibrante
+    // Water feature (bebedouro/lago) - azul vibrante, movido para esquerda
     this.water = new PS1Water({
       size: 1.5,
       segments: 8,
@@ -69,7 +69,7 @@ export class RanchScene3D {
       waveSpeed: 0.9,
       waveHeight: 0.06,
     });
-    this.water.getMesh().position.set(3.5, 0.05, 3.5);
+    this.water.getMesh().position.set(1.5, 0.05, 3.5); // Movido mais para esquerda (3.5 → 1.5)
     scene.add(this.water.getMesh());
     
     // Grass around the ranch - mais densa e vibrante
@@ -93,11 +93,10 @@ export class RanchScene3D {
     // Fences (keep existing but adjust for terrain)
     this.createFences();
     
-    // Trees
+    // Trees (removida árvore que estava bloqueando o laguinho)
     this.createTree(-4, 0, -4);
     this.createTree(4.5, 0, -2);
     this.createTree(-3.5, 0, 4);
-    this.createTree(2, 0, 4.5);
 
     // Food bowl (bebedouro) - amarelo mais vibrante
     const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.25, 6);
