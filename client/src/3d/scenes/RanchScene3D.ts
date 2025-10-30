@@ -69,9 +69,8 @@ export class RanchScene3D {
     this.createElaborateFlowers();
     
     // Árvores cartoon arredondadas (longe do lago)
-    this.createPokemonTree(-4, 0, -3);
-    this.createPokemonTree(4, 0, -3);
-    this.createPokemonTree(-4, 0, 3.5); // Mudado para longe do lago
+    this.createPokemonTree(-4, 0, -3); // Árvore esquerda-trás
+    this.createPokemonTree(4, 0, 1); // Árvore direita - MOVIDA MAIS PARA BAIXO (Z: -3 → 1)
     
     // Pedras decorativas
     this.createRocks();
@@ -105,10 +104,9 @@ export class RanchScene3D {
       // Casa
       { x: 0, z: -7, radius: 2.5 },
       
-      // Árvores
-      { x: -4, z: -3, radius: 0.8 },
-      { x: 4, z: -3, radius: 0.8 },
-      { x: -4, z: 3.5, radius: 0.8 },
+      // Árvores (atualizadas)
+      { x: -4, z: -3, radius: 0.8 }, // Esquerda-trás
+      { x: 4, z: 1, radius: 0.8 },   // Direita (movida mais para baixo)
       
       // Food bowl
       { x: -3, z: 3, radius: 0.5 },
