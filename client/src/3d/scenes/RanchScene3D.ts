@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
-import { createDistantMountains, createPS1Clouds } from '../environments/PS1Background';
 
 export class RanchScene3D {
   private threeScene: ThreeScene;
@@ -37,11 +36,11 @@ export class RanchScene3D {
     scene.background = new THREE.Color(0x87ceeb); // Azul céu brilhante
     scene.fog = new THREE.Fog(0xa0d8ef, 15, 35); // Fog leve e claro
     
-    // Colinas distantes no horizonte
-    this.mountains = createDistantMountains(scene);
+    // Colinas VISÍVEIS no horizonte (mais próximas)
+    this.createVisibleHills();
     
-    // Nuvens no céu
-    this.clouds = createPS1Clouds(scene, 8); // 8 nuvens espalhadas
+    // Nuvens VISÍVEIS no céu (mais próximas e maiores)
+    this.createVisibleClouds();
     
     // Chão plano - verde natural (menos saturado)
     this.createPokemonGround();
@@ -423,6 +422,97 @@ export class RanchScene3D {
         scene.add(rail);
       }
     }
+  }
+  
+  /**
+   * Colinas VISÍVEIS no horizonte (cartoon)
+   */
+  private createVisibleHills() {
+    const scene = this.threeScene.getScene();
+    this.mountains = new THREE.Group();
+    
+    const hillColors = [
+      0x6b9b6b, // Verde médio
+      0x7aaa7a, // Verde claro
+      0x5a8a5a, // Verde escuro
+    ];
+    
+    // Criar 6 colinas AO REDOR do rancho (mais próximas)
+    const hillCount = 6;
+    for (let i = 0; i < hillCount; i++) {
+      const angle = (i / hillCount) * Math.PI * 2;
+      
+      // Colinas cartoon (cones arredondados)
+      const height = 3 + Math.random() * 2;
+      const width = 2 + Math.random() * 1;
+      
+      const geometry = new THREE.ConeGeometry(width, height, 8);
+      const material = new THREE.MeshToonMaterial({ 
+        color: hillColors[i % hillColors.length],
+      });
+      
+      const hill = new THREE.Mesh(geometry, material);
+      
+      // Posicionar MAIS PERTO (12-15 unidades)
+      const distance = 12 + Math.random() * 3;
+      hill.position.set(
+        Math.cos(angle) * distance,
+        height / 2 - 0.3, // Levemente enterrado no chão
+        Math.sin(angle) * distance
+      );
+      
+      this.mountains.add(hill);
+    }
+    
+    scene.add(this.mountains);
+  }
+  
+  /**
+   * Nuvens VISÍVEIS no céu (cartoon)
+   */
+  private createVisibleClouds() {
+    const scene = this.threeScene.getScene();
+    this.clouds = new THREE.Group();
+    
+    const cloudMaterial = new THREE.MeshToonMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.9, // Mais opacas
+    });
+    
+    // Criar 6 nuvens VISÍVEIS
+    const cloudCount = 6;
+    for (let i = 0; i < cloudCount; i++) {
+      const cloudGroup = new THREE.Group();
+      
+      // 3 esferas para fazer nuvem fofa
+      for (let j = 0; j < 3; j++) {
+        const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 6, 6),
+          cloudMaterial
+        );
+        sphere.position.set(
+          (j - 1) * 0.6,
+          Math.random() * 0.2,
+          Math.random() * 0.2
+        );
+        sphere.scale.set(1.2, 0.7, 1); // Achatar
+        cloudGroup.add(sphere);
+      }
+      
+      // Posicionar nuvens MAIS PERTO e VISÍVEIS
+      const angle = (i / cloudCount) * Math.PI * 2;
+      const distance = 8 + Math.random() * 4; // BEM MAIS PERTO
+      cloudGroup.position.set(
+        Math.cos(angle) * distance,
+        6 + Math.random() * 2, // Mais alto mas visível
+        Math.sin(angle) * distance
+      );
+      
+      this.clouds.add(cloudGroup);
+    }
+    
+    scene.add(this.clouds);
   }
 
   public setBeast(beastLine: string) {
