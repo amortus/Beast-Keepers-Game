@@ -366,37 +366,37 @@ export class RanchCritters {
   }
   
   /**
-   * Chuva - múltiplas gotas caindo
+   * Chuva - MUITAS gotas caindo por 20 segundos
    */
   private spawnRain() {
-    // Spawnar múltiplas gotas de chuva de uma vez
-    const dropCount = 15 + Math.floor(Math.random() * 10); // 15-25 gotas
+    // Spawnar MUITAS gotas de chuva densas
+    const dropCount = 80 + Math.floor(Math.random() * 40); // 80-120 gotas!
     
     for (let i = 0; i < dropCount; i++) {
       const dropGroup = new THREE.Group();
       
       // Gota (cilindro fino e alongado)
-      const dropGeometry = new THREE.CylinderGeometry(0.02, 0.015, 0.15, 4);
+      const dropGeometry = new THREE.CylinderGeometry(0.02, 0.015, 0.18, 4);
       const dropMaterial = new THREE.MeshToonMaterial({ 
         color: 0x87ceeb,
         transparent: true,
-        opacity: 0.6
+        opacity: 0.7
       });
       const drop = new THREE.Mesh(dropGeometry, dropMaterial);
       dropGroup.add(drop);
       
-      // Posição inicial aleatória alta
-      const x = (Math.random() - 0.5) * 16;
-      const z = (Math.random() - 0.5) * 16;
-      const startY = 8 + Math.random() * 3;
+      // Posição inicial aleatória alta (escalonada no tempo)
+      const x = (Math.random() - 0.5) * 18;
+      const z = (Math.random() - 0.5) * 18;
+      const startY = 8 + Math.random() * 6; // Mais variação de altura
       
       dropGroup.position.set(x, startY, z);
       this.scene.add(dropGroup);
       
       // Velocidade: cai rápido
       const velocity = new THREE.Vector3(
-        0,
-        -6 - Math.random() * 2, // Cai rápido (6-8 u/s)
+        (Math.random() - 0.5) * 0.2, // Leve vento
+        -7 - Math.random() * 2, // Cai rápido (7-9 u/s)
         0
       );
       
@@ -404,8 +404,8 @@ export class RanchCritters {
         mesh: dropGroup,
         type: 'rain',
         velocity,
-        lifetime: 2, // Desaparece rápido
-        maxLifetime: 2
+        lifetime: 20, // Dura 20 segundos total
+        maxLifetime: 20
       });
     }
   }
@@ -545,9 +545,12 @@ export class RanchCritters {
         
       case 'rain':
         // Cai reto e rápido
-        // Desaparece quando chega no chão
+        // RESPAWN quando chega no chão (ciclo contínuo por 20s)
         if (critter.mesh.position.y <= 0.1) {
-          critter.lifetime = 0; // Remove imediatamente
+          // Respawnar no topo (efeito de chuva contínua)
+          critter.mesh.position.y = 8 + Math.random() * 6;
+          critter.mesh.position.x = (Math.random() - 0.5) * 18;
+          critter.mesh.position.z = (Math.random() - 0.5) * 18;
         }
         break;
         
