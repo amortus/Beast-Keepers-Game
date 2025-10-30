@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
+import { createDistantMountains, createPS1Clouds } from '../environments/PS1Background';
 
 export class RanchScene3D {
   private threeScene: ThreeScene;
@@ -14,6 +15,8 @@ export class RanchScene3D {
   private beastGroup: THREE.Group | null = null;
   private idleAnimation: (() => void) | null = null;
   private grass: PS1Grass | null = null; // Grama procedural
+  private mountains: THREE.Group | null = null; // Colinas distantes
+  private clouds: THREE.Group | null = null; // Nuvens
 
   constructor(canvas: HTMLCanvasElement) {
     this.threeScene = new ThreeScene(canvas);
@@ -33,6 +36,12 @@ export class RanchScene3D {
     // Skybox simples - céu azul claro vibrante
     scene.background = new THREE.Color(0x87ceeb); // Azul céu brilhante
     scene.fog = new THREE.Fog(0xa0d8ef, 15, 35); // Fog leve e claro
+    
+    // Colinas distantes no horizonte
+    this.mountains = createDistantMountains(scene);
+    
+    // Nuvens no céu
+    this.clouds = createPS1Clouds(scene, 8); // 8 nuvens espalhadas
     
     // Chão plano - verde natural (menos saturado)
     this.createPokemonGround();
@@ -474,6 +483,26 @@ export class RanchScene3D {
     
     // Dispose grass
     this.grass?.dispose();
+    
+    // Dispose mountains
+    if (this.mountains) {
+      this.mountains.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          (child.material as THREE.Material).dispose();
+        }
+      });
+    }
+    
+    // Dispose clouds
+    if (this.clouds) {
+      this.clouds.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          (child.material as THREE.Material).dispose();
+        }
+      });
+    }
     
     // Dispose Three.js scene (limpa todos os elementos automaticamente)
     this.threeScene.dispose();
