@@ -3,7 +3,7 @@
  */
 
 import express from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -27,7 +27,7 @@ router.get('/', authenticateToken, async (req, res) => {
 /**
  * Criar nova guilda
  */
-router.post('/create', authenticateToken, async (req, res) => {
+router.post('/create', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { name, description, emblem } = req.body;
     
@@ -40,7 +40,7 @@ router.post('/create', authenticateToken, async (req, res) => {
           name,
           description,
           emblem,
-          leaderId: req.user.id,
+          leaderId: req.user?.id,
           members: [],
           createdAt: new Date(),
         },

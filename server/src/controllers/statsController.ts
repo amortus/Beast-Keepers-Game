@@ -2,14 +2,15 @@
  * Controller de Estatísticas
  */
 
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 
 /**
  * Obtém estatísticas do jogador
  */
-export const getPlayerStats = async (req: Request, res: Response) => {
+export const getPlayerStats = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     
     // TODO: Consultar estatísticas do banco
     
@@ -34,9 +35,9 @@ export const getPlayerStats = async (req: Request, res: Response) => {
 /**
  * Compara estatísticas com amigos
  */
-export const compareWithFriends = async (req: Request, res: Response) => {
+export const compareWithFriends = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     
     // TODO: Comparar com amigos
     
@@ -54,9 +55,9 @@ export const compareWithFriends = async (req: Request, res: Response) => {
 /**
  * Exportar estatísticas
  */
-export const exportStats = async (req: Request, res: Response) => {
+export const exportStats = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const format = req.query.format || 'json';
     
     // TODO: Exportar em JSON/CSV
