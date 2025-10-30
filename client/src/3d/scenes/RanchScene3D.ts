@@ -6,14 +6,14 @@
 import * as THREE from 'three';
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
+import { PS1Grass } from '../vegetation/PS1Grass';
 
 export class RanchScene3D {
   private threeScene: ThreeScene;
   private beastModel: BeastModel | null = null;
   private beastGroup: THREE.Group | null = null;
   private idleAnimation: (() => void) | null = null;
-  
-  // Propriedades não mais necessárias (cena simples Pokémon)
+  private grass: PS1Grass | null = null; // Grama procedural
 
   constructor(canvas: HTMLCanvasElement) {
     this.threeScene = new ThreeScene(canvas);
@@ -34,26 +34,28 @@ export class RanchScene3D {
     scene.background = new THREE.Color(0x87ceeb); // Azul céu brilhante
     scene.fog = new THREE.Fog(0xa0d8ef, 15, 35); // Fog leve e claro
     
-    // Chão plano estilo Pokémon - grama verde vibrante
+    // Chão plano - verde natural (menos saturado)
     this.createPokemonGround();
     
-    // Flores coloridas espalhadas
-    this.createFlowers();
+    // Lago/bebedouro PRIMEIRO (para não ficar em cima)
+    this.createPokemonLake();
     
-    // Árvores cartoon arredondadas
+    // Grama blade real (PS1Grass)
+    this.createRealGrass();
+    
+    // Flores elaboradas com pétalas
+    this.createElaborateFlowers();
+    
+    // Árvores cartoon arredondadas (longe do lago)
     this.createPokemonTree(-4, 0, -3);
     this.createPokemonTree(4, 0, -3);
-    this.createPokemonTree(-3, 0, 4);
-    this.createPokemonTree(3, 0, 4);
+    this.createPokemonTree(-4, 0, 3.5); // Mudado para longe do lago
     
     // Pedras decorativas
     this.createRocks();
     
-    // Lago/bebedouro estilo Pokémon
-    this.createPokemonLake();
-    
-    // Casa/prédio colorido
-    this.createPokemonHouse();
+    // Casa 3D melhorada
+    this.createImprovedHouse();
     
     // Cerca de madeira cartoon
     this.createPokemonFences();
@@ -68,25 +70,25 @@ export class RanchScene3D {
   }
   
   /**
-   * Chão plano estilo Pokémon
+   * Chão plano - verde natural
    */
   private createPokemonGround() {
     const scene = this.threeScene.getScene();
     
-    // Chão verde vibrante plano
+    // Chão verde NATURAL (menos saturado)
     const groundGeometry = new THREE.PlaneGeometry(20, 20);
     const groundMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x5cd65c, // Verde grama Pokémon vibrante
+      color: 0x6b9b6b, // Verde grama NATURAL (menos saturado)
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
     scene.add(ground);
     
-    // Borda do chão (marrom claro)
+    // Borda do chão (marrom terra)
     const borderGeometry = new THREE.PlaneGeometry(22, 22);
     const borderMaterial = new THREE.MeshToonMaterial({ 
-      color: 0xc4a574, // Bege/marrom claro
+      color: 0x8b7355, // Marrom terra
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
     border.rotation.x = -Math.PI / 2;
@@ -95,31 +97,91 @@ export class RanchScene3D {
   }
   
   /**
-   * Flores coloridas espalhadas
+   * Grama blade real usando PS1Grass
    */
-  private createFlowers() {
+  private createRealGrass() {
+    const scene = this.threeScene.getScene();
+    
+    this.grass = new PS1Grass({
+      count: 500, // Muita grama
+      area: 15,
+      color: 0x4a7c4a, // Verde grama natural
+      height: 0.25,
+      windSpeed: 0.3,
+      windStrength: 0.015,
+    });
+    scene.add(this.grass.getMesh());
+  }
+  
+  /**
+   * Flores elaboradas com pétalas
+   */
+  private createElaborateFlowers() {
     const scene = this.threeScene.getScene();
     const flowerColors = [
       0xff6b9d, // Rosa
       0xffd93d, // Amarelo
-      0x6bcfff, // Azul claro
       0xff8c42, // Laranja
       0xc44569, // Roxo
+      0xff4757, // Vermelho
     ];
     
-    // Espalhar flores aleatoriamente
-    for (let i = 0; i < 30; i++) {
-      const x = (Math.random() - 0.5) * 16;
-      const z = (Math.random() - 0.5) * 16;
+    // Espalhar flores LONGE DO LAGO (evitar área do lago: x=1.5, z=3.5, raio=1.7)
+    for (let i = 0; i < 40; i++) {
+      let x, z;
+      let attempts = 0;
       
-      // Pétalas (pequenas esferas)
-      const petalGeometry = new THREE.SphereGeometry(0.08, 6, 6);
+      // Tentar encontrar posição longe do lago
+      do {
+        x = (Math.random() - 0.5) * 16;
+        z = (Math.random() - 0.5) * 16;
+        
+        // Calcular distância do lago
+        const distToLake = Math.sqrt((x - 1.5) ** 2 + (z - 3.5) ** 2);
+        
+        // Se longe o suficiente, usar essa posição
+        if (distToLake > 2.5) break;
+        
+        attempts++;
+      } while (attempts < 10);
+      
+      // Se não encontrou posição boa, pular
+      if (attempts >= 10) continue;
+      
       const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-      const petalMaterial = new THREE.MeshToonMaterial({ color });
+      const flowerGroup = new THREE.Group();
       
-      const flower = new THREE.Mesh(petalGeometry, petalMaterial);
-      flower.position.set(x, 0.05, z);
-      scene.add(flower);
+      // Caule (haste verde)
+      const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 4);
+      const stemMaterial = new THREE.MeshToonMaterial({ color: 0x2d5016 });
+      const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+      stem.position.y = 0.1;
+      flowerGroup.add(stem);
+      
+      // Centro da flor (amarelo)
+      const centerGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+      const centerMaterial = new THREE.MeshToonMaterial({ color: 0xffd700 });
+      const center = new THREE.Mesh(centerGeometry, centerMaterial);
+      center.position.y = 0.2;
+      flowerGroup.add(center);
+      
+      // Pétalas (5 pétalas ao redor)
+      const petalMaterial = new THREE.MeshToonMaterial({ color });
+      for (let p = 0; p < 5; p++) {
+        const angle = (p / 5) * Math.PI * 2;
+        const petalGeometry = new THREE.SphereGeometry(0.06, 6, 6);
+        const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+        petal.position.set(
+          Math.cos(angle) * 0.08,
+          0.2,
+          Math.sin(angle) * 0.08
+        );
+        petal.scale.set(1, 0.5, 0.8); // Achatar para parecer pétala
+        flowerGroup.add(petal);
+      }
+      
+      flowerGroup.position.set(x, 0, z);
+      scene.add(flowerGroup);
     }
   }
   
@@ -217,53 +279,107 @@ export class RanchScene3D {
   }
   
   /**
-   * Casa estilo Pokémon Center
+   * Casa 3D melhorada (não parece 2D)
    */
-  private createPokemonHouse() {
+  private createImprovedHouse() {
     const scene = this.threeScene.getScene();
     const houseGroup = new THREE.Group();
     
-    // Corpo principal - vermelho vibrante
-    const bodyGeometry = new THREE.BoxGeometry(3, 2, 2.5);
-    const bodyMaterial = new THREE.MeshToonMaterial({ 
-      color: 0xff5252, // Vermelho Pokémon Center
-    });
+    // BASE/FUNDAÇÃO - cinza escuro
+    const foundationGeometry = new THREE.BoxGeometry(4, 0.3, 3.5);
+    const foundationMaterial = new THREE.MeshToonMaterial({ color: 0x555555 });
+    const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
+    foundation.position.y = 0.15;
+    houseGroup.add(foundation);
+    
+    // CORPO PRINCIPAL - vermelho com PROFUNDIDADE
+    const bodyGeometry = new THREE.BoxGeometry(3.5, 2.2, 3);
+    const bodyMaterial = new THREE.MeshToonMaterial({ color: 0xd64545 });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = 1;
+    body.position.y = 1.4;
     houseGroup.add(body);
     
-    // Telhado - laranja vibrante
-    const roofGeometry = new THREE.ConeGeometry(2.3, 1.5, 4);
-    const roofMaterial = new THREE.MeshToonMaterial({ 
-      color: 0xff6f00, // Laranja vibrante
-    });
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.y = 2.75;
-    roof.rotation.y = Math.PI / 4;
-    houseGroup.add(roof);
+    // TELHADO - formato mais 3D (não cone achatado)
+    const roofGroup = new THREE.Group();
     
-    // Porta - branca com detalhes
+    // Parte frontal do telhado
+    const roofFrontGeometry = new THREE.BoxGeometry(4.2, 0.15, 2);
+    const roofMaterial = new THREE.MeshToonMaterial({ color: 0x8b4513 });
+    const roofFront = new THREE.Mesh(roofFrontGeometry, roofMaterial);
+    roofFront.position.set(0, 0, 0.7);
+    roofFront.rotation.x = -Math.PI / 6;
+    roofGroup.add(roofFront);
+    
+    // Parte traseira do telhado
+    const roofBack = new THREE.Mesh(roofFrontGeometry, roofMaterial);
+    roofBack.position.set(0, 0, -0.7);
+    roofBack.rotation.x = Math.PI / 6;
+    roofGroup.add(roofBack);
+    
+    // Cumeeira (topo)
+    const ridgeGeometry = new THREE.BoxGeometry(4.3, 0.2, 0.3);
+    const ridge = new THREE.Mesh(ridgeGeometry, new THREE.MeshToonMaterial({ color: 0x6d3713 }));
+    ridge.position.y = 0.3;
+    roofGroup.add(ridge);
+    
+    roofGroup.position.y = 2.6;
+    houseGroup.add(roofGroup);
+    
+    // PORTA - com profundidade
+    const doorFrameGeometry = new THREE.BoxGeometry(0.9, 1.4, 0.15);
+    const doorFrameMaterial = new THREE.MeshToonMaterial({ color: 0x8b4513 });
+    const doorFrame = new THREE.Mesh(doorFrameGeometry, doorFrameMaterial);
+    doorFrame.position.set(0, 0.7, 1.58);
+    houseGroup.add(doorFrame);
+    
     const doorGeometry = new THREE.BoxGeometry(0.8, 1.3, 0.1);
-    const doorMaterial = new THREE.MeshToonMaterial({ 
-      color: 0xffffff, // Branco
-    });
+    const doorMaterial = new THREE.MeshToonMaterial({ color: 0xffa726 });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 0.65, 1.26);
+    door.position.set(0, 0.65, 1.63);
     houseGroup.add(door);
     
-    // Janelas - azuis
-    const windowGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.05);
-    const windowMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x64b5f6, // Azul claro
-    });
+    // Maçaneta
+    const knobGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+    const knob = new THREE.Mesh(knobGeometry, new THREE.MeshToonMaterial({ color: 0xffd700 }));
+    knob.position.set(0.3, 0.7, 1.68);
+    houseGroup.add(knob);
     
-    const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
-    window1.position.set(-0.8, 1.2, 1.27);
-    houseGroup.add(window1);
+    // JANELAS - com moldura 3D
+    const createWindow = (x: number, y: number, z: number) => {
+      // Moldura
+      const frameGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.12);
+      const frameMaterial = new THREE.MeshToonMaterial({ color: 0xffffff });
+      const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+      frame.position.set(x, y, z);
+      houseGroup.add(frame);
+      
+      // Vidro
+      const glassGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.08);
+      const glassMaterial = new THREE.MeshToonMaterial({ 
+        color: 0x81d4fa,
+        transparent: true,
+        opacity: 0.7
+      });
+      const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+      glass.position.set(x, y, z + 0.02);
+      houseGroup.add(glass);
+    };
     
-    const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
-    window2.position.set(0.8, 1.2, 1.27);
-    houseGroup.add(window2);
+    createWindow(-1, 1.3, 1.53);
+    createWindow(1, 1.3, 1.53);
+    
+    // CHAMINÉ - para dar mais volume 3D
+    const chimneyGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+    const chimneyMaterial = new THREE.MeshToonMaterial({ color: 0x8b4513 });
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+    chimney.position.set(-1.3, 3.3, -0.8);
+    houseGroup.add(chimney);
+    
+    // Topo da chaminé
+    const chimneyTopGeometry = new THREE.BoxGeometry(0.5, 0.2, 0.5);
+    const chimneyTop = new THREE.Mesh(chimneyTopGeometry, new THREE.MeshToonMaterial({ color: 0x6d3713 }));
+    chimneyTop.position.set(-1.3, 3.9, -0.8);
+    houseGroup.add(chimneyTop);
     
     houseGroup.position.set(0, 0, -7);
     scene.add(houseGroup);
@@ -324,6 +440,11 @@ export class RanchScene3D {
       this.idleAnimation();
     }
     
+    // Update grass animation (wind)
+    if (this.grass) {
+      this.grass.update(delta);
+    }
+    
     // Câmera fixa estilo Pokémon (sem rotação automática)
   }
 
@@ -348,6 +469,9 @@ export class RanchScene3D {
   public dispose() {
     // Dispose beast model
     this.beastModel?.dispose();
+    
+    // Dispose grass
+    this.grass?.dispose();
     
     // Dispose Three.js scene (limpa todos os elementos automaticamente)
     this.threeScene.dispose();
