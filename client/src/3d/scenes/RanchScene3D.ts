@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
+import { PS1Water } from '../water/PS1Water';
 
 // Obstáculos no rancho (para pathfinding)
 interface Obstacle {
@@ -21,6 +22,7 @@ export class RanchScene3D {
   private beastGroup: THREE.Group | null = null;
   private idleAnimation: (() => void) | null = null;
   private grass: PS1Grass | null = null; // Grama procedural
+  private water: PS1Water | null = null; // Água animada
   private mountains: THREE.Group | null = null; // Colinas distantes
   private clouds: THREE.Group | null = null; // Nuvens
   
@@ -59,8 +61,8 @@ export class RanchScene3D {
     // Chão plano - verde natural (menos saturado)
     this.createPokemonGround();
     
-    // Lago/bebedouro PRIMEIRO (para não ficar em cima)
-    this.createPokemonLake();
+    // Lago/bebedouro ANIMADO com ondas
+    this.createAnimatedLake();
     
     // Grama blade real (PS1Grass)
     this.createRealGrass();
@@ -395,22 +397,12 @@ export class RanchScene3D {
   }
   
   /**
-   * Lago estilo Pokémon
+   * Lago ANIMADO com ondas (usando PS1Water)
    */
-  private createPokemonLake() {
+  private createAnimatedLake() {
     const scene = this.threeScene.getScene();
     
-    // Lago circular azul vibrante
-    const lakeGeometry = new THREE.CircleGeometry(1.5, 16);
-    const lakeMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x4fc3f7, // Azul água Pokémon
-    });
-    const lake = new THREE.Mesh(lakeGeometry, lakeMaterial);
-    lake.rotation.x = -Math.PI / 2;
-    lake.position.set(1.5, 0.02, 3.5);
-    scene.add(lake);
-    
-    // Borda do lago (azul mais escuro)
+    // Borda do lago (azul mais escuro) - estática
     const borderGeometry = new THREE.CircleGeometry(1.7, 16);
     const borderMaterial = new THREE.MeshToonMaterial({ 
       color: 0x2196f3, // Azul mais escuro
@@ -419,6 +411,17 @@ export class RanchScene3D {
     border.rotation.x = -Math.PI / 2;
     border.position.set(1.5, 0.01, 3.5);
     scene.add(border);
+    
+    // Água ANIMADA com shader de ondas
+    this.water = new PS1Water({
+      size: 1.5,
+      segments: 16, // Mais segmentos para ondas suaves
+      color: 0x4fc3f7, // Azul água Pokémon vibrante
+      waveSpeed: 0.8,
+      waveHeight: 0.08, // Ondas visíveis mas sutis
+    });
+    this.water.getMesh().position.set(1.5, 0.02, 3.5);
+    scene.add(this.water.getMesh());
   }
   
   /**
@@ -752,6 +755,11 @@ export class RanchScene3D {
       this.grass.update(delta);
     }
     
+    // Update water animation (waves)
+    if (this.water) {
+      this.water.update(delta);
+    }
+    
     // Sistema de movimento da criatura
     if (this.beastGroup) {
       this.updateBeastMovement(delta);
@@ -939,6 +947,9 @@ export class RanchScene3D {
     
     // Dispose grass
     this.grass?.dispose();
+    
+    // Dispose water
+    this.water?.dispose();
     
     // Dispose mountains
     if (this.mountains) {
