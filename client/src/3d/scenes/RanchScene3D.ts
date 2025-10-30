@@ -587,7 +587,7 @@ export class RanchScene3D {
   }
   
   /**
-   * Nuvens VISÍVEIS no céu (cartoon) - CORRIGIDO
+   * Nuvens VISÍVEIS no céu (cartoon) - Posicionadas corretamente
    */
   private createVisibleClouds() {
     const scene = this.threeScene.getScene();
@@ -595,42 +595,41 @@ export class RanchScene3D {
     
     const cloudMaterial = new THREE.MeshToonMaterial({
       color: 0xffffff,
-      transparent: false, // SEM transparência para ficar bem visível
+      transparent: true,
+      opacity: 0.85, // Levemente transparente
     });
     
-    // Criar 5 nuvens GRANDES e VISÍVEIS
-    const cloudCount = 5;
-    for (let i = 0; i < cloudCount; i++) {
+    // Criar 4 nuvens ao FUNDO (não nos lados)
+    const cloudPositions = [
+      { x: -6, y: 6.5, z: -5 },  // Esquerda-trás
+      { x: 6, y: 6.5, z: -5 },   // Direita-trás
+      { x: -3, y: 7, z: -7 },    // Centro-esquerda-fundo
+      { x: 3, y: 7, z: -7 },     // Centro-direita-fundo
+    ];
+    
+    cloudPositions.forEach(pos => {
       const cloudGroup = new THREE.Group();
       
-      // 4 esferas para fazer nuvem MAIOR e fofa
-      for (let j = 0; j < 4; j++) {
+      // 3 esferas para fazer nuvem fofa
+      for (let j = 0; j < 3; j++) {
         const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(0.6 + Math.random() * 0.4, 8, 6),
+          new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 8, 6),
           cloudMaterial
         );
         sphere.position.set(
-          (j - 1.5) * 0.7,
-          Math.random() * 0.3,
-          Math.random() * 0.3
+          (j - 1) * 0.6,
+          Math.random() * 0.2,
+          Math.random() * 0.2
         );
-        sphere.scale.set(1.4, 0.8, 1.2); // Achatar e alargar
+        sphere.scale.set(1.3, 0.7, 1.1); // Achatar
         cloudGroup.add(sphere);
       }
       
-      // Posicionar nuvens DENTRO DO CAMPO DE VISÃO
-      const angle = (i / cloudCount) * Math.PI * 2 + Math.PI / 4;
-      const distance = 6 + Math.random() * 3; // MUITO PERTO
-      cloudGroup.position.set(
-        Math.cos(angle) * distance,
-        5 + Math.random() * 1.5, // Altura média (não muito alto)
-        Math.sin(angle) * distance
-      );
-      
-      cloudGroup.scale.set(1.5, 1.5, 1.5); // MAIORES
+      cloudGroup.position.set(pos.x, pos.y, pos.z);
+      cloudGroup.scale.set(1.2, 1.2, 1.2);
       
       this.clouds.add(cloudGroup);
-    }
+    });
     
     scene.add(this.clouds);
   }
