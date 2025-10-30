@@ -148,20 +148,6 @@ export class ChatUI {
         messages: [],
       },
       {
-        id: 'group',
-        name: 'Grupo',
-        channel: 'group',
-        unreadCount: 0,
-        messages: [],
-      },
-      {
-        id: 'trade',
-        name: 'Comércio',
-        channel: 'trade',
-        unreadCount: 0,
-        messages: [],
-      },
-      {
         id: 'friends',
         name: 'Amigos',
         channel: 'custom',
@@ -697,16 +683,14 @@ export class ChatUI {
     // Entrar nos canais padrão após conectar
     const setupChannels = () => {
       if (getConnectionStatus()) {
-        // Entrar em todos os canais padrão
+        // Entrar apenas no canal global
         joinChannel('global');
-        joinChannel('group');
-        joinChannel('trade');
         
         // Carregar histórico da aba ativa imediatamente (se não for whisper)
         const activeTab = this.tabs.find(t => t.id === this.activeTabId);
         if (activeTab && activeTab.channel !== 'whisper') {
           // Validar que o canal é válido antes de fazer join
-          const validChannels = ['global', 'group', 'trade'];
+          const validChannels = ['global'];
           if (validChannels.includes(activeTab.channel)) {
             joinChannel(activeTab.channel);
           }
@@ -768,7 +752,7 @@ export class ChatUI {
       // Friends é uma interface de gerenciamento, não um canal
       if (!tab.messages.length && getConnectionStatus() && tab.channel !== 'whisper' && tab.id !== 'friends') {
         // Validar que o canal é válido antes de fazer join
-        const validChannels = ['global', 'group', 'trade'];
+        const validChannels = ['global'];
         if (validChannels.includes(tab.channel)) {
           joinChannel(tab.channel);
         }
@@ -1141,14 +1125,6 @@ export class ChatUI {
       };
     }
 
-    if (command === 'p' || command === 'party' || command === 'grupo') {
-      return {
-        type: 'channel',
-        channel: 'group',
-        message: args.join(' '),
-      };
-    }
-
     // Add friend command
     if (command === 'add' || command === 'adicionar') {
       if (args.length < 1) {
@@ -1159,14 +1135,6 @@ export class ChatUI {
       // Chamar sendFriendRequest diretamente
       this.sendFriendRequest(username);
       return null; // Não enviar como mensagem
-    }
-
-    if (command === 'trade' || command === 'comercio') {
-      return {
-        type: 'channel',
-        channel: 'trade',
-        message: args.join(' '),
-      };
     }
 
     return null;
