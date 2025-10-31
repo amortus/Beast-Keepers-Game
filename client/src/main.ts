@@ -1934,6 +1934,12 @@ function startExplorationBattle(enemy: WildEnemy) {
   if (gameState.activeBeast.currentHp <= 0) {
     console.error('[Exploration Battle] Cannot start battle with 0 HP!');
     
+    // CORREÇÃO: Prevenir múltiplas chamadas
+    if (inBattle || battleUI) {
+      console.warn('[Exploration Battle] Already processing defeat, ignoring...');
+      return;
+    }
+    
     // Limpar flags ANTES de mostrar modal para evitar conflitos
     inExploration = false;
     inBattle = false;
@@ -2105,7 +2111,16 @@ function startExplorationBattle(enemy: WildEnemy) {
         gameState.activeBeast.essence = battle.player.currentEssence;
       }
 
-      // Clear battle FIRST
+      // Salvar materiais coletados PRIMEIRO (apenas UMA VEZ aqui)
+      if (explorationState && explorationState.collectedMaterials.length > 0) {
+        console.log('[Exploration] Saving materials before defeat (one time only)...');
+        await saveMaterialsFromExploration();
+        // LIMPAR para prevenir salvamento duplicado
+        explorationState.collectedMaterials = [];
+        console.log('[Exploration] Materials saved and cleared');
+      }
+
+      // Clear battle COMPLETELY
       gameState.currentBattle = undefined;
       if (battleUI) {
         battleUI.dispose(); // Cleanup 3D viewers
@@ -2114,22 +2129,15 @@ function startExplorationBattle(enemy: WildEnemy) {
       inBattle = false;
       isExplorationBattle = false;
       
-      // CORREÇÃO: Limpar flag de exploração também para evitar conflitos
+      // CORREÇÃO: Limpar flag de exploração também
       inExploration = false;
       
       // DON'T show 3D viewer yet - modal will be open
       console.log('[Main] Defeat - keeping 3D hidden until modal closes');
       
-      // Salvar materiais coletados ANTES de fechar (mesmo em derrota)
-      if (explorationState && explorationState.collectedMaterials.length > 0) {
-        console.log('[Exploration] Saving collected materials before defeat...');
-        await saveMaterialsFromExploration();
-        console.log('[Exploration] Materials saved after defeat');
-      }
-      
-      // Show message and close exploration
+      // Show message and close exploration (SEM salvar materiais novamente)
       showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota', async () => {
-        // Fechar exploração e mostrar 3D viewer APÓS modal fechar
+        // Fechar exploração PROTEGIDO (não vai salvar materiais novamente)
         await closeExploration();
         if (gameUI) {
           gameUI.show3DViewer();
@@ -2406,12 +2414,21 @@ async function saveMaterialsFromExploration(): Promise<number> {
 }
 
 async function finishExploration() {
-  if (!explorationState || !gameState || !gameState.activeBeast) return;
+  if (!explorationState || !gameState || !gameState.activeBeast) {
+    console.error('[Exploration] finishExploration called with invalid state');
+    return;
+  }
+
+  console.log('[Exploration] Finishing exploration...');
 
   const rewards = endExploration(explorationState);
 
-  // Salvar materiais usando função compartilhada
+  // Salvar materiais usando função compartilhada (apenas UMA VEZ)
   await saveMaterialsFromExploration();
+  
+  // LIMPAR materiais para prevenir salvamento duplicado
+  explorationState.collectedMaterials = [];
+  console.log('[Exploration] Materials cleared after save');
   
   // Emitir evento de exploração completa
   emitExplorationCompleted(
@@ -2432,6 +2449,8 @@ async function finishExploration() {
   // Save
   saveGame(gameState);
 
+  console.log('[Exploration] Showing completion message...');
+
   // Mostrar mensagem e fechar exploração no callback
   showMessage(
     `Exploração concluída!\n` +
@@ -2441,19 +2460,23 @@ async function finishExploration() {
     `✅ Materiais salvos no inventário!` +
     explorationInfo,
     '🗺️ Exploração Finalizada',
-    () => {
+    async () => {
       // Fechar exploração e voltar ao rancho APÓS fechar o modal
-      closeExploration();
+      console.log('[Exploration] Completion modal closed, closing exploration...');
+      await closeExploration();
+      console.log('[Exploration] Exploration closed, back to ranch');
     }
   );
 }
 
 async function closeExploration() {
-  // PROTEÇÃO: Salvar materiais coletados antes de limpar o estado
+  // PROTEÇÃO: Só salvar se ainda tiver materiais (prevenir salvamento duplicado)
   if (explorationState && explorationState.collectedMaterials.length > 0 && gameState) {
-    console.log('[Exploration] Saving materials before closing exploration...');
+    console.log('[Exploration] Saving materials before closing (if not saved yet)...');
     const savedCount = await saveMaterialsFromExploration();
     console.log(`[Exploration] Saved ${savedCount} material types before closing`);
+    // LIMPAR para prevenir salvamento duplicado
+    explorationState.collectedMaterials = [];
   }
   
   // Reset flag de coleta quando fecha exploração
