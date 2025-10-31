@@ -1912,9 +1912,18 @@ function startExplorationInZone(zone: ExplorationZone) {
 }
 
 function walkExploration() {
-  if (!explorationState || !explorationUI) return;
+  if (!explorationState || !explorationUI || !gameState) return;
 
   const encounter = advanceExploration(explorationState, 100);
+  
+  // NOVO: Finalizar automaticamente se atingiu distância máxima (5000m)
+  const MAX_EXPLORATION_DISTANCE = 5000;
+  if (explorationState.distance >= MAX_EXPLORATION_DISTANCE) {
+    console.log(`[Exploration] Max distance reached (${explorationState.distance}m), auto-finishing...`);
+    finishExploration();
+    return;
+  }
+  
   explorationUI.updateState(explorationState);
 }
 
@@ -2192,6 +2201,9 @@ function startExplorationBattle(enemy: WildEnemy) {
 // Flag para prevenir spam no botão de coletar
 let isCollectingTreasure = false;
 
+// Flag para prevenir múltiplas chamadas de closeExploration
+let isClosingExploration = false;
+
 async function collectTreasureInExploration(treasure: Item[]) {
   // Proteção contra spam
   if (isCollectingTreasure || !explorationState || !explorationUI || !gameState) {
@@ -2385,7 +2397,16 @@ async function saveMaterialsFromExploration(): Promise<number> {
   if (!explorationState || !gameState) return 0;
   
   const materials = explorationState.collectedMaterials;
+  
+  // PROTEÇÃO: Se já salvou (lista vazia), não salvar novamente
+  if (materials.length === 0) {
+    console.log('[Exploration] No materials to save (already saved or empty)');
+    return 0;
+  }
+  
   let savedCount = 0;
+  
+  console.log(`[Exploration] Saving ${materials.length} material types...`);
   
   // Adicionar materiais ao inventário (local + servidor) e emitir eventos
   for (const material of materials) {
@@ -2409,6 +2430,10 @@ async function saveMaterialsFromExploration(): Promise<number> {
       console.error('[Exploration] Failed to save material to server:', error);
     }
   }
+  
+  // CRÍTICO: Limpar materiais IMEDIATAMENTE após salvar para prevenir loop
+  explorationState.collectedMaterials = [];
+  console.log('[Exploration] Materials cleared after saving to prevent duplicates');
   
   return savedCount;
 }
@@ -2470,36 +2495,53 @@ async function finishExploration() {
 }
 
 async function closeExploration() {
-  // PROTEÇÃO: Só salvar se ainda tiver materiais (prevenir salvamento duplicado)
-  if (explorationState && explorationState.collectedMaterials.length > 0 && gameState) {
-    console.log('[Exploration] Saving materials before closing (if not saved yet)...');
-    const savedCount = await saveMaterialsFromExploration();
-    console.log(`[Exploration] Saved ${savedCount} material types before closing`);
-    // LIMPAR para prevenir salvamento duplicado
-    explorationState.collectedMaterials = [];
+  // PROTEÇÃO CRÍTICA: Prevenir múltiplas chamadas simultâneas
+  if (isClosingExploration) {
+    console.warn('[Exploration] Already closing exploration, ignoring duplicate call');
+    return;
   }
   
-  // Reset flag de coleta quando fecha exploração
-  isCollectingTreasure = false;
+  isClosingExploration = true;
+  console.log('[Exploration] Starting closeExploration...');
   
-  if (explorationUI) {
-    explorationUI.close();
-  }
-  explorationUI = null;
-  explorationState = null;
-  inExploration = false;
-  isExplorationBattle = false;
-  
-  // Música removida
+  try {
+    // PROTEÇÃO: Só salvar se ainda tiver materiais (prevenir salvamento duplicado)
+    if (explorationState && explorationState.collectedMaterials.length > 0 && gameState) {
+      console.log('[Exploration] Saving materials before closing...');
+      const savedCount = await saveMaterialsFromExploration();
+      console.log(`[Exploration] Saved ${savedCount} material types`);
+      // saveMaterialsFromExploration() já limpa os materiais internamente
+    }
+    
+    // Reset flag de coleta quando fecha exploração
+    isCollectingTreasure = false;
+    
+    if (explorationUI) {
+      explorationUI.close();
+    }
+    explorationUI = null;
+    explorationState = null;
+    inExploration = false;
+    isExplorationBattle = false;
+    inBattle = false; // GARANTIR que inBattle também seja limpo
+    
+    // Música removida
 
-  // Show 3D viewer when returning to ranch (but only if no modal is open)
-  if (gameUI && (!modalUI || !modalUI.isShowing())) {
-    gameUI.show3DViewer();
-  }
+    // Show 3D viewer when returning to ranch
+    if (gameUI) {
+      gameUI.show3DViewer();
+      console.log('[Exploration] 3D viewer shown');
+    }
 
-  // Update main UI
-  if (gameUI && gameState) {
-    gameUI.updateGameState(gameState);
+    // Update main UI
+    if (gameUI && gameState) {
+      gameUI.updateGameState(gameState);
+    }
+    
+    console.log('[Exploration] closeExploration complete');
+  } finally {
+    // SEMPRE resetar a flag, mesmo se houver erro
+    isClosingExploration = false;
   }
 }
 

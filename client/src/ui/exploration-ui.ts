@@ -245,12 +245,14 @@ export class ExplorationUI {
     const barX = (this.canvas.width - barWidth) / 2;
     const barY = 75;
 
-    // Simula progresso até o próximo encounter (máx 1000m)
-    const progress = (this.state?.distance || 0) % 1000;
+    // NOVO: Mostrar progresso total (0-5000m)
+    const MAX_DISTANCE = 5000;
+    const currentDistance = this.state?.distance || 0;
+    const progress = Math.min(currentDistance, MAX_DISTANCE);
 
-    drawBar(this.ctx, barX, barY, barWidth, barHeight, progress, 1000, {
+    drawBar(this.ctx, barX, barY, barWidth, barHeight, progress, MAX_DISTANCE, {
       fillColor: COLORS.primary.green,
-      label: 'Progresso até próximo encontro',
+      label: `Progresso: ${currentDistance}m / ${MAX_DISTANCE}m`,
     });
   }
 
