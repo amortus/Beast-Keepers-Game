@@ -1480,16 +1480,17 @@ function openInventory() {
   inventoryUI = new InventoryUI(canvas);
 
   // Setup callbacks
-  inventoryUI.onUseItem = (item: Item) => {
+  inventoryUI.onUseItem = async (item: Item) => {
     if (!gameState || !gameState.activeBeast) return;
 
     // Use the item
     const result = useItem(gameState, item, gameState.activeBeast);
 
     if (result.success) {
-      showMessage(`✅ ${result.message}`);
+      // NOVO: Não mostrar popup, apenas log
+      console.log('[Inventory] ✅', result.message);
 
-      // Show detailed changes
+      // Log de mudanças
       if (result.changes) {
         const changes = [];
         if (result.changes.fatigue) changes.push(`Fadiga ${result.changes.fatigue > 0 ? '+' : ''}${result.changes.fatigue}`);
@@ -1499,8 +1500,16 @@ function openInventory() {
         if (result.changes.mood) changes.push(`Humor: ${result.changes.mood}`);
 
         if (changes.length > 0) {
-          showMessage(`📊 Mudanças: ${changes.join(', ')}`);
+          console.log('[Inventory] 📊 Mudanças:', changes.join(', '));
         }
+      }
+
+      // NOVO: Remover item do servidor também
+      try {
+        await gameApi.removeInventoryItem(item.id, 1);
+        console.log(`[Inventory] Removed 1x ${item.id} from server`);
+      } catch (error) {
+        console.error('[Inventory] Failed to remove item from server:', error);
       }
 
       // Save game
@@ -1516,7 +1525,9 @@ function openInventory() {
         gameUI.updateGameState(gameState);
       }
     } else {
-      showMessage(result.message, '⚠️ Item');
+      // Apenas erros mostram popup
+      console.error('[Inventory] ❌', result.message);
+      showMessage(`❌ ${result.message}`, '⚠️ Erro');
     }
   };
 
@@ -1610,7 +1621,8 @@ function openCraft() {
       // Emitir evento de craft para quests/achievements
       emitItemCrafted(gameState, recipe.id, result.result.id);
 
-      showMessage(result.message + '\n✅ Item salvo no inventário!');
+      // NOVO: Não mostrar popup, apenas log
+      console.log('[Craft] ✅', result.message, '- Item salvo no inventário!');
 
       // Save game
       saveGame(gameState);

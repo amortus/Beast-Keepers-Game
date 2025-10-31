@@ -252,7 +252,8 @@ export class InventoryUI {
     }
 
     const item = this.selectedItem;
-    const canUse = gameState.activeBeast !== null && item.category !== 'relic';
+    // NOVO: Todos os itens podem ser usados (removido verificação de relic)
+    const canUse = gameState.activeBeast !== null && item.category !== 'crafting';
 
     // Ícone grande
     const category = ITEM_CATEGORIES.find(c => c.id === item.category);
@@ -293,9 +294,9 @@ export class InventoryUI {
 
     this.drawWrappedText(item.description, x + 20, y + 285, width - 40, 20, '14px monospace', COLORS.ui.textDim);
 
-    // Mensagem sobre uso de relíquias
-    if (item.category === 'relic') {
-      drawText(this.ctx, '💡 Use no Templo dos Ecos', x + width / 2, y + height - 100, {
+    // Mensagem sobre materiais de craft
+    if (item.category === 'crafting') {
+      drawText(this.ctx, '⚙️ Ingrediente de Craft', x + width / 2, y + height - 100, {
         align: 'center',
         font: '14px monospace',
         color: COLORS.ui.info,
@@ -322,18 +323,9 @@ export class InventoryUI {
         width: useBtnWidth,
         height: useBtnHeight,
         action: () => {
-          if (this.selectedItem && this.onShowConfirmation) {
-            const beastName = gameState.activeBeast?.name || 'Besta';
-            this.onShowConfirmation(
-              `Usar ${this.selectedItem.name}?`,
-              `Deseja usar ${this.selectedItem.name} em ${beastName}?\n\n${this.selectedItem.description}`,
-              () => {
-                if (this.onUseItem) {
-                  this.onUseItem(this.selectedItem!);
-                }
-              }
-            );
-          } else if (this.onUseItem && this.selectedItem) {
+          // NOVO: Usar direto sem confirmação
+          if (this.onUseItem && this.selectedItem) {
+            console.log('[Inventory UI] Using item:', this.selectedItem.name);
             this.onUseItem(this.selectedItem);
           }
         },

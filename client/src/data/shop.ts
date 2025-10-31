@@ -494,10 +494,9 @@ export function getAffordableItems(coronas: number): Item[] {
  */
 export const ITEM_CATEGORIES = [
   { id: 'food', name: 'Alimentos', icon: '🍖' },
-  { id: 'herb', name: 'Ervas', icon: '🌿' },
-  { id: 'crystal', name: 'Cristais', icon: '💎' },
-  { id: 'training', name: 'Treino', icon: '⚔️' },
-  { id: 'relic', name: 'Relíquias', icon: '✨' },
+  { id: 'herb', name: 'Poções', icon: '🧪' },
+  { id: 'crystal', name: 'Elixirs', icon: '✨' },
+  { id: 'crafting', name: 'Materiais', icon: '⚙️' },
 ] as const;
 
 /**
