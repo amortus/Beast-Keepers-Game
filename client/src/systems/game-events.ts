@@ -6,6 +6,7 @@
 import type { GameState } from '../types';
 import { updateQuests } from './quests';
 import { updateAchievements } from './achievements';
+import { saveProgressToServer } from './game-state';
 
 // ===== TIPOS DE EVENTOS =====
 
@@ -41,6 +42,11 @@ export function emitGameEvent(event: GameEvent, gameState: GameState): void {
     
     // Atualizar achievements
     updateAchievements(event, gameState);
+    
+    // Salvar progresso no servidor (async, não bloqueia)
+    saveProgressToServer(gameState).catch(error => {
+      console.error('[GameEvent] Failed to auto-save progress:', error);
+    });
     
   } catch (error) {
     console.error('[GameEvent] Error processing event:', error);

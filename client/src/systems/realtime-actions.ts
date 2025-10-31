@@ -252,44 +252,6 @@ function applyActionRewards(
       return { success: true, message: `❤️ Treino completo! +${2}-${4} Vitalidade!` };
     
     // ===== TRABALHO =====
-    // ===== TREINO =====
-    case 'train_might':
-      beast.attributes.might += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'might');
-      return { success: true, message: `💪 Treino completo! +${2}-${4} Força!` };
-      
-    case 'train_wit':
-      beast.attributes.wit += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'wit');
-      return { success: true, message: `🧠 Treino completo! +${2}-${4} Astúcia!` };
-      
-    case 'train_focus':
-      beast.attributes.focus += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'focus');
-      return { success: true, message: `🎯 Treino completo! +${2}-${4} Foco!` };
-      
-    case 'train_agility':
-      beast.attributes.agility += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'agility');
-      return { success: true, message: `⚡ Treino completo! +${2}-${4} Agilidade!` };
-      
-    case 'train_ward':
-      beast.attributes.ward += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'ward');
-      return { success: true, message: `🛡️ Treino completo! +${2}-${4} Resistência!` };
-      
-    case 'train_vitality':
-      beast.attributes.vitality += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'vitality');
-      return { success: true, message: `❤️ Treino completo! +${2}-${4} Vitalidade!` };
-    
-    // ===== TRABALHO =====
     case 'work_warehouse':
       {
         const workBonusCount = beast.workBonusCount || 0;

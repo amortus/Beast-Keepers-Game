@@ -108,5 +108,28 @@ export const gameApi = {
   async removeInventoryItem(itemId: string, quantity: number): Promise<ApiResponse<any>> {
     return apiClient.post('/inventory/remove', { itemId, quantity });
   },
+
+  // ===== PROGRESS API (QUESTS/ACHIEVEMENTS) =====
+
+  /**
+   * Get player's progress (quests + achievements)
+   */
+  async getProgress(): Promise<ApiResponse<{ quests: any[]; achievements: any[] }>> {
+    return apiClient.get('/progress');
+  },
+
+  /**
+   * Save quest progress
+   */
+  async saveQuestProgress(questId: string, progress: any, isCompleted: boolean, isActive: boolean): Promise<ApiResponse<any>> {
+    return apiClient.post('/progress/quest', { questId, progress, isCompleted, isActive });
+  },
+
+  /**
+   * Save achievement progress
+   */
+  async saveAchievementProgress(achievementId: string, progress: number, unlocked: boolean): Promise<ApiResponse<any>> {
+    return apiClient.post('/progress/achievement', { achievementId, progress, unlocked });
+  },
 };
 

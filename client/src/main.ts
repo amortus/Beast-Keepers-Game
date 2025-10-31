@@ -715,6 +715,68 @@ async function loadGameFromServer() {
         }
       }
       
+      // Carregar inventário do servidor
+      try {
+        const inventoryResponse = await gameApi.getInventory();
+        if (inventoryResponse.success && inventoryResponse.data) {
+          gameState.inventory = inventoryResponse.data.map((item: any) => {
+            const shopItem = getItemById(item.item_id);
+            return {
+              id: item.item_id,
+              name: shopItem?.name || item.item_id,
+              category: shopItem?.category || 'crafting',
+              effect: shopItem?.effect || '',
+              price: shopItem?.price || 0,
+              description: shopItem?.description || '',
+              quantity: item.quantity,
+            };
+          });
+          console.log(`[Game] Loaded ${gameState.inventory.length} items from server inventory`);
+        }
+      } catch (error) {
+        console.warn('[Game] Failed to load inventory from server, using empty:', error);
+        gameState.inventory = [];
+      }
+      
+      // Carregar progresso de quests/achievements do servidor
+      try {
+        const progressResponse = await gameApi.getProgress();
+        if (progressResponse.success && progressResponse.data) {
+          // Merge server progress with client quests/achievements definitions
+          if (progressResponse.data.quests) {
+            for (const serverQuest of progressResponse.data.quests) {
+              const quest = gameState.quests.find(q => q.id === serverQuest.quest_id);
+              if (quest) {
+                quest.goal = serverQuest.progress;
+                quest.isCompleted = serverQuest.is_completed;
+                quest.isActive = serverQuest.is_active;
+                quest.progress = quest.goal.current && typeof quest.goal.target === 'number'
+                  ? Math.min((quest.goal.current / quest.goal.target) * 100, 100)
+                  : 0;
+              }
+            }
+          }
+          
+          if (progressResponse.data.achievements) {
+            for (const serverAchievement of progressResponse.data.achievements) {
+              const achievement = gameState.achievements.find(a => a.id === serverAchievement.achievement_id);
+              if (achievement) {
+                achievement.requirement.current = serverAchievement.progress;
+                achievement.progress = typeof achievement.requirement.target === 'number'
+                  ? Math.min((serverAchievement.progress / achievement.requirement.target) * 100, 100)
+                  : 0;
+                achievement.isUnlocked = !!serverAchievement.unlocked_at;
+                achievement.unlockedAt = serverAchievement.unlocked_at ? new Date(serverAchievement.unlocked_at).getTime() : undefined;
+              }
+            }
+          }
+          
+          console.log(`[Game] Loaded progress: ${progressResponse.data.quests.length} quests, ${progressResponse.data.achievements.length} achievements`);
+        }
+      } catch (error) {
+        console.warn('[Game] Failed to load progress from server, using defaults:', error);
+      }
+      
       console.log('[Game] Loaded from server:', gameState.guardian.name);
       
       await setupGame();

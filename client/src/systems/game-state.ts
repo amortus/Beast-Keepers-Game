@@ -176,6 +176,54 @@ export function removeMoney(state: GameState, amount: number): boolean {
 }
 
 /**
+ * Salva progresso de quests e achievements no servidor
+ * Chamado automaticamente após eventos que mudam progresso
+ */
+export async function saveProgressToServer(state: GameState): Promise<void> {
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    
+    const { gameApi } = await import('../api/gameApi');
+    
+    // Salvar quests que têm progresso ou foram completadas
+    for (const quest of state.quests) {
+      if (quest.progress > 0 || quest.isCompleted) {
+        try {
+          await gameApi.saveQuestProgress(
+            quest.id,
+            quest.goal,
+            quest.isCompleted,
+            quest.isActive
+          );
+        } catch (error) {
+          console.error(`[Progress] Failed to save quest ${quest.id}:`, error);
+        }
+      }
+    }
+    
+    // Salvar achievements que têm progresso ou foram desbloqueadas
+    for (const achievement of state.achievements) {
+      if (achievement.progress > 0 || achievement.isUnlocked) {
+        try {
+          await gameApi.saveAchievementProgress(
+            achievement.id,
+            achievement.requirement.current,
+            achievement.isUnlocked
+          );
+        } catch (error) {
+          console.error(`[Progress] Failed to save achievement ${achievement.id}:`, error);
+        }
+      }
+    }
+    
+    console.log('[Progress] Saved to server successfully');
+  } catch (error) {
+    console.error('[Progress] Failed to save progress to server:', error);
+  }
+}
+
+/**
  * Avança uma semana no calendário
  */
 export function advanceGameWeek(state: GameState) {
