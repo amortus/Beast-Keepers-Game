@@ -3,6 +3,9 @@
  * Missões que dão recompensas
  */
 
+import type { GameEvent } from './game-events';
+import type { GameState } from '../types';
+
 export interface Quest {
   id: string;
   name: string;
@@ -257,6 +260,133 @@ export function unlockQuests(quests: Quest[]): void {
   if (firstTraining) {
     const masterQuest = quests.find(q => q.id === 'master_trainer');
     if (masterQuest) masterQuest.isActive = true;
+  }
+}
+
+// ===== NOVO SISTEMA DE EVENTOS =====
+
+/**
+ * Atualiza quests baseado em eventos do jogo
+ */
+export function updateQuests(event: GameEvent, gameState: GameState): void {
+  if (!gameState.quests) return;
+  
+  for (const quest of gameState.quests) {
+    // Ignorar quests completadas ou inativas
+    if (quest.isCompleted || !quest.isActive) continue;
+    
+    let progressIncrement = 0;
+    
+    // Match event type com quest goal type
+    switch (event.type) {
+      case 'battle_won':
+        if (quest.goal.type === 'win_battles') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'beast_trained':
+        if (quest.goal.type === 'train') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'beast_rested':
+        if (quest.goal.type === 'rest') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'item_collected':
+        if (quest.goal.type === 'collect_item') {
+          // Verificar se é o item específico da quest
+          if (quest.goal.target === event.itemId) {
+            progressIncrement = event.quantity;
+          }
+        }
+        break;
+        
+      case 'npc_talked':
+        if (quest.goal.type === 'talk_to_npc') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'money_spent':
+        if (quest.goal.type === 'spend_money') {
+          progressIncrement = event.amount;
+        }
+        break;
+        
+      case 'level_up':
+        if (quest.goal.type === 'reach_level') {
+          if (typeof quest.goal.target === 'number' && event.newLevel >= quest.goal.target) {
+            quest.goal.current = event.newLevel;
+            progressIncrement = 0; // Já setamos current
+          }
+        }
+        break;
+    }
+    
+    // Incrementar progresso
+    if (progressIncrement > 0) {
+      quest.goal.current += progressIncrement;
+      quest.progress = Math.min((quest.goal.current / (quest.goal.target as number)) * 100, 100);
+      
+      console.log(`[Quest] ${quest.name}: ${quest.goal.current}/${quest.goal.target}`);
+    }
+    
+    // Verificar se completou
+    if (typeof quest.goal.target === 'number' && quest.goal.current >= quest.goal.target) {
+      completeQuest(quest, gameState);
+    }
+  }
+  
+  // Desbloquear quests encadeadas
+  unlockQuests(gameState.quests);
+}
+
+/**
+ * Completa uma quest e aplica recompensas
+ */
+function completeQuest(quest: Quest, gameState: GameState): void {
+  if (quest.isCompleted) return;
+  
+  quest.isCompleted = true;
+  quest.progress = 100;
+  
+  console.log(`[Quest] ✅ COMPLETED: ${quest.name}`);
+  
+  // Aplicar recompensas
+  if (quest.rewards.coronas) {
+    gameState.coronas += quest.rewards.coronas;
+    console.log(`[Quest] Reward: +${quest.rewards.coronas} coronas`);
+  }
+  
+  if (quest.rewards.experience && gameState.activeBeast) {
+    gameState.activeBeast.experience = (gameState.activeBeast.experience || 0) + quest.rewards.experience;
+    console.log(`[Quest] Reward: +${quest.rewards.experience} XP`);
+  }
+  
+  if (quest.rewards.items) {
+    for (const itemReward of quest.rewards.items) {
+      const existing = gameState.inventory.find(i => i.id === itemReward.itemId);
+      if (existing) {
+        existing.quantity = (existing.quantity || 0) + itemReward.quantity;
+      } else {
+        // Criar item no inventário
+        gameState.inventory.push({
+          id: itemReward.itemId,
+          name: itemReward.itemId,
+          category: 'special',
+          effect: 'Quest reward',
+          price: 0,
+          description: 'Recompensa de quest',
+          quantity: itemReward.quantity,
+        });
+      }
+      console.log(`[Quest] Reward: +${itemReward.quantity}x ${itemReward.itemId}`);
+    }
   }
 }
 

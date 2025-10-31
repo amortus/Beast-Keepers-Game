@@ -3,6 +3,9 @@
  * Badges e títulos especiais
  */
 
+import type { GameEvent } from './game-events';
+import type { GameState } from '../types';
+
 export interface Achievement {
   id: string;
   name: string;
@@ -804,5 +807,133 @@ export function trackAchievements(
   }
 
   return unlocked;
+}
+
+// ===== NOVO SISTEMA DE EVENTOS =====
+
+/**
+ * Atualiza achievements baseado em eventos do jogo
+ */
+export function updateAchievements(event: GameEvent, gameState: GameState): void {
+  if (!gameState.achievements) return;
+  
+  for (const achievement of gameState.achievements) {
+    // Ignorar achievements já desbloqueadas
+    if (achievement.isUnlocked) continue;
+    
+    let progressIncrement = 0;
+    
+    // Match event type com achievement requirement type
+    switch (event.type) {
+      case 'battle_won':
+        if (achievement.requirement.type === 'win_battles') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'beast_trained':
+        if (achievement.requirement.type === 'train_count') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'item_crafted':
+        if (achievement.requirement.type === 'craft_items') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'item_collected':
+        if (achievement.requirement.type === 'collect_items') {
+          progressIncrement = event.quantity;
+        }
+        break;
+        
+      case 'money_spent':
+        if (achievement.requirement.type === 'spend_money') {
+          progressIncrement = event.amount;
+        }
+        break;
+        
+      case 'npc_talked':
+        if (achievement.requirement.type === 'talk_npcs') {
+          progressIncrement = 1;
+        }
+        break;
+        
+      case 'beast_aged':
+        if (achievement.requirement.type === 'beast_age') {
+          achievement.requirement.current = event.ageInDays;
+          progressIncrement = 0; // Já setamos current
+        }
+        break;
+        
+      case 'win_streak':
+        if (achievement.requirement.type === 'win_streak') {
+          achievement.requirement.current = event.currentStreak;
+          progressIncrement = 0; // Já setamos current
+        }
+        break;
+    }
+    
+    // Incrementar progresso
+    if (progressIncrement > 0) {
+      achievement.requirement.current += progressIncrement;
+    }
+    
+    // Calcular progresso percentual
+    if (typeof achievement.requirement.target === 'number') {
+      achievement.progress = Math.min((achievement.requirement.current / achievement.requirement.target) * 100, 100);
+    }
+    
+    // Verificar se desbloqueou
+    if (typeof achievement.requirement.target === 'number' && achievement.requirement.current >= achievement.requirement.target) {
+      unlockAchievementNew(achievement, gameState);
+    }
+  }
+}
+
+/**
+ * Desbloqueia uma achievement e aplica recompensas
+ */
+function unlockAchievementNew(achievement: Achievement, gameState: GameState): void {
+  if (achievement.isUnlocked) return;
+  
+  achievement.isUnlocked = true;
+  achievement.unlockedAt = Date.now();
+  achievement.progress = 100;
+  
+  console.log(`[Achievement] 🏆 UNLOCKED: ${achievement.name} ${achievement.reward.badge}`);
+  
+  // Aplicar recompensas
+  if (achievement.reward.coronas) {
+    gameState.coronas += achievement.reward.coronas;
+    console.log(`[Achievement] Reward: +${achievement.reward.coronas} coronas`);
+  }
+  
+  if (achievement.reward.title && gameState.guardian) {
+    gameState.guardian.title = achievement.reward.title;
+    console.log(`[Achievement] Title unlocked: ${achievement.reward.title}`);
+  }
+  
+  if (achievement.reward.items) {
+    for (const itemReward of achievement.reward.items) {
+      const existing = gameState.inventory.find(i => i.id === itemReward.itemId);
+      if (existing) {
+        existing.quantity = (existing.quantity || 0) + itemReward.quantity;
+      } else {
+        gameState.inventory.push({
+          id: itemReward.itemId,
+          name: itemReward.itemId,
+          category: 'special',
+          effect: 'Achievement reward',
+          price: 0,
+          description: 'Recompensa de conquista',
+          quantity: itemReward.quantity,
+        });
+      }
+      console.log(`[Achievement] Reward: +${itemReward.quantity}x ${itemReward.itemId}`);
+    }
+  }
 }
 

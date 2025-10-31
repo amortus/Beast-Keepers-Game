@@ -56,6 +56,16 @@ import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
 import { TECHNIQUES, getStartingTechniques } from './data/techniques';
+import { 
+  emitGameEvent, 
+  emitItemCrafted, 
+  emitItemCollected, 
+  emitExplorationCompleted,
+  emitTrained,
+  emitRested,
+  emitWorked,
+  emitBattleWon
+} from './systems/game-events';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -1441,13 +1451,30 @@ function openCraft() {
   craftUI = new CraftUI(canvas);
 
   // Setup callbacks
-  craftUI.onCraftItem = (recipe) => {
+  craftUI.onCraftItem = async (recipe) => {
     if (!gameState) return;
 
     const result = executeCraft(recipe, gameState.inventory);
 
     if (result.success && result.result) {
-      // Add result to inventory
+      // Salvar no servidor: remover ingredientes e adicionar resultado
+      try {
+        // Remover ingredientes consumidos do servidor
+        for (const ingredient of recipe.ingredients) {
+          await gameApi.removeInventoryItem(ingredient.itemId, ingredient.quantity);
+          console.log(`[Craft] Removed ${ingredient.quantity}x ${ingredient.itemId} from server`);
+        }
+        
+        // Adicionar item craftado ao servidor
+        await gameApi.addInventoryItem(result.result.id, result.result.quantity || 1);
+        console.log(`[Craft] Added ${result.result.quantity}x ${result.result.id} to server`);
+        
+      } catch (error) {
+        console.error('[Craft] Failed to sync with server:', error);
+        showMessage('⚠️ Erro ao salvar craft no servidor, mas item foi criado localmente.', '⚠️ Aviso');
+      }
+      
+      // Add result to inventory (local)
       const existingItem = gameState.inventory.find(i => i.id === result.result!.id);
       if (existingItem && existingItem.quantity) {
         existingItem.quantity += result.result.quantity || 1;
@@ -1458,7 +1485,10 @@ function openCraft() {
         }
       }
 
-      showMessage(result.message);
+      // Emitir evento de craft para quests/achievements
+      emitItemCrafted(gameState, recipe.id, result.result.id);
+
+      showMessage(result.message + '\n✅ Item salvo no inventário!');
 
       // Save game
       saveGame(gameState);
@@ -1473,7 +1503,7 @@ function openCraft() {
         gameUI.updateGameState(gameState);
       }
     } else {
-      showMessage(result.message, '⚠️ Item');
+      showMessage(result.message, '⚠️ Craft');
     }
   };
 
@@ -1935,10 +1965,23 @@ function startExplorationBattle(enemy: WildEnemy) {
   // Música removida
 }
 
-function collectTreasureInExploration(treasure: Item[]) {
-  if (!explorationState || !explorationUI) return;
+async function collectTreasureInExploration(treasure: Item[]) {
+  if (!explorationState || !explorationUI || !gameState) return;
   
   collectMaterials(explorationState, treasure);
+  
+  // Salvar tesouros no servidor e emitir eventos
+  for (const item of treasure) {
+    try {
+      await gameApi.addInventoryItem(item.id, item.quantity || 1);
+      console.log(`[Exploration] Saved treasure ${item.quantity}x ${item.id} to server`);
+      
+      // Emitir evento de item coletado
+      emitItemCollected(gameState, item.id, item.quantity || 1, 'treasure');
+    } catch (error) {
+      console.error('[Exploration] Failed to save treasure to server:', error);
+    }
+  }
   
   // Limpar o encontro atual para continuar explorando
   explorationState.currentEncounter = -1;
@@ -2095,24 +2138,45 @@ function continueExploration() {
   explorationUI.updateState(explorationState);
 }
 
-function finishExploration() {
+async function finishExploration() {
   if (!explorationState || !gameState || !gameState.activeBeast) return;
 
   const rewards = endExploration(explorationState);
 
-  // Adicionar materiais ao inventário
+  // Adicionar materiais ao inventário (local + servidor) e emitir eventos
   for (const material of rewards.materials) {
+    // Adicionar localmente
     const existing = gameState.inventory.find(i => i.id === material.id);
     if (existing) {
       existing.quantity = (existing.quantity || 0) + (material.quantity || 0);
     } else {
       gameState.inventory.push({ ...material });
     }
+    
+    // Salvar no servidor
+    try {
+      await gameApi.addInventoryItem(material.id, material.quantity || 1);
+      console.log(`[Exploration] Saved ${material.quantity}x ${material.id} to server inventory`);
+      
+      // Emitir evento de item coletado
+      emitItemCollected(gameState, material.id, material.quantity || 1, 'exploration');
+    } catch (error) {
+      console.error('[Exploration] Failed to save material to server:', error);
+    }
   }
+  
+  // Emitir evento de exploração completa
+  emitExplorationCompleted(
+    gameState, 
+    explorationState.zone, 
+    rewards.totalDistance, 
+    rewards.enemiesDefeated
+  );
   
   // Mostrar resumo
   const beast = gameState.activeBeast;
   const materialCount = rewards.materials.length;
+  const totalItems = rewards.materials.reduce((sum, m) => sum + (m.quantity || 0), 0);
   const explorationInfo = beast.explorationCount >= 10 
     ? `\n⚠️ Limite de explorações atingido (${beast.explorationCount}/10)! Aguarde 2h para resetar.`
     : `\nExplorações: ${beast.explorationCount}/10`;
@@ -2121,7 +2185,8 @@ function finishExploration() {
     `Exploração concluída!\n` +
     `📍 Distância: ${rewards.totalDistance}m\n` +
     `⚔️ Inimigos: ${rewards.enemiesDefeated}\n` +
-    `💎 Materiais: ${materialCount} tipos coletados` +
+    `💎 Materiais: ${totalItems} itens (${materialCount} tipos)\n` +
+    `✅ Materiais salvos no inventário!` +
     explorationInfo,
     '🗺️ Exploração Finalizada'
   );

@@ -4,6 +4,7 @@
  */
 
 import type { Beast, BeastAction, GameState } from '../types';
+import { emitTrained, emitRested, emitWorked } from './game-events';
 
 // ===== DURAÇÕES DAS AÇÕES =====
 
@@ -217,31 +218,75 @@ function applyActionRewards(
     case 'train_might':
       beast.attributes.might += Math.floor(Math.random() * 3) + 2;
       beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'might');
       return { success: true, message: `💪 Treino completo! +${2}-${4} Força!` };
       
     case 'train_wit':
       beast.attributes.wit += Math.floor(Math.random() * 3) + 2;
       beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'wit');
       return { success: true, message: `🧠 Treino completo! +${2}-${4} Astúcia!` };
       
     case 'train_focus':
       beast.attributes.focus += Math.floor(Math.random() * 3) + 2;
       beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'focus');
       return { success: true, message: `🎯 Treino completo! +${2}-${4} Foco!` };
       
     case 'train_agility':
       beast.attributes.agility += Math.floor(Math.random() * 3) + 2;
       beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'agility');
       return { success: true, message: `⚡ Treino completo! +${2}-${4} Agilidade!` };
       
     case 'train_ward':
       beast.attributes.ward += Math.floor(Math.random() * 3) + 2;
       beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'ward');
       return { success: true, message: `🛡️ Treino completo! +${2}-${4} Resistência!` };
       
     case 'train_vitality':
       beast.attributes.vitality += Math.floor(Math.random() * 3) + 2;
       beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'vitality');
+      return { success: true, message: `❤️ Treino completo! +${2}-${4} Vitalidade!` };
+    
+    // ===== TRABALHO =====
+    // ===== TREINO =====
+    case 'train_might':
+      beast.attributes.might += Math.floor(Math.random() * 3) + 2;
+      beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'might');
+      return { success: true, message: `💪 Treino completo! +${2}-${4} Força!` };
+      
+    case 'train_wit':
+      beast.attributes.wit += Math.floor(Math.random() * 3) + 2;
+      beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'wit');
+      return { success: true, message: `🧠 Treino completo! +${2}-${4} Astúcia!` };
+      
+    case 'train_focus':
+      beast.attributes.focus += Math.floor(Math.random() * 3) + 2;
+      beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'focus');
+      return { success: true, message: `🎯 Treino completo! +${2}-${4} Foco!` };
+      
+    case 'train_agility':
+      beast.attributes.agility += Math.floor(Math.random() * 3) + 2;
+      beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'agility');
+      return { success: true, message: `⚡ Treino completo! +${2}-${4} Agilidade!` };
+      
+    case 'train_ward':
+      beast.attributes.ward += Math.floor(Math.random() * 3) + 2;
+      beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'ward');
+      return { success: true, message: `🛡️ Treino completo! +${2}-${4} Resistência!` };
+      
+    case 'train_vitality':
+      beast.attributes.vitality += Math.floor(Math.random() * 3) + 2;
+      beast.secondaryStats.fatigue += 15;
+      emitTrained(gameState, 'vitality');
       return { success: true, message: `❤️ Treino completo! +${2}-${4} Vitalidade!` };
     
     // ===== TRABALHO =====
@@ -265,6 +310,7 @@ function applyActionRewards(
         
         beast.secondaryStats.fatigue += 30;
         gameState.economy.coronas += 400;
+        emitWorked(gameState, 'warehouse', 400);
         
         return {
           success: true,
@@ -292,6 +338,7 @@ function applyActionRewards(
         
         beast.secondaryStats.fatigue += 30;
         gameState.economy.coronas += 350;
+        emitWorked(gameState, 'farm', 350);
         
         return {
           success: true,
@@ -320,6 +367,7 @@ function applyActionRewards(
         beast.secondaryStats.fatigue += 30;
         beast.secondaryStats.stress += 20;
         gameState.economy.coronas += 500;
+        emitWorked(gameState, 'guard', 500);
         
         return {
           success: true,
@@ -348,6 +396,7 @@ function applyActionRewards(
         beast.secondaryStats.fatigue += 10;
         beast.secondaryStats.stress += 12;
         gameState.economy.coronas += 350;
+        emitWorked(gameState, 'library', 350);
         
         return {
           success: true,
@@ -361,6 +410,7 @@ function applyActionRewards(
       beast.secondaryStats.stress = Math.max(0, beast.secondaryStats.stress - 30);
       beast.currentHp = beast.maxHp;
       beast.essence = beast.maxEssence;
+      emitRested(gameState, 'sleep');
       return {
         success: true,
         message: '😴 Descansado completamente! HP, Essência restaurados e fadiga zerada!',
@@ -369,6 +419,7 @@ function applyActionRewards(
     case 'rest_freetime':
       beast.secondaryStats.stress = Math.max(0, beast.secondaryStats.stress - 25);
       beast.secondaryStats.loyalty = Math.min(100, beast.secondaryStats.loyalty + 5);
+      emitRested(gameState, 'freetime');
       return {
         success: true,
         message: '🎮 Tempo livre aproveitado! Stress reduzido e lealdade aumentada!',
@@ -377,6 +428,7 @@ function applyActionRewards(
     case 'rest_walk':
       beast.secondaryStats.fatigue = Math.max(0, beast.secondaryStats.fatigue - 15);
       beast.secondaryStats.stress = Math.max(0, beast.secondaryStats.stress - 20);
+      emitRested(gameState, 'walk');
       return {
         success: true,
         message: '🚶 Passeio relaxante! Fadiga e stress reduzidos!',
@@ -385,6 +437,7 @@ function applyActionRewards(
     case 'rest_eat':
       beast.secondaryStats.fatigue = Math.max(0, beast.secondaryStats.fatigue - 10);
       beast.currentHp = Math.min(beast.maxHp, beast.currentHp + Math.floor(beast.maxHp * 0.2));
+      emitRested(gameState, 'eat');
       return {
         success: true,
         message: '🍖 Refeição deliciosa! Fadiga reduzida e HP recuperado!',
