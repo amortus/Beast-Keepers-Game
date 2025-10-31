@@ -71,6 +71,10 @@ export interface Beast {
   maxEssence: number;
   techniques: string[];
   activeBuffs?: any[];
+  
+  // Campos opcionais de tempo real e ciclo de vida
+  ageInDays?: number;  // Idade em dias (incrementa a cada meia-noite)
+  lastDayProcessed?: number;  // Timestamp da última meia-noite processada
 }
 
 // ===== ITENS =====

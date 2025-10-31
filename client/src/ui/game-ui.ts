@@ -606,17 +606,11 @@ export class GameUI {
       elder: 'Idoso',
     };
     
-    const mood = beast.mood || 'neutral';
-    const moodEmoji: Record<string, string> = {
-      happy: '😊',
-      neutral: '😐',
-      sad: '😢',
-      angry: '😠',
-      tired: '😴',
-    };
-    const moodDisplay = moodEmoji[mood] || moodEmoji.neutral;
+    // Idade em dias (atualizada a cada meia-noite)
+    const ageInDays = beast.ageInDays || 0;
+    const ageWeeks = Math.floor(ageInDays / 7);
     
-    drawText(this.ctx, `${phaseNames[phase]} • Humor: ${moodDisplay} • ${beast.secondaryStats.age}/${beast.secondaryStats.maxAge} sem`, x + 10, y + 30, {
+    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias (${ageWeeks} sem)`, x + 10, y + 30, {
       font: '12px monospace',
       color: COLORS.ui.textDim,
     });
