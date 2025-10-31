@@ -56,13 +56,24 @@ export class BattleUI {
   }
 
   private handleClick() {
-    this.buttons.forEach((button) => {
+    console.log('[Battle UI] Click detected at:', this.mouseX, this.mouseY);
+    console.log('[Battle UI] Current phase:', this.battle.phase);
+    console.log('[Battle UI] Buttons registered:', this.buttons.size);
+    
+    let clickedAny = false;
+    this.buttons.forEach((button, key) => {
       if (isMouseOver(this.mouseX, this.mouseY, button.x, button.y, button.width, button.height)) {
+        console.log('[Battle UI] Button clicked:', key);
+        clickedAny = true;
         if (button.action) {
           button.action();
         }
       }
     });
+    
+    if (!clickedAny) {
+      console.log('[Battle UI] No button was clicked');
+    }
   }
 
   public draw() {
@@ -98,6 +109,13 @@ export class BattleUI {
     // Draw action menu (only on player turn and NOT in auto mode)
     if (this.battle.phase === 'player_turn' && !this.isAutoBattle) {
       this.drawActionMenu();
+    } else if (this.battle.phase === 'player_turn' && this.isAutoBattle) {
+      console.log('[Battle UI] Player turn but auto-battle is active, skipping action menu');
+    } else if (this.battle.phase !== 'player_turn') {
+      // Debug: log why action menu is not shown
+      if (this.animationFrame % 60 === 0) { // Log every 60 frames to avoid spam
+        console.log('[Battle UI] Action menu not shown - Phase:', this.battle.phase, 'Auto:', this.isAutoBattle);
+      }
     }
 
     // Draw end screen

@@ -1891,34 +1891,60 @@ function startExplorationBattle(enemy: WildEnemy) {
   // Marcar como batalha de exploração
   isExplorationBattle = true;
 
+  // Log de debug
+  console.log('[Exploration Battle] Starting battle:');
+  console.log('- Phase:', battle.phase);
+  console.log('- Turn:', battle.turnCount);
+  console.log('- Player HP:', battle.player.currentHp, '/', gameState.activeBeast.maxHp);
+  console.log('- Enemy HP:', battle.enemy.currentHp, '/', enemyBeast.maxHp);
+
   // Create battle UI
   battleUI = new BattleUI(canvas, battle);
 
   // Setup callbacks (same as tournament)
   battleUI.onPlayerAction = (action: CombatAction) => {
-    if (!gameState?.currentBattle) return;
+    if (!gameState?.currentBattle) {
+      console.error('[Exploration Battle] No currentBattle in gameState!');
+      return;
+    }
+
+    console.log('[Exploration Battle] Player action:', action.type);
+    console.log('[Exploration Battle] Before action - Phase:', gameState.currentBattle.phase, 'Turn:', gameState.currentBattle.turnCount);
 
     const result = executePlayerAction(gameState.currentBattle, action);
+
+    if (!result) {
+      console.error('[Exploration Battle] executePlayerAction returned null!');
+      return;
+    }
+
+    console.log('[Exploration Battle] After action - Phase:', gameState.currentBattle.phase, 'Turn:', gameState.currentBattle.turnCount);
 
     if (result && battleUI) {
       battleUI.updateBattle(gameState.currentBattle);
 
       // CORREÇÃO: Se a batalha terminou, chamar onBattleEnd manualmente
       if (gameState.currentBattle.winner) {
+        console.log('[Exploration Battle] Battle ended with winner:', gameState.currentBattle.winner);
         battleUI.onBattleEnd();
         return;
       }
 
       // If enemy turn, execute automatically after delay
       if (gameState.currentBattle.phase === 'enemy_turn') {
+        console.log('[Exploration Battle] Enemy turn starting...');
         setTimeout(() => {
           if (!gameState?.currentBattle || !battleUI) return;
 
+          console.log('[Exploration Battle] Executing enemy turn...');
           executeEnemyTurn(gameState.currentBattle);
           battleUI.updateBattle(gameState.currentBattle);
 
+          console.log('[Exploration Battle] After enemy turn - Phase:', gameState.currentBattle.phase, 'Turn:', gameState.currentBattle.turnCount);
+
           // CORREÇÃO: Se a batalha terminou após turno do inimigo, chamar onBattleEnd manualmente
           if (gameState.currentBattle.winner) {
+            console.log('[Exploration Battle] Battle ended after enemy turn with winner:', gameState.currentBattle.winner);
             battleUI.onBattleEnd();
             return;
           }
