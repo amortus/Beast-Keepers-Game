@@ -1933,13 +1933,20 @@ function startExplorationBattle(enemy: WildEnemy) {
   // VALIDAÇÃO CRÍTICA: Verificar se a beast está viva ANTES de iniciar batalha
   if (gameState.activeBeast.currentHp <= 0) {
     console.error('[Exploration Battle] Cannot start battle with 0 HP!');
+    
+    // Limpar flags ANTES de mostrar modal para evitar conflitos
+    inExploration = false;
+    inBattle = false;
+    
     showMessage(
       '❌ Sua Beast está inconsciente!\n\n' +
       'HP: 0/' + gameState.activeBeast.maxHp + '\n\n' +
       'Saindo da exploração...',
       '⚠️ Beast Inconsciente',
-      () => {
-        closeExploration();
+      async () => {
+        // Fechar exploração completamente
+        await closeExploration();
+        console.log('[Exploration Battle] Exploration closed after 0 HP detection');
       }
     );
     return;
@@ -2065,7 +2072,7 @@ function startExplorationBattle(enemy: WildEnemy) {
     }
   };
 
-  battleUI.onBattleEnd = () => {
+  battleUI.onBattleEnd = async () => {
     if (!gameState?.currentBattle || !explorationState) return;
 
     const battle = gameState.currentBattle;
@@ -2107,26 +2114,27 @@ function startExplorationBattle(enemy: WildEnemy) {
       inBattle = false;
       isExplorationBattle = false;
       
+      // CORREÇÃO: Limpar flag de exploração também para evitar conflitos
+      inExploration = false;
+      
       // DON'T show 3D viewer yet - modal will be open
       console.log('[Main] Defeat - keeping 3D hidden until modal closes');
       
       // Salvar materiais coletados ANTES de fechar (mesmo em derrota)
       if (explorationState && explorationState.collectedMaterials.length > 0) {
         console.log('[Exploration] Saving collected materials before defeat...');
-        saveMaterialsFromExploration().then(() => {
-          console.log('[Exploration] Materials saved after defeat');
-        });
+        await saveMaterialsFromExploration();
+        console.log('[Exploration] Materials saved after defeat');
       }
       
-      // Show message and close exploration NO CALLBACK (garantir que fecha)
-      showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota', () => {
+      // Show message and close exploration
+      showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota', async () => {
         // Fechar exploração e mostrar 3D viewer APÓS modal fechar
-        closeExploration().then(() => {
-          if (gameUI) {
-            gameUI.show3DViewer();
-            console.log('[Main] Defeat - exploration closed, 3D viewer shown');
-          }
-        });
+        await closeExploration();
+        if (gameUI) {
+          gameUI.show3DViewer();
+          console.log('[Main] Defeat - exploration closed, 3D viewer shown');
+        }
       });
       
       return;
