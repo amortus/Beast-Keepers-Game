@@ -12,6 +12,7 @@ import passport from './config/passport';
 import authRoutes from './routes/auth';
 import gameRoutes from './routes/game';
 import friendsRoutes from './routes/friends';
+import inventoryRoutes from './routes/inventory';
 import { pool } from './db/connection';
 import { startEventScheduler } from './services/eventScheduler';
 import { initializeChatService } from './services/chatService';
@@ -92,6 +93,9 @@ app.use('/api/auth', authRoutes);
 
 // Game routes
 app.use('/api/game', gameRoutes);
+
+// Inventory routes
+app.use('/api/inventory', inventoryRoutes);
 
 // Friends routes
 app.use('/api/friends', friendsRoutes);

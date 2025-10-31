@@ -85,5 +85,28 @@ export const gameApi = {
   }>> {
     return apiClient.post(`/game/beast/${beastId}/daily-cycle`, {});
   },
+
+  // ===== INVENTORY API =====
+
+  /**
+   * Get player's inventory
+   */
+  async getInventory(): Promise<ApiResponse<any[]>> {
+    return apiClient.get('/inventory');
+  },
+
+  /**
+   * Add item to inventory
+   */
+  async addInventoryItem(itemId: string, quantity: number): Promise<ApiResponse<any>> {
+    return apiClient.post('/inventory/add', { itemId, quantity });
+  },
+
+  /**
+   * Remove item from inventory
+   */
+  async removeInventoryItem(itemId: string, quantity: number): Promise<ApiResponse<any>> {
+    return apiClient.post('/inventory/remove', { itemId, quantity });
+  },
 };
 
