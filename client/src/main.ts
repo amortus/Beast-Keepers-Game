@@ -1737,8 +1737,29 @@ function openExploration() {
     return;
   }
   
-  // Verificar limite de explorações
   const beast = gameState.activeBeast;
+  
+  // VALIDAÇÃO CRÍTICA: Verificar se a beast está viva PRIMEIRO
+  if (beast.currentHp <= 0) {
+    showMessage(
+      '❌ Sua Beast está inconsciente!\n\n' +
+      `HP atual: 0/${beast.maxHp}\n\n` +
+      'Descanse para recuperar HP antes de explorar.',
+      '⚠️ Beast Inconsciente'
+    );
+    console.error('[Exploration] Cannot explore with 0 HP!');
+    return;
+  }
+
+  // VALIDAÇÃO: Avisar se HP está muito baixo
+  const currentHpPercent = (beast.currentHp / beast.maxHp) * 100;
+  if (currentHpPercent < 10) {
+    if (!confirm(`⚠️ AVISO: Sua Beast está com apenas ${beast.currentHp}/${beast.maxHp} HP (${Math.floor(currentHpPercent)}%)!\n\nExplorar com HP baixo é muito perigoso. Deseja continuar?`)) {
+      return;
+    }
+  }
+  
+  // Verificar limite de explorações
   const serverTime = gameState.serverTime || Date.now();
   const explorationCheck = canStartAction(beast, 'exploration', serverTime);
   
@@ -1753,11 +1774,11 @@ function openExploration() {
     return;
   }
   
-  // Incrementar contador ANTES de iniciar exploração
+  // Incrementar contador APENAS após todas as validações passarem
   beast.explorationCount = (beast.explorationCount || 0) + 1;
   beast.lastExploration = Date.now();
   
-  console.log(`[Exploration] Started exploration ${beast.explorationCount}/10`);
+  console.log(`[Exploration] Started exploration ${beast.explorationCount}/10 with ${beast.currentHp}/${beast.maxHp} HP`);
   
   // Salvar imediatamente
   saveGame(gameState);
@@ -1839,6 +1860,28 @@ function walkExploration() {
 
 function startExplorationBattle(enemy: WildEnemy) {
   if (!gameState || !gameState.activeBeast || !explorationState) {
+    console.error('[Exploration Battle] Missing gameState, activeBeast, or explorationState');
+    return;
+  }
+
+  // PROTEÇÃO: Prevenir múltiplas batalhas simultâneas
+  if (inBattle) {
+    console.error('[Exploration Battle] Already in battle! Ignoring new battle start');
+    return;
+  }
+
+  // VALIDAÇÃO CRÍTICA: Verificar se a beast está viva ANTES de iniciar batalha
+  if (gameState.activeBeast.currentHp <= 0) {
+    console.error('[Exploration Battle] Cannot start battle with 0 HP!');
+    showMessage(
+      '❌ Sua Beast está inconsciente!\n\n' +
+      'HP: 0/' + gameState.activeBeast.maxHp + '\n\n' +
+      'Saindo da exploração...',
+      '⚠️ Beast Inconsciente',
+      () => {
+        closeExploration();
+      }
+    );
     return;
   }
 
