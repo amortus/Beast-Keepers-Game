@@ -786,12 +786,11 @@ export class GameUI {
     const buttonSpacingX = 230;
     const buttonSpacingY = 42; // Reduzido de 52 → 42px
 
-    // Grid 2x2 de botões de categoria
+    // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [
       { id: 'train', label: '🏋️ Treinar', row: 0, col: 0 },
       { id: 'work', label: '💼 Trabalhar', row: 0, col: 1 },
       { id: 'rest', label: '😴 Descansar', row: 1, col: 0 },
-      { id: 'tournament', label: '🏆 Torneio', row: 1, col: 1 },
     ];
 
     categories.forEach((cat) => {
@@ -815,6 +814,22 @@ export class GameUI {
           this.selectedAction = null;
         },
       });
+    });
+    
+    // Mensagem "Em Desenvolvimento" onde ficava o botão de Torneio
+    const devMsgX = buttonStartX + buttonSpacingX; // Coluna da direita
+    const devMsgY = buttonStartY + buttonSpacingY; // Linha de baixo
+    
+    drawText(this.ctx, '🏆 Torneio', devMsgX + buttonWidth / 2, devMsgY + 8, {
+      font: 'bold 14px monospace',
+      color: COLORS.ui.textDim,
+      align: 'center',
+    });
+    
+    drawText(this.ctx, 'Em Desenvolvimento', devMsgX + buttonWidth / 2, devMsgY + 26, {
+      font: '12px monospace',
+      color: COLORS.ui.warning,
+      align: 'center',
     });
 
     // Show actions for selected category
@@ -995,11 +1010,8 @@ export class GameUI {
         { id: 'rest_walk', label: 'Passeio (1min)' },
         { id: 'rest_eat', label: 'Comer Bem (1min)' },
       ];
-    } else if (this.actionCategory === 'tournament') {
-      return [
-        { id: 'tournament', label: '🏆 Torneio (4h cooldown)' },
-      ];
     }
+    // Tournament removido - em desenvolvimento
     return [];
   }
 
@@ -1037,21 +1049,7 @@ export class GameUI {
       color: explorationCount >= 10 ? COLORS.ui.error : COLORS.ui.success,
     });
     
-    // Mostrar cooldown de torneio se ativo
-    if (beast.lastTournament) {
-      const tournamentCooldown = (beast.lastTournament + (4 * 60 * 60 * 1000)) - serverTime;
-      if (tournamentCooldown > 0) {
-        drawText(this.ctx, `Torneio: ${formatTime(tournamentCooldown)}`, x + 250, y + 35, {
-          font: '14px monospace',
-          color: COLORS.ui.error,
-        });
-      } else {
-        drawText(this.ctx, `Torneio: Disponível`, x + 250, y + 35, {
-          font: '14px monospace',
-          color: COLORS.ui.success,
-        });
-      }
-    }
+    // Torneio removido - feature em desenvolvimento
   }
 
   private getActionName(action: WeeklyAction): string {
