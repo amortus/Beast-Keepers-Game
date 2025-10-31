@@ -1989,19 +1989,16 @@ function startExplorationBattle(enemy: WildEnemy) {
         });
       }
       
-      // Show message and close exploration
+      // Show message and close exploration NO CALLBACK (garantir que fecha)
       showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota', () => {
-        // Show 3D viewer AFTER modal is closed
-        if (gameUI) {
-          gameUI.show3DViewer();
-          console.log('[Main] Defeat modal closed - showing 3D viewer now');
-        }
+        // Fechar exploração e mostrar 3D viewer APÓS modal fechar
+        closeExploration().then(() => {
+          if (gameUI) {
+            gameUI.show3DViewer();
+            console.log('[Main] Defeat - exploration closed, 3D viewer shown');
+          }
+        });
       });
-      
-      // Force close exploration after a short delay to ensure message is shown
-      setTimeout(async () => {
-        await closeExploration();
-      }, 100);
       
       return;
     }
@@ -2047,34 +2044,50 @@ function startExplorationBattle(enemy: WildEnemy) {
   // Música removida
 }
 
+// Flag para prevenir spam no botão de coletar
+let isCollectingTreasure = false;
+
 async function collectTreasureInExploration(treasure: Item[]) {
-  if (!explorationState || !explorationUI || !gameState) return;
-  
-  collectMaterials(explorationState, treasure);
-  
-  // Salvar tesouros no servidor e emitir eventos
-  for (const item of treasure) {
-    try {
-      await gameApi.addInventoryItem(item.id, item.quantity || 1);
-      console.log(`[Exploration] Saved treasure ${item.quantity}x ${item.id} to server`);
-      
-      // Emitir evento de item coletado
-      emitItemCollected(gameState, item.id, item.quantity || 1, 'treasure');
-    } catch (error) {
-      console.error('[Exploration] Failed to save treasure to server:', error);
-    }
+  // Proteção contra spam
+  if (isCollectingTreasure || !explorationState || !explorationUI || !gameState) {
+    console.log('[Exploration] Collect treasure blocked (already collecting or invalid state)');
+    return;
   }
   
-  // Limpar o encontro atual para continuar explorando
-  explorationState.currentEncounter = -1;
+  isCollectingTreasure = true;
+  console.log('[Exploration] Collecting treasure...');
   
-  explorationUI.updateState(explorationState);
+  try {
+    collectMaterials(explorationState, treasure);
+    
+    // Salvar tesouros no servidor e emitir eventos
+    for (const item of treasure) {
+      try {
+        await gameApi.addInventoryItem(item.id, item.quantity || 1);
+        console.log(`[Exploration] Saved treasure ${item.quantity}x ${item.id} to server`);
+        
+        // Emitir evento de item coletado
+        emitItemCollected(gameState, item.id, item.quantity || 1, 'treasure');
+      } catch (error) {
+        console.error('[Exploration] Failed to save treasure to server:', error);
+      }
+    }
+    
+    // Limpar o encontro atual para continuar explorando
+    explorationState.currentEncounter = -1;
+    
+    explorationUI.updateState(explorationState);
 
-  const treasureList = treasure.map(t => `${t.name} x${t.quantity}`).join(', ');
-  showMessage(`Tesouro coletado: ${treasureList}`, '💎 Tesouro');
-
-  // Continua explorando
-  continueExploration();
+    const treasureList = treasure.map(t => `${t.name} x${t.quantity}`).join(', ');
+    showMessage(`Tesouro coletado: ${treasureList}`, '💎 Tesouro', () => {
+      // Continua explorando após fechar mensagem
+      continueExploration();
+      isCollectingTreasure = false;
+    });
+  } catch (error) {
+    console.error('[Exploration] Error collecting treasure:', error);
+    isCollectingTreasure = false;
+  }
 }
 
 function processEventEffect(message: string, gameState: GameState) {
@@ -2279,6 +2292,10 @@ async function finishExploration() {
     ? `\n⚠️ Limite de explorações atingido (${beast.explorationCount}/10)! Aguarde 2h para resetar.`
     : `\nExplorações: ${beast.explorationCount}/10`;
   
+  // Save
+  saveGame(gameState);
+
+  // Mostrar mensagem e fechar exploração no callback
   showMessage(
     `Exploração concluída!\n` +
     `📍 Distância: ${rewards.totalDistance}m\n` +
@@ -2286,14 +2303,12 @@ async function finishExploration() {
     `💎 Materiais: ${totalItems} itens (${materialCount} tipos)\n` +
     `✅ Materiais salvos no inventário!` +
     explorationInfo,
-    '🗺️ Exploração Finalizada'
+    '🗺️ Exploração Finalizada',
+    () => {
+      // Fechar exploração e voltar ao rancho APÓS fechar o modal
+      closeExploration();
+    }
   );
-
-  // Save
-  saveGame(gameState);
-
-  // Close exploration
-  closeExploration();
 }
 
 async function closeExploration() {
@@ -2303,6 +2318,9 @@ async function closeExploration() {
     const savedCount = await saveMaterialsFromExploration();
     console.log(`[Exploration] Saved ${savedCount} material types before closing`);
   }
+  
+  // Reset flag de coleta quando fecha exploração
+  isCollectingTreasure = false;
   
   if (explorationUI) {
     explorationUI.close();
