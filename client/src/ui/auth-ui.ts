@@ -698,18 +698,43 @@ export class AuthUI {
       this.clickHandler = undefined;
     }
     
-    // CORREÇÃO EXTRA: Remover TODOS os containers de auth-inputs do DOM
-    // Remover por ID para garantir que não fique nenhum
+    // CORREÇÃO AGRESSIVA: Esconder E remover TODOS os containers de auth-inputs
+    // 1. Primeiro esconder para garantir que ficam invisíveis IMEDIATAMENTE
     const allAuthContainers = document.querySelectorAll('#auth-inputs-container');
     allAuthContainers.forEach(container => {
-      console.log('[AuthUI] Removing auth-inputs-container from DOM');
+      console.log('[AuthUI] Hiding and removing auth-inputs-container from DOM');
+      // ESCONDER PRIMEIRO (proteção dupla)
+      (container as HTMLElement).style.display = 'none';
+      (container as HTMLElement).style.visibility = 'hidden';
+      (container as HTMLElement).style.pointerEvents = 'none';
+      (container as HTMLElement).style.zIndex = '-9999';
+      // DEPOIS REMOVER
       container.remove();
     });
     
-    // Remover também por referência
-    if (this.inputsContainer && this.inputsContainer.parentElement) {
-      this.inputsContainer.parentElement.removeChild(this.inputsContainer);
+    // 2. Remover também por referência
+    if (this.inputsContainer) {
+      // ESCONDER PRIMEIRO
+      this.inputsContainer.style.display = 'none';
+      this.inputsContainer.style.visibility = 'hidden';
+      this.inputsContainer.style.pointerEvents = 'none';
+      this.inputsContainer.style.zIndex = '-9999';
+      
+      // DEPOIS REMOVER
+      if (this.inputsContainer.parentElement) {
+        this.inputsContainer.parentElement.removeChild(this.inputsContainer);
+      }
     }
+    
+    // 3. PROTEÇÃO EXTRA: Remover todos os inputs HTML que possam existir
+    const allInputs = document.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]');
+    allInputs.forEach(input => {
+      const parent = input.closest('#auth-inputs-container');
+      if (parent) {
+        console.log('[AuthUI] Removing orphan auth input');
+        input.remove();
+      }
+    });
     
     // Limpar referências
     this.clearInputs();

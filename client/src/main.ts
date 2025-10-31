@@ -359,14 +359,44 @@ async function init() {
       // CORREÇÃO: Esconder completamente o AuthUI após login
       authUI.hide();
       
-      // PROTEÇÃO EXTRA: Forçar remoção de qualquer container de auth residual
+      // PROTEÇÃO EXTRA: Forçar remoção agressiva de qualquer container de auth residual
       setTimeout(() => {
         const authContainers = document.querySelectorAll('#auth-inputs-container');
         if (authContainers.length > 0) {
           console.warn('[Main] Found residual auth containers after login, removing:', authContainers.length);
-          authContainers.forEach(c => c.remove());
+          authContainers.forEach(c => {
+            // ESCONDER PRIMEIRO
+            (c as HTMLElement).style.display = 'none';
+            (c as HTMLElement).style.visibility = 'hidden';
+            (c as HTMLElement).style.pointerEvents = 'none';
+            (c as HTMLElement).style.zIndex = '-9999';
+            // DEPOIS REMOVER
+            c.remove();
+          });
         }
+        
+        // PROTEÇÃO DUPLA: Remover TODOS os inputs HTML órfãos
+        const allInputs = document.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]');
+        allInputs.forEach(input => {
+          const parent = input.closest('#auth-inputs-container');
+          if (parent || !input.closest('canvas')) {
+            console.warn('[Main] Removing orphan auth input');
+            input.remove();
+          }
+        });
       }, 100);
+      
+      // PROTEÇÃO TRIPLA: Verificar novamente após 500ms
+      setTimeout(() => {
+        const authContainers = document.querySelectorAll('#auth-inputs-container');
+        if (authContainers.length > 0) {
+          console.error('[Main] STILL found auth containers after 500ms! Force removing...');
+          authContainers.forEach(c => {
+            (c as HTMLElement).style.display = 'none !important';
+            c.remove();
+          });
+        }
+      }, 500);
       
       // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
       // Isso garante que o canvas esteja configurado corretamente para o GameUI
@@ -406,14 +436,44 @@ async function init() {
       // CORREÇÃO: Esconder completamente o AuthUI após registro
       authUI.hide();
       
-      // PROTEÇÃO EXTRA: Forçar remoção de qualquer container de auth residual
+      // PROTEÇÃO EXTRA: Forçar remoção agressiva de qualquer container de auth residual
       setTimeout(() => {
         const authContainers = document.querySelectorAll('#auth-inputs-container');
         if (authContainers.length > 0) {
           console.warn('[Main] Found residual auth containers after register, removing:', authContainers.length);
-          authContainers.forEach(c => c.remove());
+          authContainers.forEach(c => {
+            // ESCONDER PRIMEIRO
+            (c as HTMLElement).style.display = 'none';
+            (c as HTMLElement).style.visibility = 'hidden';
+            (c as HTMLElement).style.pointerEvents = 'none';
+            (c as HTMLElement).style.zIndex = '-9999';
+            // DEPOIS REMOVER
+            c.remove();
+          });
         }
+        
+        // PROTEÇÃO DUPLA: Remover TODOS os inputs HTML órfãos
+        const allInputs = document.querySelectorAll('input[type="email"], input[type="password"], input[type="text"]');
+        allInputs.forEach(input => {
+          const parent = input.closest('#auth-inputs-container');
+          if (parent || !input.closest('canvas')) {
+            console.warn('[Main] Removing orphan auth input');
+            input.remove();
+          }
+        });
       }, 100);
+      
+      // PROTEÇÃO TRIPLA: Verificar novamente após 500ms
+      setTimeout(() => {
+        const authContainers = document.querySelectorAll('#auth-inputs-container');
+        if (authContainers.length > 0) {
+          console.error('[Main] STILL found auth containers after 500ms! Force removing...');
+          authContainers.forEach(c => {
+            (c as HTMLElement).style.display = 'none !important';
+            c.remove();
+          });
+        }
+      }, 500);
       
       // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
       resizeCanvas();
