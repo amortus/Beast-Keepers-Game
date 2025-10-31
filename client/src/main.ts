@@ -1802,7 +1802,19 @@ function openExploration() {
     finishExploration();
   };
 
-  explorationUI.onClose = () => {
+  explorationUI.onClose = async () => {
+    // Salvar materiais coletados antes de fechar
+    if (explorationState && explorationState.collectedMaterials.length > 0) {
+      console.log('[Exploration] Saving collected materials before closing...');
+      await saveMaterialsFromExploration();
+      
+      showMessage(
+        `Exploração cancelada!\n` +
+        `💎 ${explorationState.collectedMaterials.length} tipos de materiais salvos no inventário.`,
+        '🗺️ Exploração'
+      );
+    }
+    
     closeExploration();
   };
 
@@ -1969,6 +1981,14 @@ function startExplorationBattle(enemy: WildEnemy) {
       // DON'T show 3D viewer yet - modal will be open
       console.log('[Main] Defeat - keeping 3D hidden until modal closes');
       
+      // Salvar materiais coletados ANTES de fechar (mesmo em derrota)
+      if (explorationState && explorationState.collectedMaterials.length > 0) {
+        console.log('[Exploration] Saving collected materials before defeat...');
+        saveMaterialsFromExploration().then(() => {
+          console.log('[Exploration] Materials saved after defeat');
+        });
+      }
+      
       // Show message and close exploration
       showMessage('Você foi derrotado! Retornando ao rancho...', '💀 Derrota', () => {
         // Show 3D viewer AFTER modal is closed
@@ -1979,8 +1999,8 @@ function startExplorationBattle(enemy: WildEnemy) {
       });
       
       // Force close exploration after a short delay to ensure message is shown
-      setTimeout(() => {
-        closeExploration();
+      setTimeout(async () => {
+        await closeExploration();
       }, 100);
       
       return;
@@ -2200,13 +2220,17 @@ function continueExploration() {
   explorationUI.updateState(explorationState);
 }
 
-async function finishExploration() {
-  if (!explorationState || !gameState || !gameState.activeBeast) return;
-
-  const rewards = endExploration(explorationState);
-
+/**
+ * Salva materiais coletados na exploração (local + servidor)
+ */
+async function saveMaterialsFromExploration(): Promise<number> {
+  if (!explorationState || !gameState) return 0;
+  
+  const materials = explorationState.collectedMaterials;
+  let savedCount = 0;
+  
   // Adicionar materiais ao inventário (local + servidor) e emitir eventos
-  for (const material of rewards.materials) {
+  for (const material of materials) {
     // Adicionar localmente
     const existing = gameState.inventory.find(i => i.id === material.id);
     if (existing) {
@@ -2222,10 +2246,22 @@ async function finishExploration() {
       
       // Emitir evento de item coletado
       emitItemCollected(gameState, material.id, material.quantity || 1, 'exploration');
+      savedCount++;
     } catch (error) {
       console.error('[Exploration] Failed to save material to server:', error);
     }
   }
+  
+  return savedCount;
+}
+
+async function finishExploration() {
+  if (!explorationState || !gameState || !gameState.activeBeast) return;
+
+  const rewards = endExploration(explorationState);
+
+  // Salvar materiais usando função compartilhada
+  await saveMaterialsFromExploration();
   
   // Emitir evento de exploração completa
   emitExplorationCompleted(
@@ -2260,7 +2296,14 @@ async function finishExploration() {
   closeExploration();
 }
 
-function closeExploration() {
+async function closeExploration() {
+  // PROTEÇÃO: Salvar materiais coletados antes de limpar o estado
+  if (explorationState && explorationState.collectedMaterials.length > 0 && gameState) {
+    console.log('[Exploration] Saving materials before closing exploration...');
+    const savedCount = await saveMaterialsFromExploration();
+    console.log(`[Exploration] Saved ${savedCount} material types before closing`);
+  }
+  
   if (explorationUI) {
     explorationUI.close();
   }
