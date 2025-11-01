@@ -142,17 +142,19 @@ export class BattleUI3D {
     
     if (this.battle.phase === 'player_turn') {
       this.drawActionButtons();
-      if (this.showTechniques) {
-        this.drawTechniqueList();
-      }
     } else if (this.battle.phase === 'combat_log') {
       this.drawCombatLog();
     } else if (this.battle.phase === 'battle_end') {
       this.drawBattleEnd();
     }
     
-    // Auto-battle toggle
+    // Auto-battle toggle (SEMPRE visível)
     this.drawAutoBattleToggle();
+    
+    // Technique list POR CIMA de tudo (overlay)
+    if (this.showTechniques && this.battle.phase === 'player_turn') {
+      this.drawTechniqueList();
+    }
     
     // Update 3D scene health
     if (this.scene3D) {
@@ -404,10 +406,12 @@ export class BattleUI3D {
   private drawTechniqueList() {
     const techniques = this.battle.player.beast.techniques || [];
     
+    console.log('[BattleUI3D] Drawing technique list, count:', techniques.length);
+    
     const panelWidth = 700;
-    const panelHeight = Math.min(300, 100 + techniques.length * 70);
+    const panelHeight = Math.min(400, 150 + techniques.length * 70);
     const panelX = (this.canvas.width - panelWidth) / 2;
-    const panelY = (this.canvas.height - panelHeight) / 2;
+    const panelY = 150; // FIXO no topo para não cobrir HUD inferior
     
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: 'rgba(26, 32, 44, 0.95)',
@@ -419,6 +423,29 @@ export class BattleUI3D {
       font: 'bold 24px monospace',
       color: COLORS.primary.gold,
       align: 'center',
+    });
+    
+    // Botão de fechar (X no canto superior direito)
+    const closeBtnSize = 40;
+    const closeBtnX = panelX + panelWidth - closeBtnSize - 10;
+    const closeBtnY = panelY + 10;
+    const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnSize, closeBtnSize);
+    
+    drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnSize, closeBtnSize, '✖', {
+      bgColor: COLORS.ui.error,
+      isHovered: closeIsHovered,
+      fontSize: 18,
+    });
+    
+    this.buttons.set('close_techniques', {
+      x: closeBtnX,
+      y: closeBtnY,
+      width: closeBtnSize,
+      height: closeBtnSize,
+      action: () => {
+        console.log('[BattleUI3D] Closing technique list');
+        this.showTechniques = false;
+      },
     });
     
     let currentY = panelY + 70;
