@@ -59,9 +59,9 @@ export class DungeonUI {
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Painel principal
-    const panelWidth = 1000;
-    const panelHeight = 650;
+    // Painel principal (aumentado para melhor visualização)
+    const panelWidth = Math.min(1100, this.canvas.width - 40);
+    const panelHeight = Math.min(700, this.canvas.height - 40);
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
@@ -127,15 +127,21 @@ export class DungeonUI {
       color: COLORS.ui.text,
     });
 
-    const playerLevel = gameState.activeBeast?.level || 1;
-    const availableDungeons = getAvailableDungeons(playerLevel);
+    const playerVictories = gameState.victories || 0;
+    const availableDungeons = getAvailableDungeons(playerVictories);
 
-    let currentY = y + 50;
-    const dungeonHeight = 100;
+    // Mostrar vitórias do jogador
+    drawText(this.ctx, `🏆 Vitórias: ${playerVictories}`, x, y + 30, {
+      font: '16px monospace',
+      color: COLORS.primary.gold,
+    });
+
+    let currentY = y + 70;
+    const dungeonHeight = 110; // Aumentado de 100 para 110
     const spacing = 15;
 
     DUNGEONS.forEach((dungeon) => {
-      const isAvailable = dungeon.minLevel <= playerLevel;
+      const isAvailable = dungeon.minVictories <= playerVictories;
       const isCompleted = gameState.dungeonProgress?.[dungeon.id]?.completed || false;
       const currentFloor = gameState.dungeonProgress?.[dungeon.id]?.currentFloor || 1;
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x, currentY, width, dungeonHeight);
@@ -151,43 +157,63 @@ export class DungeonUI {
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(x, currentY, width, dungeonHeight);
 
-      // Ícone
-      drawText(this.ctx, dungeon.icon, x + 15, currentY + 35, {
+      // Ícone (esquerda)
+      drawText(this.ctx, dungeon.icon, x + 20, currentY + 40, {
         font: '48px monospace',
       });
 
-      // Nome
+      // Nome (centro-esquerda)
       const nameColor = isAvailable ? COLORS.ui.text : COLORS.ui.textDim;
-      drawText(this.ctx, dungeon.name, x + 80, currentY + 25, {
-        font: 'bold 22px monospace',
+      drawText(this.ctx, dungeon.name, x + 90, currentY + 20, {
+        font: 'bold 20px monospace',
         color: nameColor,
       });
 
-      // Descrição
-      drawText(this.ctx, dungeon.description, x + 80, currentY + 50, {
-        font: '14px monospace',
+      // Descrição (abaixo do nome, truncada se necessário)
+      const descMaxWidth = width - 300; // Largura disponível (descontando ícone, nome, progresso)
+      let description = dungeon.description;
+      this.ctx.font = '13px monospace';
+      const descMetrics = this.ctx.measureText(description);
+      if (descMetrics.width > descMaxWidth) {
+        // Truncar descrição se muito longa
+        while (this.ctx.measureText(description + '...').width > descMaxWidth && description.length > 0) {
+          description = description.slice(0, -1);
+        }
+        description = description + '...';
+      }
+      drawText(this.ctx, description, x + 90, currentY + 45, {
+        font: '13px monospace',
         color: COLORS.ui.textDim,
       });
 
-      // Nível mínimo
-      const levelText = isAvailable 
-        ? `Nível ${dungeon.minLevel}+` 
-        : `🔒 Nível ${dungeon.minLevel}+ necessário`;
-      const levelColor = isAvailable ? COLORS.primary.green : COLORS.ui.error;
-      drawText(this.ctx, levelText, x + 80, currentY + 75, {
-        font: 'bold 14px monospace',
-        color: levelColor,
+      // Requisito de vitórias (abaixo da descrição)
+      const reqText = isAvailable 
+        ? `✅ ${dungeon.minVictories > 0 ? `${dungeon.minVictories} vitórias` : 'Disponível'}` 
+        : `🔒 ${dungeon.minVictories} vitórias necessárias`;
+      const reqColor = isAvailable ? COLORS.primary.green : COLORS.ui.error;
+      drawText(this.ctx, reqText, x + 90, currentY + 68, {
+        font: 'bold 13px monospace',
+        color: reqColor,
       });
 
-      // Progresso
+      // Progresso (direita)
       if (isAvailable) {
         const progressText = isCompleted 
           ? '✅ Completo!' 
           : `Andar ${currentFloor}/5`;
-        drawText(this.ctx, progressText, x + width - 15, currentY + 50, {
+        const progressY = currentY + 40; // Centralizado verticalmente
+        drawText(this.ctx, progressText, x + width - 15, progressY, {
           align: 'right',
-          font: 'bold 18px monospace',
+          font: 'bold 16px monospace',
           color: isCompleted ? COLORS.primary.gold : COLORS.primary.purple,
+        });
+      } else {
+        // Mostrar quantas vitórias faltam
+        const needed = dungeon.minVictories - playerVictories;
+        drawText(this.ctx, `Faltam ${needed} vitórias`, x + width - 15, currentY + 40, {
+          align: 'right',
+          font: '13px monospace',
+          color: COLORS.ui.error,
         });
       }
 

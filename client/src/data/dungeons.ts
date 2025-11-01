@@ -9,7 +9,7 @@ export interface Dungeon {
   description: string;
   icon: string;
   theme: 'forest' | 'cave' | 'ruins' | 'volcano' | 'abyss';
-  minLevel: number;
+  minVictories: number; // NOVO: Desbloqueio baseado em vitórias ao invés de nível
   floors: DungeonFloor[];
   rewards: DungeonRewards;
 }
@@ -71,7 +71,7 @@ export const DUNGEONS: Dungeon[] = [
     description: 'Uma floresta antiga habitada por criaturas místicas',
     icon: '🌲',
     theme: 'forest',
-    minLevel: 10,
+    minVictories: 0, // Sempre disponível
     floors: [
       {
         floor: 1,
@@ -191,7 +191,7 @@ export const DUNGEONS: Dungeon[] = [
     description: 'Cavernas escuras cheias de perigos',
     icon: '🗻',
     theme: 'cave',
-    minLevel: 20,
+    minVictories: 5, // Desbloqueia após 5 vitórias
     floors: [
       {
         floor: 1,
@@ -311,7 +311,7 @@ export const DUNGEONS: Dungeon[] = [
     description: 'Restos de uma civilização perdida',
     icon: '🏛️',
     theme: 'ruins',
-    minLevel: 30,
+    minVictories: 15, // Desbloqueia após 15 vitórias
     floors: [
       {
         floor: 1,
@@ -431,7 +431,7 @@ export const DUNGEONS: Dungeon[] = [
     description: 'Montanha de fogo e lava',
     icon: '🌋',
     theme: 'volcano',
-    minLevel: 40,
+    minVictories: 30, // Desbloqueia após 30 vitórias
     floors: [
       {
         floor: 1,
@@ -551,7 +551,7 @@ export const DUNGEONS: Dungeon[] = [
     description: 'Um vazio sem fim',
     icon: '🕳️',
     theme: 'abyss',
-    minLevel: 50,
+    minVictories: 50, // Desbloqueia após 50 vitórias
     floors: [
       {
         floor: 1,
@@ -679,10 +679,10 @@ export function getDungeonById(id: string): Dungeon | undefined {
 }
 
 /**
- * Obtém dungeons disponíveis para o nível do jogador
+ * Obtém dungeons disponíveis baseado em vitórias do jogador
  */
-export function getAvailableDungeons(playerLevel: number): Dungeon[] {
-  return DUNGEONS.filter(d => playerLevel >= d.minLevel);
+export function getAvailableDungeons(playerVictories: number): Dungeon[] {
+  return DUNGEONS.filter(d => playerVictories >= d.minVictories);
 }
 
 /**
