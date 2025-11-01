@@ -158,7 +158,7 @@ function setupAuthDOMProtection() {
 let gameState: GameState | null = null;
 let gameUI: GameUI | null = null;
 let battleUI: BattleUI | BattleUI3D | null = null; // Suporta ambos os sistemas
-let use3DBattle = true; // ⚡ TOGGLE: true = 3D imersivo, false = 2D clássico
+let use3DBattle = false; // ⚡ TOGGLE: true = 3D imersivo, false = 2D clássico (DESATIVADO - sistema 2D é mais estável)
 let templeUI: TempleUI | null = null;
 let dialogueUI: DialogueUI | null = null;
 let shopUI: ShopUI | null = null;
