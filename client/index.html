@@ -7,9 +7,31 @@
   <meta name="description" content="Beast Keepers - Jogo 2D top-down em TypeScript puro">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/icon-192.png">
-  <link rel="stylesheet" href="/auth-cleanup.css">
   <title>Beast Keepers</title>
   <style>
+    /* ===== AUTH CLEANUP CSS (INLINE) ===== */
+    /* CRÍTICO: Força esconder inputs de auth APENAS quando autenticado */
+    body.authenticated #auth-inputs-container,
+    body.authenticated [id^="auth-inputs"],
+    body.authenticated [data-auth-container="true"],
+    body.authenticated input[data-field="email"],
+    body.authenticated input[data-field="password"],
+    body.authenticated input[data-field="displayName"],
+    body.authenticated input[data-field="confirmPassword"],
+    body.authenticated input[placeholder*="email"],
+    body.authenticated input[placeholder*="senha"],
+    body.authenticated input[placeholder*="nome"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+      top: -9999px !important;
+      z-index: -9999 !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
     * {
       margin: 0;
       padding: 0;
