@@ -85,8 +85,70 @@ if (!ctx) {
 let isAuthenticated = false;
 let authUI: AuthUI | null = null;
 let gameInitUI: GameInitUI | null = null;
+let authDOMObserver: MutationObserver | null = null;
 let inAuth = true; // Start with auth screen
 let needsGameInit = false; // After registration, needs game init
+
+/**
+ * CRÍTICO: MutationObserver que remove inputs de auth automaticamente
+ * SÓ FUNCIONA QUANDO AUTENTICADO (inAuth === false)
+ * NUNCA interfere com tela de login/cadastro
+ */
+function setupAuthDOMProtection() {
+  if (authDOMObserver) {
+    console.warn('[Auth Protection] Observer já existe');
+    return;
+  }
+  
+  authDOMObserver = new MutationObserver((mutations) => {
+    // SÓ executar se estiver autenticado (inAuth === false)
+    if (inAuth) return;
+    
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as HTMLElement;
+            
+            // Verificar se é um container de auth
+            if (element.id === 'auth-inputs-container' || 
+                element.getAttribute('data-auth-container') === 'true') {
+              console.warn('[Auth Protection] ⚠️ Container detectado e removido!');
+              element.style.display = 'none';
+              element.remove();
+            }
+            
+            // Verificar se é um input de auth
+            if (element.tagName === 'INPUT') {
+              const input = element as HTMLInputElement;
+              const isAuthInput = 
+                input.hasAttribute('data-field') ||
+                (input.placeholder && (
+                  input.placeholder.toLowerCase().includes('email') ||
+                  input.placeholder.toLowerCase().includes('senha') ||
+                  input.placeholder.toLowerCase().includes('nome')
+                ));
+              
+              if (isAuthInput) {
+                console.warn('[Auth Protection] ⚠️ Input detectado e removido!');
+                input.style.display = 'none';
+                input.remove();
+              }
+            }
+          }
+        });
+      }
+    }
+  });
+  
+  // Observar TODO o body
+  authDOMObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+  
+  console.log('[Auth Protection] ✅ MutationObserver ativo - monitora DOM 24/7');
+}
 
 // Game state
 let gameState: GameState | null = null;
@@ -425,6 +487,9 @@ async function init() {
         }
       }, 500);
       
+      // NOVO: Ativar proteção do DOM com MutationObserver
+      setupAuthDOMProtection();
+      
       // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
       // Isso garante que o canvas esteja configurado corretamente para o GameUI
       resizeCanvas();
@@ -518,16 +583,10 @@ async function init() {
       }, 100);
       
       // PROTEÇÃO TRIPLA: Verificar novamente após 500ms
-      setTimeout(() => {
-        const authContainers = document.querySelectorAll('#auth-inputs-container');
-        if (authContainers.length > 0) {
-          console.error('[Main] STILL found auth containers after 500ms! Force removing...');
-          authContainers.forEach(c => {
-            (c as HTMLElement).style.display = 'none !important';
-            c.remove();
-          });
-        }
-      }, 500);
+      setTimeout(cleanupAuthElements, 500);
+      
+      // NOVO: Ativar proteção do DOM com MutationObserver (mesma do login)
+      setupAuthDOMProtection();
       
       // CORREÇÃO: Redimensionar canvas novamente após esconder AuthUI
       resizeCanvas();
@@ -596,6 +655,18 @@ async function init() {
           console.log('[Auth] Already logged in');
           isAuthenticated = true;
           inAuth = false;
+          
+          // CRÍTICO: Adicionar classe 'authenticated' quando já está logado
+          document.body.classList.add('authenticated');
+          console.log('[Auth] ✅ Added "authenticated" class (already logged in)');
+          
+          // CRÍTICO: Esconder AuthUI quando já está logado
+          if (authUI) {
+            authUI.hide();
+          }
+          
+          // NOVO: Ativar proteção do DOM com MutationObserver
+          setupAuthDOMProtection();
           
           // Obter username e inicializar chat
           if (meResponse.data?.displayName) {
