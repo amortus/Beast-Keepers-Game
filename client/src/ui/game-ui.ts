@@ -394,13 +394,14 @@ export class GameUI {
       { id: 'inventory', label: '🎒 Inventário', color: COLORS.primary.purple, action: () => this.onOpenInventory() },
       { id: 'craft', label: '⚗️ Craft', color: COLORS.primary.green, action: () => this.onOpenCraft() },
       { id: 'exploration', label: '🗺️ Explorar', color: COLORS.primary.blue, action: () => this.onOpenExploration() },
+      { id: 'dungeons', label: '⚔️ Dungeons', color: COLORS.primary.purple, action: () => this.onOpenDungeons() },
       { id: 'quests', label: '📜 Missões', color: COLORS.primary.gold, action: () => this.onOpenQuests() },
       { id: 'achievements', label: '🏆 Conquistas', color: COLORS.primary.gold, action: () => this.onOpenAchievements() },
       { id: 'temple', label: '🏛️ Templo', color: COLORS.primary.purple, action: () => this.onOpenTemple() },
     ];
 
-    // CORREÇÃO: Voltar para largura fixa original
-    const btnWidth = 130;
+    // AJUSTE: Reduzir largura dos botões para caber mais um (Dungeons)
+    const btnWidth = 117; // Reduzido de 130 para 117 para caber 9 botões
     const btnHeight = 26;
 
     menuItems.forEach((item) => {
@@ -1109,6 +1110,7 @@ export class GameUI {
   public onOpenVillage: () => void = () => {};
   public onOpenInventory: () => void = () => {};
   public onOpenCraft: () => void = () => {};
+  public onOpenDungeons: () => void = () => {};
   public onOpenQuests: () => void = () => {};
   public onOpenAchievements: () => void = () => {};
   public onOpenExploration: () => void = () => {};
