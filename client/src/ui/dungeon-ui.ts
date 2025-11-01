@@ -5,7 +5,7 @@
 
 import type { GameState } from '../types';
 import type { Dungeon, DungeonFloor } from '../data/dungeons';
-import { DUNGEONS, getAvailableDungeons, calculateStaminaCost } from '../data/dungeons';
+import { DUNGEONS, getAvailableDungeons, calculateFatigueCost } from '../data/dungeons';
 import { COLORS } from './colors';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 
@@ -76,14 +76,19 @@ export class DungeonUI {
       color: COLORS.primary.purple,
     });
 
-    // Stamina
-    const stamina = gameState.stamina || 100;
-    const maxStamina = 100;
-    drawText(this.ctx, `⚡ Stamina: ${stamina}/${maxStamina}`, panelX + panelWidth - 20, panelY + 30, {
-      align: 'right',
-      font: 'bold 20px monospace',
-      color: stamina > 50 ? COLORS.primary.green : COLORS.ui.error,
-    });
+    // Fadiga da beast ativa
+    const beast = gameState.activeBeast;
+    if (beast) {
+      const fatigue = beast.secondaryStats.fatigue;
+      const maxFatigue = 100;
+      const fatigueColor = fatigue < 50 ? COLORS.primary.green : fatigue < 80 ? COLORS.primary.gold : COLORS.ui.error;
+      
+      drawText(this.ctx, `😓 Fadiga: ${fatigue}/${maxFatigue}`, panelX + panelWidth - 20, panelY + 30, {
+        align: 'right',
+        font: 'bold 20px monospace',
+        color: fatigueColor,
+      });
+    }
 
     // Botão de fechar
     const closeBtnWidth = 100;
@@ -208,8 +213,10 @@ export class DungeonUI {
     if (!this.selectedDungeon) return;
 
     const dungeon = this.selectedDungeon;
-    const stamina = gameState.stamina || 100;
-    const dungeonProgress = gameState.dungeonProgress?.[dungeon.id] || { currentFloor: 1, completed: false };
+    const beast = gameState.activeBeast;
+    const fatigue = beast?.secondaryStats.fatigue || 0;
+    const maxFatigue = 100;
+    const dungeonProgress = gameState.dungeonProgress?.[dungeon.id] || { currentFloor: 1, completed: false, clearedFloors: [], firstClearClaimed: false };
 
     // Botão voltar
     const backBtnWidth = 100;
@@ -270,9 +277,10 @@ export class DungeonUI {
     dungeon.floors.forEach((floor, index) => {
       const floorNum = index + 1;
       const isUnlocked = floorNum <= dungeonProgress.currentFloor;
-      const isCleared = floorNum < dungeonProgress.currentFloor || dungeonProgress.completed;
-      const staminaCost = calculateStaminaCost(floorNum);
-      const canEnter = isUnlocked && stamina >= staminaCost;
+      const isCleared = dungeonProgress.clearedFloors.includes(floorNum);
+      const fatigueCost = calculateFatigueCost(floorNum);
+      const fatigueAfter = fatigue + fatigueCost;
+      const canEnter = isUnlocked && fatigueAfter <= maxFatigue && !isCleared;
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x, currentFloorY, width, floorHeight);
 
       // Background
@@ -308,9 +316,9 @@ export class DungeonUI {
         color: COLORS.ui.textDim,
       });
 
-      // Custo de stamina
-      const costColor = stamina >= staminaCost ? COLORS.primary.green : COLORS.ui.error;
-      drawText(this.ctx, `⚡ ${staminaCost}`, x + width - 150, currentFloorY + 35, {
+      // Custo de fadiga
+      const costColor = fatigueAfter <= maxFatigue ? COLORS.primary.green : COLORS.ui.error;
+      drawText(this.ctx, `😓 +${fatigueCost}`, x + width - 150, currentFloorY + 35, {
         font: 'bold 18px monospace',
         color: costColor,
       });
@@ -325,8 +333,8 @@ export class DungeonUI {
       } else if (!isUnlocked) {
         statusText = '🔒 Bloqueado';
         statusColor = COLORS.ui.textDim;
-      } else if (!canEnter) {
-        statusText = '⚠️ Sem Stamina';
+      } else if (fatigueAfter > maxFatigue) {
+        statusText = '😓 Muito Cansado';
         statusColor = COLORS.ui.error;
       } else {
         statusText = '▶ Entrar';

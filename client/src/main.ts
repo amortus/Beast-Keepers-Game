@@ -27,7 +27,7 @@ import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
-import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney, regenerateStamina, consumeStamina } from './systems/game-state';
+import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge } from './systems/beast';
 import { 
@@ -52,7 +52,7 @@ import { unlockQuests, getCompletedQuests } from './systems/quests';
 import { startExploration, advanceExploration, defeatEnemy, collectMaterials, endExploration } from './systems/exploration';
 import { executeCraft } from './systems/craft';
 import { getItemById } from './data/shop';
-import { getDungeonById, calculateStaminaCost } from './data/dungeons';
+import { getDungeonById, calculateFatigueCost } from './data/dungeons';
 import type { DungeonEnemy, DungeonBoss } from './data/dungeons';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item, BeastAction } from './types';
@@ -210,9 +210,6 @@ function startRealtimeSync() {
       // Aplicar recuperação passiva de fadiga/stress
       applyPassiveRecovery(gameState.activeBeast, lastSync, now);
       gameState.lastSync = now;
-      
-      // NOVO: Regenerar stamina automaticamente
-      regenerateStamina(gameState);
       
       // Atualizar contador de explorações
       updateExplorationCounter(gameState.activeBeast, now);
@@ -1897,14 +1894,29 @@ function closeQuests() {
 // ===== DUNGEON SYSTEM =====
 
 function openDungeon() {
-  if (!gameState) return;
+  if (!gameState || !gameState.activeBeast) {
+    showMessage('Você precisa de uma besta ativa para acessar dungeons!', '⚠️ Sem Besta');
+    return;
+  }
 
-  // Close other UIs
+  // VALIDAÇÃO: Verificar se a beast está viva
+  if (gameState.activeBeast.currentHp <= 0) {
+    showMessage(
+      '❌ Sua Beast está inconsciente!\n\n' +
+      `HP atual: 0/${gameState.activeBeast.maxHp}\n\n` +
+      'Descanse para recuperar HP antes de acessar dungeons.',
+      '⚠️ Beast Inconsciente'
+    );
+    return;
+  }
+
+  // Close other UIs (igual exploração)
   if (inShop) closeShop();
   if (inInventory) closeInventory();
   if (inCraft) closeCraft();
   if (inQuests) closeQuests();
   if (inAchievements) closeAchievements();
+  if (inExploration) closeExploration();
 
   // Hide 3D viewer when opening dungeon
   if (gameUI) {
@@ -1926,6 +1938,8 @@ function openDungeon() {
   };
 
   inDungeon = true;
+  
+  console.log('[Dungeon] Dungeon UI opened');
 }
 
 function closeDungeon() {
@@ -1934,6 +1948,7 @@ function closeDungeon() {
   }
   dungeonUI = null;
   inDungeon = false;
+  isDungeonBattle = false; // Limpar flag de batalha de dungeon
 
   // Show 3D viewer when returning to ranch
   if (gameUI) {
@@ -1944,10 +1959,37 @@ function closeDungeon() {
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
   }
+  
+  console.log('[Dungeon] Dungeon UI closed');
 }
 
 function startDungeonBattle(dungeonId: string, floor: number) {
-  if (!gameState || !gameState.activeBeast) return;
+  if (!gameState || !gameState.activeBeast) {
+    showMessage('Você precisa de uma besta ativa para entrar na dungeon!', '⚠️ Sem Besta');
+    return;
+  }
+
+  const beast = gameState.activeBeast;
+  
+  // VALIDAÇÃO CRÍTICA: Verificar se a beast está viva PRIMEIRO (igual exploração)
+  if (beast.currentHp <= 0) {
+    showMessage(
+      '❌ Sua Beast está inconsciente!\n\n' +
+      `HP atual: 0/${beast.maxHp}\n\n` +
+      'Descanse para recuperar HP antes de entrar em dungeons.',
+      '⚠️ Beast Inconsciente'
+    );
+    console.error('[Dungeon] Cannot enter dungeon with 0 HP!');
+    return;
+  }
+
+  // VALIDAÇÃO: Avisar se HP está muito baixo (igual exploração)
+  const currentHpPercent = (beast.currentHp / beast.maxHp) * 100;
+  if (currentHpPercent < 20) {
+    if (!confirm(`⚠️ AVISO: Sua Beast está com apenas ${beast.currentHp}/${beast.maxHp} HP (${Math.floor(currentHpPercent)}%)!\n\nEntrar em dungeons com HP baixo é muito perigoso. Deseja continuar?`)) {
+      return;
+    }
+  }
 
   const dungeon = getDungeonById(dungeonId);
   if (!dungeon) {
@@ -1961,16 +2003,31 @@ function startDungeonBattle(dungeonId: string, floor: number) {
     return;
   }
 
-  // Verificar stamina
-  const staminaCost = calculateStaminaCost(floor);
-  if (gameState.stamina < staminaCost) {
-    showMessage(`Stamina insuficiente! Necessário: ${staminaCost}⚡`, '⚠️ Sem Stamina');
+  // Verificar fadiga (custo da dungeon)
+  const fatigueCost = calculateFatigueCost(floor);
+  const currentFatigue = beast.secondaryStats.fatigue;
+  const fatigueAfter = currentFatigue + fatigueCost;
+  
+  if (fatigueAfter > 100) {
+    showMessage(
+      `😓 Sua Beast está muito cansada!\n\n` +
+      `Fadiga atual: ${currentFatigue}/100\n` +
+      `Custo do andar ${floor}: +${fatigueCost}\n` +
+      `Total após: ${fatigueAfter}/100\n\n` +
+      `Descanse antes de entrar na dungeon.`,
+      '⚠️ Beast Cansada'
+    );
     return;
   }
 
-  // Consumir stamina
-  if (!consumeStamina(gameState, staminaCost)) {
-    showMessage(`Stamina insuficiente! Necessário: ${staminaCost}⚡`, '⚠️ Sem Stamina');
+  // Verificar se o andar já foi limpo
+  const progress = gameState.dungeonProgress[dungeonId];
+  if (progress && progress.clearedFloors.includes(floor)) {
+    showMessage(
+      `Este andar já foi completado!\n\n` +
+      `Escolha um andar diferente ou outra dungeon.`,
+      '✅ Andar Completo'
+    );
     return;
   }
 
@@ -2011,17 +2068,34 @@ function startDungeonBattle(dungeonId: string, floor: number) {
       level: enemy.level,
     };
 
-    // Fechar dungeon UI
-    closeDungeon();
+  // PROTEÇÃO: Prevenir múltiplas batalhas simultâneas (igual exploração)
+  if (inBattle || isDungeonBattle) {
+    console.error('[Dungeon] Already in battle! Ignoring new battle start');
+    showMessage('Você já está em batalha!', '⚠️ Batalha em Andamento');
+    return;
+  }
 
-    // Iniciar batalha
-    const battle = initiateBattle(gameState.activeBeast, enemyBeast, false);
-    battle.phase = 'player_turn';
+  // APLICAR FADIGA ANTES DE INICIAR BATALHA
+  beast.secondaryStats.fatigue += fatigueCost;
+  console.log(`[Dungeon] Entering floor ${floor}, fatigue: ${currentFatigue} -> ${beast.secondaryStats.fatigue} (+${fatigueCost})`);
+  
+  // Salvar imediatamente
+  saveGame(gameState);
 
-    gameState.currentBattle = battle;
+  // Marcar como batalha de dungeon
+  isDungeonBattle = true;
 
-    // Create battle UI
-    battleUI = new BattleUI(canvas, battle);
+  // Fechar dungeon UI
+  closeDungeon();
+
+  // Iniciar batalha
+  const battle = initiateBattle(gameState.activeBeast, enemyBeast, false);
+  battle.phase = 'player_turn';
+
+  gameState.currentBattle = battle;
+
+  // Create battle UI
+  battleUI = new BattleUI(canvas, battle);
 
     // Setup callbacks
     battleUI.onPlayerAction = (action: CombatAction) => {
@@ -2144,6 +2218,7 @@ function startDungeonBattle(dungeonId: string, floor: number) {
       }
       battleUI = null;
       inBattle = false;
+      isDungeonBattle = false; // LIMPAR FLAG de batalha de dungeon
 
       // Save game
       saveGame(gameState);

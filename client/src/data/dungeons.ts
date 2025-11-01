@@ -686,9 +686,10 @@ export function getAvailableDungeons(playerLevel: number): Dungeon[] {
 }
 
 /**
- * Calcula stamina necessária para explorar
+ * Calcula fadiga necessária para explorar dungeon
+ * Dungeons são mais cansativas que explorações normais
  */
-export function calculateStaminaCost(floor: number): number {
-  return floor * 10; // 10, 20, 30, 40, 50
+export function calculateFatigueCost(floor: number): number {
+  return 10 + (floor * 5); // Floor 1 = 15, Floor 2 = 20, ..., Floor 5 = 35
 }
 

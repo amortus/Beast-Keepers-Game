@@ -453,9 +453,6 @@ export interface GameState {
   totalSpent: number; // Total gasto
   
   // ===== SISTEMA DE DUNGEONS =====
-  stamina: number; // Stamina atual (0-100)
-  maxStamina: number; // Stamina máxima (100)
-  lastStaminaRegen: number; // Timestamp da última regeneração
   dungeonProgress: Record<string, {
     currentFloor: number; // Andar atual desbloqueado (1-5)
     completed: boolean; // Dungeon completada?
