@@ -2177,27 +2177,42 @@ function startDungeonBattle(dungeonId: string, floor: number) {
       }
 
       if (battle.phase === 'victory') {
-        // Vitória!
+        // Vitória em dungeon
         gameState.victories++;
-        gameState.activeBeast!.victories++;
+        if (gameState.activeBeast) {
+          gameState.activeBeast.victories++;
+          // Atualizar HP e Essência após vitória
+          gameState.activeBeast.currentHp = battle.player.currentHp;
+          gameState.activeBeast.essence = battle.player.currentEssence;
+          console.log('[Dungeon Battle] Beast HP after victory:', gameState.activeBeast.currentHp);
+        }
 
         showMessage(
           '🏆 Vitória! Seu beast venceu a batalha no andar da dungeon!',
           '✨ Dungeon',
-          () => {
+          async () => {
+            await saveGame(gameState!);
             closeBattle();
             openDungeon();
           }
         );
       } else if (battle.phase === 'defeat') {
-        // Derrota
-        if (gameState.activeBeast) gameState.activeBeast.defeats++;
+        // Derrota em dungeon
+        if (gameState.activeBeast) {
+          gameState.activeBeast.defeats++;
+          // Atualizar HP após derrota
+          gameState.activeBeast.currentHp = Math.max(1, battle.player.currentHp);
+          gameState.activeBeast.essence = battle.player.currentEssence;
+          console.log('[Dungeon Battle] Beast HP after defeat:', gameState.activeBeast.currentHp);
+        }
 
         showMessage(
           '💀 Seu beast foi derrotado na dungeon. Você foi expulso.',
           '☠️ Derrota',
-          () => {
+          async () => {
             closeBattle();
+            closeDungeon(); // CRÍTICO: Fechar dungeon também!
+            await saveGame(gameState!);
           }
         );
       } else if (battle.phase === 'fled') {

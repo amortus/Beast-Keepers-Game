@@ -387,7 +387,7 @@ export class ImmersiveBattleScene3D {
     
     // Posicionar à ESQUERDA, virado para DIREITA (encarando inimigo)
     group.position.set(-4, 0, 0);
-    group.rotation.y = Math.PI / 4; // Virado para direita
+    group.rotation.y = Math.PI * 0.35; // 63° = mais de frente para o inimigo (AJUSTADO)
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -405,7 +405,7 @@ export class ImmersiveBattleScene3D {
       model,
       group,
       basePosition: new THREE.Vector3(-4, 0, 0),
-      baseRotation: Math.PI / 4,
+      baseRotation: Math.PI * 0.35, // 63° - mesmo do rotation (AJUSTADO)
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
@@ -437,7 +437,7 @@ export class ImmersiveBattleScene3D {
     
     // Posicionar à DIREITA, virado para ESQUERDA (encarando jogador)
     group.position.set(4, 0, 0);
-    group.rotation.y = Math.PI * 1.35; // 243° = virado mais para o jogador (AJUSTADO)
+    group.rotation.y = Math.PI * 1.40; // 252° = virado ainda mais para o jogador (AJUSTADO)
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -455,7 +455,7 @@ export class ImmersiveBattleScene3D {
       model,
       group,
       basePosition: new THREE.Vector3(4, 0, 0),
-      baseRotation: Math.PI * 1.35, // 243° - mesmo do rotation (AJUSTADO)
+      baseRotation: Math.PI * 1.40, // 252° - mesmo do rotation (AJUSTADO)
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
