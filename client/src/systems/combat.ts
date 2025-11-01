@@ -52,28 +52,54 @@ export function canUseTechnique(technique: Technique, essence: number): boolean 
 /**
  * Calcula chance de acerto baseado em Foco vs Agilidade
  */
+/**
+ * Calcula chance de acerto baseado em Foco do atacante e Agilidade do defensor
+ * NOVO: Agility tem MUITO mais impacto na esquiva
+ */
 function calculateHitChance(attackerFocus: number, defenderAgility: number, isDefending: boolean): number {
-  const basechance = 0.75; // 75% base
-  const focusBonus = (attackerFocus / 100) * 0.15; // Até +15% com foco máximo
-  const agilityPenalty = (defenderAgility / 100) * 0.2; // Até -20% com agilidade máxima
-  const defendBonus = isDefending ? 0.2 : 0; // +20% se defendendo
+  const baseChance = 0.85; // 85% base
+  
+  // Focus: Até +12% de precisão (melhorado)
+  // Focus 50 → +6%
+  // Focus 100 → +12%
+  const focusBonus = (attackerFocus / 100) * 0.12;
+  
+  // Agility: Até -30% de chance de ser atingido (MUITO aumentado)
+  // Agility 50 → -15% (inimigo tem 15% menos chance de acertar)
+  // Agility 100 → -30% (inimigo tem 30% menos chance de acertar)
+  const agilityPenalty = (defenderAgility / 100) * 0.30;
+  
+  // Defendendo: -20% de chance de ser atingido
+  const defendBonus = isDefending ? 0.20 : 0;
 
-  return Math.max(0.1, Math.min(0.95, basechance + focusBonus - agilityPenalty + defendBonus));
+  // Chance final: 10% mínimo, 95% máximo
+  return Math.max(0.10, Math.min(0.95, baseChance + focusBonus - agilityPenalty + defendBonus));
 }
 
 /**
  * Calcula chance de crítico baseado em Foco + Agilidade
+ * NOVO: Crítico mais impactante e frequente
  */
 function calculateCritChance(focus: number, agility: number): number {
   const baseChance = 0.05; // 5% base
-  const focusBonus = (focus / 150) * 0.1; // Até +10% com foco máximo
-  const agilityBonus = (agility / 150) * 0.05; // Até +5% com agilidade máxima
   
-  return Math.min(0.3, baseChance + focusBonus + agilityBonus); // Max 30%
+  // Focus: Até +15% de crítico (antes era +10%)
+  // Focus 50 → +5% (total 10%)
+  // Focus 100 → +15% (total 20%)
+  const focusBonus = (focus / 100) * 0.15;
+  
+  // Agility: Até +10% de crítico (antes era +5%)
+  // Agility 50 → +5% (total 10%)
+  // Agility 100 → +10% (total 15%)
+  const agilityBonus = (agility / 100) * 0.10;
+  
+  // Máximo 35% de chance de crítico (antes era 30%)
+  return Math.min(0.35, baseChance + focusBonus + agilityBonus);
 }
 
 /**
  * Calcula dano físico ou místico
+ * SISTEMA RPG COMPLETO: Atributos têm GRANDE impacto
  */
 function calculateDamage(
   technique: Technique,
@@ -86,25 +112,36 @@ function calculateDamage(
 
   let baseDamage = technique.damage;
   
-  // Adiciona bônus de atributo
+  // NOVO: Bônus de atributo MUITO MAIOR (80-100% do valor)
   if (technique.type === 'physical') {
-    baseDamage += attrs.might * 0.5; // Força adiciona 50% do valor
+    // Dano Físico = baseDamage + (Might * 0.8)
+    // Might 50 → +40 dano
+    // Might 100 → +80 dano
+    baseDamage += attrs.might * 0.8;
   } else if (technique.type === 'mystical') {
-    baseDamage += attrs.wit * 0.5; // Astúcia adiciona 50% do valor
+    // Dano Místico = baseDamage + (Wit * 0.6 + Focus * 0.4)
+    // Wit 50 + Focus 50 → +50 dano
+    // Wit 100 + Focus 100 → +100 dano
+    baseDamage += attrs.wit * 0.6 + attrs.focus * 0.4;
   }
 
-  // Reduz por defesa
-  const defense = defAttrs.ward * 0.3;
+  // NOVO: Defesa MAIOR (Ward * 0.5)
+  // Ward 50 → -25 dano
+  // Ward 100 → -50 dano
+  const defense = defAttrs.ward * 0.5;
   baseDamage = Math.max(1, baseDamage - defense);
 
-  // Defesa ativa reduz em 50%
+  // Defesa ativa reduz em 60% (aumentado de 50%)
   if (defender.isDefending) {
-    baseDamage *= 0.5;
+    baseDamage *= 0.4;
   }
 
-  // Crítico aumenta em 50%
+  // NOVO: Crítico aumenta baseado em Focus
+  // Base: +50% dano
+  // Com Focus alto: até +100% dano
+  const critMultiplier = 1.5 + (attrs.focus / 200); // 1.5x a 2.0x
   if (isCritical) {
-    baseDamage *= 1.5;
+    baseDamage *= critMultiplier;
   }
 
   return Math.floor(baseDamage);

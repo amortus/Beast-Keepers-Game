@@ -14,10 +14,29 @@ function generateBeastId(): string {
 }
 
 /**
+ * ===== SISTEMA RPG: FÓRMULAS DE ATRIBUTOS =====
+ */
+
+/**
  * Calcula HP máximo baseado em Vitalidade
+ * Fórmula RPG: HP = (Vitality * 3) + 50
+ * Vitality 30 → 140 HP
+ * Vitality 50 → 200 HP
+ * Vitality 100 → 350 HP
  */
 function calculateMaxHp(vitality: number): number {
-  return vitality * 2 + 50;
+  return Math.floor(vitality * 3 + 50);
+}
+
+/**
+ * Calcula Essência máxima baseada em Wit + Focus
+ * Fórmula RPG: Essência = ((Wit + Focus) / 2) + 30
+ * Wit 30 + Focus 30 → 60 Essência
+ * Wit 50 + Focus 50 → 80 Essência
+ * Wit 100 + Focus 100 → 130 Essência
+ */
+function calculateMaxEssence(wit: number, focus: number): number {
+  return Math.floor((wit + focus) / 2 + 30);
 }
 
 /**
@@ -40,6 +59,7 @@ export function createBeast(line: BeastLine, name: string, currentWeek: number =
   });
 
   const maxHp = calculateMaxHp(attributes.vitality);
+  const maxEssence = calculateMaxEssence(attributes.wit, attributes.focus);
 
   // Traço inicial aleatório (simplificado para MVP)
   const possibleTraits: PersonalityTrait[] = ['loyal', 'brave', 'curious', 'lazy', 'proud'];
@@ -67,8 +87,8 @@ export function createBeast(line: BeastLine, name: string, currentWeek: number =
     techniques: startingTechniques,
     currentHp: maxHp,
     maxHp,
-    essence: 50,
-    maxEssence: 99,
+    essence: maxEssence, // NOVO: Inicia com essência máxima
+    maxEssence, // NOVO: Baseado em Wit + Focus
     
     birthWeek: currentWeek,
     birthDate: now, // timestamp de nascimento
@@ -108,12 +128,20 @@ export function applyGrowth(beast: Beast, attribute: keyof Attributes, intensity
   // Aplica crescimento
   beast.attributes[attribute] = Math.min(beast.attributes[attribute] + growth, 150);
 
-  // Atualiza HP máximo se treinou vitalidade
+  // NOVO: Atualiza stats derivados quando atributos mudam
   if (attribute === 'vitality') {
     const newMaxHp = calculateMaxHp(beast.attributes.vitality);
     const hpDiff = newMaxHp - beast.maxHp;
     beast.maxHp = newMaxHp;
     beast.currentHp = Math.min(beast.currentHp + hpDiff, beast.maxHp);
+  }
+  
+  // NOVO: Atualiza Essência máxima ao treinar Wit ou Focus
+  if (attribute === 'wit' || attribute === 'focus') {
+    const newMaxEssence = calculateMaxEssence(beast.attributes.wit, beast.attributes.focus);
+    const essenceDiff = newMaxEssence - beast.maxEssence;
+    beast.maxEssence = newMaxEssence;
+    beast.essence = Math.min(beast.essence + essenceDiff, beast.maxEssence);
   }
 
   return growth;
