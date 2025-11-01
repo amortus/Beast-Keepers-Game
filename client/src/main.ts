@@ -3000,6 +3000,31 @@ let isClosingExploration = false; // Prevenir múltiplas chamadas de closeExplor
 // Flag de controle de dungeon
 let isDungeonBattle = false; // Diferenciar batalha de dungeon
 
+/**
+ * Fecha a batalha e limpa recursos
+ */
+function closeBattle() {
+  if (!gameState) return;
+  
+  console.log('[Battle] Closing battle...');
+  
+  // Clear battle state
+  gameState.currentBattle = undefined;
+  
+  // Dispose battle UI
+  if (battleUI) {
+    battleUI.dispose();
+    battleUI = null;
+  }
+  
+  // Clear flags
+  inBattle = false;
+  isExplorationBattle = false;
+  isDungeonBattle = false;
+  
+  console.log('[Battle] ✓ Battle closed');
+}
+
 async function collectTreasureInExploration(treasure: Item[]) {
   // Proteção contra spam
   if (isCollectingTreasure || !explorationState || !explorationUI || !gameState) {
