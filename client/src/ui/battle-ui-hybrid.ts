@@ -28,6 +28,7 @@ export class BattleUIHybrid {
   // 3D Arena (HÍBRIDO: só na área das bestas)
   private arenaScene3D: ImmersiveBattleScene3D | null = null;
   private arenaScene3DContainer: HTMLDivElement | null = null;
+  private resizeHandler: (() => void) | null = null;
   
   // Mini viewers (não usado no híbrido, mas mantém compatibilidade)
   private playerViewer3D: BeastMiniViewer3D | null = null;
@@ -59,6 +60,32 @@ export class BattleUIHybrid {
     this.canvas.addEventListener('mousedown', () => {
       this.handleClick();
     });
+    
+    // Resize listener para reposicionar arena 3D
+    this.resizeHandler = () => {
+      this.repositionArena3D();
+    };
+    window.addEventListener('resize', this.resizeHandler);
+  }
+  
+  private repositionArena3D() {
+    if (!this.arenaScene3DContainer || !this.arenaScene3D) return;
+    
+    const rect = this.canvas.getBoundingClientRect();
+    const arenaY = 150;
+    const arenaHeight = 200;
+    
+    const containerTop = rect.top + (arenaY / this.canvas.height) * rect.height;
+    const containerHeight = (arenaHeight / this.canvas.height) * rect.height;
+    
+    this.arenaScene3DContainer.style.top = `${containerTop}px`;
+    this.arenaScene3DContainer.style.left = `${rect.left}px`;
+    this.arenaScene3DContainer.style.width = `${rect.width}px`;
+    this.arenaScene3DContainer.style.height = `${containerHeight}px`;
+    
+    this.arenaScene3D.resize(rect.width, containerHeight);
+    
+    console.log('[BattleUI HYBRID] Arena 3D repositioned:', { top: containerTop, left: rect.left, width: rect.width, height: containerHeight });
   }
 
   private setup3DArena() {
@@ -921,6 +948,13 @@ export class BattleUIHybrid {
 
   public dispose() {
     console.log('[BattleUI HYBRID] Disposing...');
+    
+    // Remove resize listener
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+      console.log('[BattleUI HYBRID] ✓ Resize listener removed');
+    }
     
     // Cleanup 3D arena (principal)
     if (this.arenaScene3D) {

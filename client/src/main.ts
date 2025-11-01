@@ -2198,12 +2198,14 @@ function startDungeonBattle(dungeonId: string, floor: number) {
           console.log('[Dungeon Battle] Beast HP after victory:', gameState.activeBeast.currentHp);
         }
 
+        // IMPORTANTE: Fechar batalha IMEDIATAMENTE (não esperar modal)
+        closeBattle();
+        
         showMessage(
           '🏆 Vitória! Seu beast venceu a batalha no andar da dungeon!',
           '✨ Dungeon',
           async () => {
             await saveGame(gameState!);
-            closeBattle();
             openDungeon();
           }
         );
@@ -2217,13 +2219,20 @@ function startDungeonBattle(dungeonId: string, floor: number) {
           console.log('[Dungeon Battle] Beast HP after defeat:', gameState.activeBeast.currentHp);
         }
 
+        // IMPORTANTE: Fechar batalha IMEDIATAMENTE (não esperar modal)
+        closeBattle();
+        
         showMessage(
           '💀 Seu beast foi derrotado na dungeon. Você foi expulso.',
           '☠️ Derrota',
           async () => {
-            closeBattle();
-            closeDungeon(); // CRÍTICO: Fechar dungeon também!
+            closeDungeon(); // Fechar dungeon no callback do modal
             await saveGame(gameState!);
+            
+            // Mostrar Ranch 3D
+            if (gameUI) {
+              gameUI.show3DViewer();
+            }
           }
         );
       } else if (battle.phase === 'fled') {
