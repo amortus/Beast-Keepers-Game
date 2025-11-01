@@ -64,7 +64,7 @@ export class BattleUIHybrid {
   private setup3DArena() {
     console.log('[BattleUI HYBRID] Setting up 3D arena in beast area...');
     
-    // Cria container 3D APENAS na área da arena (onde ficam as bestas)
+    // Garante que o canvas permite transparência
     const rect = this.canvas.getBoundingClientRect();
     const arenaY = 150; // mesma posição do drawArena()
     const arenaHeight = 200;
@@ -81,9 +81,15 @@ export class BattleUIHybrid {
       left: ${rect.left}px;
       width: ${rect.width}px;
       height: ${containerHeight}px;
-      z-index: 2;
+      z-index: 0;
       pointer-events: none;
+      background: transparent;
     `;
+    
+    // Garante que o canvas está acima do 3D
+    this.canvas.style.position = 'fixed';
+    this.canvas.style.zIndex = '10';
+    this.canvas.style.backgroundColor = 'transparent';
     
     document.body.appendChild(this.arenaScene3DContainer);
     
@@ -102,6 +108,12 @@ export class BattleUIHybrid {
       this.arenaScene3D.setCameraAngle('wide');
       
       console.log('[BattleUI HYBRID] ✓ 3D arena created in beast area');
+      console.log('[BattleUI HYBRID] Container position:', {
+        top: containerTop,
+        left: rect.left,
+        width: rect.width,
+        height: containerHeight
+      });
     } catch (error) {
       console.error('[BattleUI HYBRID] Failed to create 3D arena:', error);
       this.arenaScene3D = null;
@@ -137,14 +149,21 @@ export class BattleUIHybrid {
       this.arenaScene3D.update(0.016); // ~60 FPS
     }
     
-    // Clear
+    // Clear fundo
     this.ctx.fillStyle = COLORS.bg.dark;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // HÍBRIDO: Criar "buraco" transparente na área da arena para ver 3D
+    if (this.arenaScene3D) {
+      const arenaY = 150;
+      const arenaHeight = 200;
+      this.ctx.clearRect(0, arenaY, this.canvas.width, arenaHeight);
+    }
 
     // Rebuild buttons
     this.buttons.clear();
 
-    // Draw arena (fundo 2D)
+    // Draw arena (fundo 2D só se 3D falhar)
     this.drawArena();
 
     // NÃO desenha bestas 2D (3D arena renderiza elas)
@@ -183,14 +202,17 @@ export class BattleUIHybrid {
   }
 
   private drawArena() {
-    // Arena background
-    const arenaY = 150;
-    const arenaHeight = 200;
-    
-    drawPanel(this.ctx, 0, arenaY, this.canvas.width, arenaHeight, {
-      bgColor: '#2d2d2d',
-      borderColor: COLORS.primary.purple,
-    });
+    // HÍBRIDO: Não desenha fundo cinza (3D arena aparece por baixo)
+    // Arena background só aparece se 3D falhar
+    if (!this.arenaScene3D) {
+      const arenaY = 150;
+      const arenaHeight = 200;
+      
+      drawPanel(this.ctx, 0, arenaY, this.canvas.width, arenaHeight, {
+        bgColor: '#2d2d2d',
+        borderColor: COLORS.primary.purple,
+      });
+    }
   }
 
   private drawPlayerBeast() {
