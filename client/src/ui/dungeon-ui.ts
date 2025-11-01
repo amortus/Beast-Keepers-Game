@@ -59,9 +59,9 @@ export class DungeonUI {
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Painel principal (aumentado para melhor visualização)
-    const panelWidth = Math.min(1100, this.canvas.width - 40);
-    const panelHeight = Math.min(700, this.canvas.height - 40);
+    // Painel principal (ajustado para caber na tela)
+    const panelWidth = Math.min(1000, this.canvas.width - 60);
+    const panelHeight = Math.min(650, this.canvas.height - 60);
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
@@ -136,9 +136,9 @@ export class DungeonUI {
       color: COLORS.primary.gold,
     });
 
-    let currentY = y + 70;
-    const dungeonHeight = 110; // Aumentado de 100 para 110
-    const spacing = 15;
+    let currentY = y + 65;
+    const dungeonHeight = 88; // Reduzido para 88px para caber 5 dungeons
+    const spacing = 8; // Reduzido para 8px
 
     DUNGEONS.forEach((dungeon) => {
       const isAvailable = dungeon.minVictories <= playerVictories;
@@ -157,22 +157,22 @@ export class DungeonUI {
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(x, currentY, width, dungeonHeight);
 
-      // Ícone (esquerda)
-      drawText(this.ctx, dungeon.icon, x + 20, currentY + 40, {
-        font: '48px monospace',
+      // Ícone (esquerda, reduzido)
+      drawText(this.ctx, dungeon.icon, x + 18, currentY + 35, {
+        font: '42px monospace',
       });
 
-      // Nome (centro-esquerda)
+      // Nome (centro-esquerda, fonte reduzida)
       const nameColor = isAvailable ? COLORS.ui.text : COLORS.ui.textDim;
-      drawText(this.ctx, dungeon.name, x + 90, currentY + 20, {
-        font: 'bold 20px monospace',
+      drawText(this.ctx, dungeon.name, x + 85, currentY + 18, {
+        font: 'bold 18px monospace',
         color: nameColor,
       });
 
       // Descrição (abaixo do nome, truncada se necessário)
       const descMaxWidth = width - 300; // Largura disponível (descontando ícone, nome, progresso)
       let description = dungeon.description;
-      this.ctx.font = '13px monospace';
+      this.ctx.font = '12px monospace';
       const descMetrics = this.ctx.measureText(description);
       if (descMetrics.width > descMaxWidth) {
         // Truncar descrição se muito longa
@@ -181,8 +181,8 @@ export class DungeonUI {
         }
         description = description + '...';
       }
-      drawText(this.ctx, description, x + 90, currentY + 45, {
-        font: '13px monospace',
+      drawText(this.ctx, description, x + 85, currentY + 40, {
+        font: '12px monospace',
         color: COLORS.ui.textDim,
       });
 
@@ -191,8 +191,8 @@ export class DungeonUI {
         ? `✅ ${dungeon.minVictories > 0 ? `${dungeon.minVictories} vitórias` : 'Disponível'}` 
         : `🔒 ${dungeon.minVictories} vitórias necessárias`;
       const reqColor = isAvailable ? COLORS.primary.green : COLORS.ui.error;
-      drawText(this.ctx, reqText, x + 90, currentY + 68, {
-        font: 'bold 13px monospace',
+      drawText(this.ctx, reqText, x + 85, currentY + 60, {
+        font: 'bold 12px monospace',
         color: reqColor,
       });
 
@@ -201,18 +201,18 @@ export class DungeonUI {
         const progressText = isCompleted 
           ? '✅ Completo!' 
           : `Andar ${currentFloor}/5`;
-        const progressY = currentY + 40; // Centralizado verticalmente
+        const progressY = currentY + 38; // Centralizado verticalmente
         drawText(this.ctx, progressText, x + width - 15, progressY, {
           align: 'right',
-          font: 'bold 16px monospace',
+          font: 'bold 15px monospace',
           color: isCompleted ? COLORS.primary.gold : COLORS.primary.purple,
         });
       } else {
         // Mostrar quantas vitórias faltam
         const needed = dungeon.minVictories - playerVictories;
-        drawText(this.ctx, `Faltam ${needed} vitórias`, x + width - 15, currentY + 40, {
+        drawText(this.ctx, `Faltam ${needed} vitórias`, x + width - 15, currentY + 38, {
           align: 'right',
-          font: '13px monospace',
+          font: '12px monospace',
           color: COLORS.ui.error,
         });
       }
