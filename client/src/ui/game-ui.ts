@@ -400,9 +400,21 @@ export class GameUI {
       { id: 'temple', label: '🏛️ Templo', color: COLORS.primary.purple, action: () => this.onOpenTemple() },
     ];
 
-    // AJUSTE: Reduzir largura dos botões para caber mais um (Dungeons)
-    const btnWidth = 117; // Reduzido de 130 para 117 para caber 9 botões
+    // AJUSTE: Calcular largura dinâmica baseada na quantidade de botões
+    // 9 botões: deixar mais compacto mas ainda legível
+    const totalItems = menuItems.length;
+    const totalSpacing = (totalItems - 1) * btnSpacing;
+    const availableWidth = this.canvas.width - (currentX * 2); // Margens laterais
+    const btnWidth = Math.floor((availableWidth - totalSpacing) / totalItems);
     const btnHeight = 26;
+
+    console.log('[GameUI] Menu calculated:', {
+      totalItems,
+      availableWidth,
+      btnWidth,
+      btnSpacing,
+      items: menuItems.map(m => m.label)
+    });
 
     menuItems.forEach((item) => {
       
