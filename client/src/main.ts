@@ -3143,6 +3143,12 @@ function closeBattle() {
   // Clear battle state
   gameState.currentBattle = undefined;
   
+  // CRÍTICO: Cancelar qualquer ação em andamento da besta
+  if (gameState.activeBeast && gameState.activeBeast.currentAction) {
+    console.log('[Battle] Cancelling beast action:', gameState.activeBeast.currentAction.type);
+    gameState.activeBeast.currentAction = undefined;
+  }
+  
   // Dispose battle UI
   if (battleUI) {
     battleUI.dispose();
