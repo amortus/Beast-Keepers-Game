@@ -2687,11 +2687,12 @@ function startExplorationBattle(enemy: WildEnemy) {
   // Música removida
 }
 
-// Flag para prevenir spam no botão de coletar
-let isCollectingTreasure = false;
+// Flags de controle de exploração
+let isCollectingTreasure = false; // Prevenir spam no botão de coletar
+let isClosingExploration = false; // Prevenir múltiplas chamadas de closeExploration
 
-// Flag para prevenir múltiplas chamadas de closeExploration
-let isClosingExploration = false;
+// Flag de controle de dungeon
+let isDungeonBattle = false; // Diferenciar batalha de dungeon
 
 async function collectTreasureInExploration(treasure: Item[]) {
   // Proteção contra spam
