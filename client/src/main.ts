@@ -47,7 +47,7 @@ import { NPCS, getNPCDialogue, increaseAffinity } from './data/npcs';
 import { processWeeklyEvents } from './systems/events';
 import { useItem } from './systems/inventory';
 import { calculateTournamentDrops } from './systems/drops';
-import { trackAction, trackSpending, unlockQuests, getCompletedQuests } from './systems/quests';
+import { unlockQuests, getCompletedQuests } from './systems/quests';
 import { startExploration, advanceExploration, defeatEnemy, collectMaterials, endExploration } from './systems/exploration';
 import { executeCraft } from './systems/craft';
 import { getItemById } from './data/shop';
@@ -1348,9 +1348,9 @@ function openDialogueWith(npcId: string) {
     };
   }
 
-  // Track NPC interaction for quests
+  // Track NPC interaction for quests via event system
   if (gameState) {
-    trackAction(gameState.quests, 'talk_npc');
+    emitGameEvent({ type: 'npc_talked', npcId }, gameState);
     unlockQuests(gameState.quests);
   }
 
@@ -1466,8 +1466,8 @@ function openShop() {
     // Deduct money
     gameState.economy.coronas -= item.price;
 
-    // Track spending for quests
-    trackSpending(gameState.quests, item.price);
+    // Track spending for quests via event system
+    emitGameEvent({ type: 'money_spent', amount: item.price, category: 'shop' }, gameState);
 
     // Add item to inventory
     const existingItem = gameState.inventory.find(i => i.id === item.id);
@@ -2172,8 +2172,8 @@ function startExplorationBattle(enemy: WildEnemy) {
     const dropsList = drops.map(d => `${d.name} x${d.quantity}`).join(', ');
     showMessage(`Vitória na batalha! Materiais coletados: ${dropsList}`, '⚔️ Vitória na Batalha');
 
-    // Track quest
-    trackAction(gameState.quests, 'win_battle');
+    // Track quest via event system
+    emitBattleWon(gameState);
     unlockQuests(gameState.quests);
 
     } else if (battle.winner === 'enemy') {
@@ -2730,8 +2730,8 @@ function startTournamentBattle(rank: TournamentRank) {
       gameState.victories++;
       gameState.activeBeast!.victories++;
       
-      // Track quest progress
-      trackAction(gameState.quests, 'win_battle');
+      // Track quest progress via event system
+      emitBattleWon(gameState);
       unlockQuests(gameState.quests);
       
       // Add rewards
