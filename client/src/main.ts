@@ -2111,8 +2111,19 @@ function startDungeonBattle(dungeonId: string, floor: number) {
   // Marcar como batalha de dungeon
   isDungeonBattle = true;
 
-  // Fechar dungeon UI
-  closeDungeon();
+  // Fechar dungeon UI (SEM mostrar Ranch 3D)
+  if (dungeonUI) {
+    dungeonUI.close();
+  }
+  dungeonUI = null;
+  inDungeon = false;
+  console.log('[Dungeon] Dungeon UI closed for battle (Ranch 3D NOT shown)');
+  
+  // GARANTIR que Ranch 3D está escondida antes da batalha
+  if (gameUI) {
+    gameUI.hide3DViewer();
+    console.log('[Dungeon] Ranch Scene 3D hidden before battle');
+  }
 
   // Iniciar batalha
   const battle = initiateBattle(gameState.activeBeast, enemyBeast, false);
