@@ -2167,8 +2167,16 @@ function startDungeonBattle(dungeonId: string, floor: number) {
       if (!gameState?.currentBattle) return;
 
       const battle = gameState.currentBattle;
+      
+      console.log('[Dungeon Battle] Battle ended - Phase:', battle.phase);
+      
+      // PROTEÇÃO: Verificar fase
+      if (battle.phase !== 'victory' && battle.phase !== 'defeat' && battle.phase !== 'fled') {
+        console.error('[Dungeon Battle] ❌ onBattleEnd called but phase is:', battle.phase);
+        return;
+      }
 
-      if (battle.winner === 'player') {
+      if (battle.phase === 'victory') {
         // Vitória!
         gameState.victories++;
         gameState.activeBeast!.victories++;
@@ -2181,7 +2189,7 @@ function startDungeonBattle(dungeonId: string, floor: number) {
             openDungeon();
           }
         );
-      } else {
+      } else if (battle.phase === 'defeat') {
         // Derrota
         if (gameState.activeBeast) gameState.activeBeast.defeats++;
 
@@ -2190,6 +2198,16 @@ function startDungeonBattle(dungeonId: string, floor: number) {
           '☠️ Derrota',
           () => {
             closeBattle();
+          }
+        );
+      } else if (battle.phase === 'fled') {
+        // Fugiu
+        showMessage(
+          '🏃 Você fugiu da batalha!',
+          '⚠️ Fuga',
+          () => {
+            closeBattle();
+            openDungeon();
           }
         );
       }
@@ -2736,6 +2754,12 @@ function startExplorationBattle(enemy: WildEnemy) {
       const battle = gameState.currentBattle;
       
       console.log('[Exploration Battle] Battle ended - Phase:', battle.phase, 'Winner:', battle.winner);
+      
+      // PROTEÇÃO: Se fase não for final, não processar
+      if (battle.phase !== 'victory' && battle.phase !== 'defeat' && battle.phase !== 'fled') {
+        console.error('[Exploration Battle] ❌ onBattleEnd called but phase is:', battle.phase);
+        return;
+      }
 
       // FUGIU: Volta para exploração (sem penalidade)
       if (battle.phase === 'fled') {
@@ -2760,8 +2784,10 @@ function startExplorationBattle(enemy: WildEnemy) {
         return; // Sai do callback
       }
 
-      if (battle.winner === 'player') {
-        // VITÓRIA: Continuar exploração
+      // VITÓRIA: Continuar exploração
+      if (battle.phase === 'victory') {
+        console.log('[Exploration Battle] ✓ Victory - continuing exploration');
+        
         gameState.victories++;
         if (gameState.activeBeast) gameState.activeBeast.victories++;
         
@@ -2794,9 +2820,11 @@ function startExplorationBattle(enemy: WildEnemy) {
             walkExploration();
           }, 800); // 800ms para jogador ver o progresso
         }
-      } else {
-        // DERROTA: Fechar exploração
+      } 
+      // DERROTA: Fechar exploração
+      else if (battle.phase === 'defeat') {
         console.log('[Exploration Battle] ✗ Defeat - closing exploration');
+        
         if (gameState.activeBeast) gameState.activeBeast.defeats++;
         await saveGame(gameState);
         
@@ -3545,17 +3573,27 @@ function startTournamentBattle(rank: TournamentRank) {
       if (!gameState?.currentBattle) return;
 
       const battle = gameState.currentBattle;
-      inBattle = false;
+      
+      console.log('[Tournament] Battle ended - Phase:', battle.phase);
+      
+      // PROTEÇÃO: Verificar fase
+      if (battle.phase !== 'victory' && battle.phase !== 'defeat' && battle.phase !== 'fled') {
+        console.error('[Tournament] ❌ onBattleEnd called but phase is:', battle.phase);
+        return;
+      }
 
-      if (battle.winner === 'player') {
+      if (battle.phase === 'victory') {
         gameState.victories++;
         gameState.activeBeast!.victories++;
         
         emitBattleWon(gameState);
         unlockQuests(gameState.quests);
-      } else {
+      } else if (battle.phase === 'defeat') {
         gameState.defeats++;
         gameState.activeBeast!.defeats++;
+      } else if (battle.phase === 'fled') {
+        // Fugiu - sem penalidades em torneio
+        console.log('[Tournament] Player fled from tournament');
       }
 
       await saveGame(gameState);
