@@ -1606,6 +1606,14 @@ function closeShop() {
 function openInventory() {
   if (!gameState) return;
 
+  // Close other UIs
+  if (inShop) closeShop();
+  if (inCraft) closeCraft();
+  if (inQuests) closeQuests();
+  if (inAchievements) closeAchievements();
+  if (inDungeon) closeDungeon();
+  if (inExploration) closeExploration();
+
   // Hide 3D viewer when opening inventory
   if (gameUI) {
     gameUI.hide3DViewer();
@@ -1709,6 +1717,10 @@ function openCraft() {
   // Close other UIs
   if (inShop) closeShop();
   if (inInventory) closeInventory();
+  if (inQuests) closeQuests();
+  if (inAchievements) closeAchievements();
+  if (inDungeon) closeDungeon();
+  if (inExploration) closeExploration();
 
   // Hide 3D viewer when opening craft
   if (gameUI) {
@@ -1810,6 +1822,7 @@ function openQuests() {
   if (inShop) closeShop();
   if (inInventory) closeInventory();
   if (inCraft) closeCraft();
+  if (inDungeon) closeDungeon(); // Fechar dungeons também
 
   // Hide 3D viewer when opening quests
   if (gameUI) {
@@ -2243,6 +2256,8 @@ function openAchievements() {
   if (inInventory) closeInventory();
   if (inCraft) closeCraft();
   if (inQuests) closeQuests();
+  if (inDungeon) closeDungeon();
+  if (inExploration) closeExploration();
 
   // Hide 3D viewer when opening achievements
   if (gameUI) {
@@ -3050,6 +3065,7 @@ function closeAllOverlays() {
   if (inCraft) closeCraft();
   if (inQuests) closeQuests();
   if (inAchievements) closeAchievements();
+  if (inDungeon) closeDungeon(); // NOVO: Fechar dungeons também
   if (inExploration) closeExploration();
   if (inDialogue) closeDialogue();
   // Temple não fecha, pois é uma ação importante
