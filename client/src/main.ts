@@ -12,6 +12,7 @@ console.log('%cSe você não vê este log verde, ainda está com cache antigo!',
 
 import { GameUI } from './ui/game-ui';
 import { BattleUI } from './ui/battle-ui';
+import { BattleUIHybrid } from './ui/battle-ui-hybrid';
 import { BattleUI3D } from './ui/battle-ui-3d';
 import { TempleUI } from './ui/temple-ui';
 import { DialogueUI } from './ui/dialogue-ui';
@@ -157,8 +158,9 @@ function setupAuthDOMProtection() {
 // Game state
 let gameState: GameState | null = null;
 let gameUI: GameUI | null = null;
-let battleUI: BattleUI | BattleUI3D | null = null; // Suporta ambos os sistemas
+let battleUI: BattleUI | BattleUIHybrid | BattleUI3D | null = null; // Suporta 2D, HÍBRIDO, e 3D
 let use3DBattle = false; // ⚡ TOGGLE: true = 3D imersivo, false = 2D clássico (DESATIVADO - sistema 2D é mais estável)
+let useHybridBattle = true; // 🎨 NOVO: UI 2D + Arena 3D (ATIVADO)
 let templeUI: TempleUI | null = null;
 let dialogueUI: DialogueUI | null = null;
 let shopUI: ShopUI | null = null;
@@ -2111,8 +2113,81 @@ function startDungeonBattle(dungeonId: string, floor: number) {
 
   gameState.currentBattle = battle;
 
-  // Create battle UI (3D or 2D based on toggle)
-  if (use3DBattle) {
+  // Create battle UI (HÍBRIDO, 3D completo, ou 2D clássico)
+  if (useHybridBattle) {
+    console.log('[Battle] 🎨 Using HYBRID Battle System (2D UI + 3D Arena)');
+    battleUI = new BattleUIHybrid(canvas, battle);
+    
+    // Setup HYBRID callbacks (mesma interface do 2D)
+    (battleUI as BattleUIHybrid).onPlayerAction = (action: CombatAction) => {
+      if (!gameState?.currentBattle) return;
+
+      const result = executePlayerAction(gameState.currentBattle, action);
+
+      if (result && battleUI) {
+        (battleUI as BattleUIHybrid).updateBattle(gameState.currentBattle);
+
+        if (gameState.currentBattle.winner) {
+          (battleUI as BattleUIHybrid).onBattleEnd();
+          return;
+        }
+
+        if (gameState.currentBattle.phase === 'enemy_turn') {
+          setTimeout(() => {
+            if (!gameState?.currentBattle || !battleUI) return;
+
+            executeEnemyTurn(gameState.currentBattle);
+            (battleUI as BattleUIHybrid).updateBattle(gameState.currentBattle);
+
+            if (gameState.currentBattle.winner) {
+              (battleUI as BattleUIHybrid).onBattleEnd();
+              return;
+            }
+
+            if (gameState.currentBattle.phase === 'player_turn') {
+              setTimeout(() => {
+                if (battleUI) {
+                  (battleUI as BattleUIHybrid).checkAutoBattle();
+                }
+              }, 500);
+            }
+          }, 1500);
+        }
+      }
+    };
+
+    (battleUI as BattleUIHybrid).onBattleEnd = () => {
+      if (!gameState?.currentBattle) return;
+
+      const battle = gameState.currentBattle;
+
+      if (battle.winner === 'player') {
+        // Vitória!
+        gameState.victories++;
+        gameState.activeBeast!.victories++;
+
+        showMessage(
+          '🏆 Vitória! Seu beast venceu a batalha no andar da dungeon!',
+          '✨ Dungeon',
+          () => {
+            closeBattle();
+            openDungeon();
+          }
+        );
+      } else {
+        // Derrota
+        if (gameState.activeBeast) gameState.activeBeast.defeats++;
+
+        showMessage(
+          '💀 Seu beast foi derrotado na dungeon. Você foi expulso.',
+          '☠️ Derrota',
+          () => {
+            closeBattle();
+          }
+        );
+      }
+    };
+  } else if (use3DBattle) {
     console.log('[Battle] 🎮 Using 3D Immersive Battle System');
     battleUI = new BattleUI3D(canvas, battle);
     
