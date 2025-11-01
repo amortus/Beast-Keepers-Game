@@ -394,6 +394,7 @@ export class GameUI {
       { id: 'inventory', label: '🎒 Inventário', color: COLORS.primary.purple, action: () => this.onOpenInventory() },
       { id: 'craft', label: '⚗️ Craft', color: COLORS.primary.green, action: () => this.onOpenCraft() },
       { id: 'exploration', label: '🗺️ Explorar', color: COLORS.primary.blue, action: () => this.onOpenExploration() },
+      { id: 'dungeons', label: '⚔️ Dungeons', color: COLORS.primary.purple, action: () => this.onOpenDungeons() },
       { id: 'quests', label: '📜 Missões', color: COLORS.primary.gold, action: () => this.onOpenQuests() },
       { id: 'achievements', label: '🏆 Conquistas', color: COLORS.primary.gold, action: () => this.onOpenAchievements() },
       { id: 'temple', label: '🏛️ Templo', color: COLORS.primary.purple, action: () => this.onOpenTemple() },
@@ -1109,6 +1110,7 @@ export class GameUI {
   public onOpenVillage: () => void = () => {};
   public onOpenInventory: () => void = () => {};
   public onOpenCraft: () => void = () => {};
+  public onOpenDungeons: () => void = () => {};
   public onOpenQuests: () => void = () => {};
   public onOpenAchievements: () => void = () => {};
   public onOpenExploration: () => void = () => {};

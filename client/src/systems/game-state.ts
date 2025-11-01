@@ -58,6 +58,12 @@ export function createNewGame(playerName: string): GameState {
     totalCrafts: 0,
     totalSpent: 0,
     
+    // NOVO: Sistema de Dungeons
+    stamina: 100,
+    maxStamina: 100,
+    lastStaminaRegen: Date.now(),
+    dungeonProgress: {},
+    
     unlockedLines: ['brontis', 'mirella', 'feralis'], // 3 linhas iniciais
     unlockedFeatures: [],
     discoveredRelics: [],
@@ -173,6 +179,44 @@ export function removeMoney(state: GameState, amount: number): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * Regenera stamina automaticamente (1 stamina a cada 10 minutos)
+ */
+export function regenerateStamina(state: GameState): number {
+  if (!state.lastStaminaRegen) {
+    state.lastStaminaRegen = Date.now();
+    return 0;
+  }
+  
+  const now = Date.now();
+  const timeSinceLastRegen = now - state.lastStaminaRegen;
+  const minutesPassed = Math.floor(timeSinceLastRegen / (10 * 60 * 1000)); // 10 minutos por stamina
+  
+  if (minutesPassed > 0 && state.stamina < state.maxStamina) {
+    const staminaToAdd = Math.min(minutesPassed, state.maxStamina - state.stamina);
+    state.stamina += staminaToAdd;
+    state.lastStaminaRegen = now;
+    
+    console.log(`[Stamina] Regenerados ${staminaToAdd} de stamina. Total: ${state.stamina}/${state.maxStamina}`);
+    return staminaToAdd;
+  }
+  
+  return 0;
+}
+
+/**
+ * Consome stamina para entrar em dungeon
+ */
+export function consumeStamina(state: GameState, amount: number): boolean {
+  if (state.stamina < amount) {
+    return false;
+  }
+  
+  state.stamina -= amount;
+  console.log(`[Stamina] Consumidos ${amount}. Restante: ${state.stamina}/${state.maxStamina}`);
+  return true;
 }
 
 /**

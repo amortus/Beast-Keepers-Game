@@ -19,6 +19,7 @@ import { InventoryUI } from './ui/inventory-ui';
 import { CraftUI } from './ui/craft-ui';
 import { QuestsUI } from './ui/quests-ui';
 import { AchievementsUI } from './ui/achievements-ui';
+import { DungeonUI } from './ui/dungeon-ui';
 import { ModalUI } from './ui/modal-ui';
 import { ExplorationUI } from './ui/exploration-ui';
 import { AuthUI } from './ui/auth-ui';
@@ -26,7 +27,7 @@ import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
-import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
+import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney, regenerateStamina, consumeStamina } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge } from './systems/beast';
 import { 
@@ -51,6 +52,8 @@ import { unlockQuests, getCompletedQuests } from './systems/quests';
 import { startExploration, advanceExploration, defeatEnemy, collectMaterials, endExploration } from './systems/exploration';
 import { executeCraft } from './systems/craft';
 import { getItemById } from './data/shop';
+import { getDungeonById, calculateStaminaCost } from './data/dungeons';
+import type { DungeonEnemy, DungeonBoss } from './data/dungeons';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
 import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item, BeastAction } from './types';
 import { authApi } from './api/authApi';
@@ -208,6 +211,9 @@ function startRealtimeSync() {
       applyPassiveRecovery(gameState.activeBeast, lastSync, now);
       gameState.lastSync = now;
       
+      // NOVO: Regenerar stamina automaticamente
+      regenerateStamina(gameState);
+      
       // Atualizar contador de explorações
       updateExplorationCounter(gameState.activeBeast, now);
       
@@ -305,6 +311,8 @@ function startRenderLoop() {
       questsUI.draw(gameState);
     } else if (inAchievements && achievementsUI && gameState) {
       achievementsUI.draw(gameState);
+    } else if (inDungeon && dungeonUI && gameState) {
+      dungeonUI.draw(gameState);
     } else if (inExploration && explorationUI) {
       explorationUI.draw(explorationState || undefined);
     } else if (inRanch3D && ranch3DUI) {
@@ -1072,6 +1080,11 @@ async function setupGame() {
     // Setup exploration callback
     gameUI.onOpenExploration = () => {
       openExploration();
+    };
+    
+    // Setup dungeons callback
+    gameUI.onOpenDungeons = () => {
+      openDungeon();
     };
 
     // Setup navigate callback
@@ -1879,6 +1892,270 @@ function closeQuests() {
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
   }
+}
+
+// ===== DUNGEON SYSTEM =====
+
+function openDungeon() {
+  if (!gameState) return;
+
+  // Close other UIs
+  if (inShop) closeShop();
+  if (inInventory) closeInventory();
+  if (inCraft) closeCraft();
+  if (inQuests) closeQuests();
+  if (inAchievements) closeAchievements();
+
+  // Hide 3D viewer when opening dungeon
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
+
+  // Create Dungeon UI
+  dungeonUI = new DungeonUI(canvas);
+
+  // Setup callbacks
+  dungeonUI.onEnterDungeon = (dungeonId: string, floor: number) => {
+    if (!gameState) return;
+    
+    startDungeonBattle(dungeonId, floor);
+  };
+
+  dungeonUI.onClose = () => {
+    closeDungeon();
+  };
+
+  inDungeon = true;
+}
+
+function closeDungeon() {
+  if (dungeonUI) {
+    dungeonUI.close();
+  }
+  dungeonUI = null;
+  inDungeon = false;
+
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+  }
+
+  // Update main UI
+  if (gameUI && gameState) {
+    gameUI.updateGameState(gameState);
+  }
+}
+
+function startDungeonBattle(dungeonId: string, floor: number) {
+  if (!gameState || !gameState.activeBeast) return;
+
+  const dungeon = getDungeonById(dungeonId);
+  if (!dungeon) {
+    showMessage('Dungeon não encontrada!', '⚠️ Erro');
+    return;
+  }
+
+  const dungeonFloor = dungeon.floors[floor - 1];
+  if (!dungeonFloor) {
+    showMessage('Andar não encontrado!', '⚠️ Erro');
+    return;
+  }
+
+  // Verificar stamina
+  const staminaCost = calculateStaminaCost(floor);
+  if (gameState.stamina < staminaCost) {
+    showMessage(`Stamina insuficiente! Necessário: ${staminaCost}⚡`, '⚠️ Sem Stamina');
+    return;
+  }
+
+  // Consumir stamina
+  if (!consumeStamina(gameState, staminaCost)) {
+    showMessage(`Stamina insuficiente! Necessário: ${staminaCost}⚡`, '⚠️ Sem Stamina');
+    return;
+  }
+
+    // Escolher inimigo aleatório do andar (ou boss se for o último)
+    let enemy: DungeonEnemy | DungeonBoss;
+    if (dungeonFloor.boss) {
+      enemy = dungeonFloor.boss;
+    } else {
+      enemy = dungeonFloor.enemies[Math.floor(Math.random() * dungeonFloor.enemies.length)];
+    }
+
+    // Criar Beast do inimigo
+    const enemyBeast: Beast = {
+      id: `dungeon_enemy_${Date.now()}`,
+      name: enemy.name,
+      line: enemy.line as any,
+      blood: 'common',
+      affinity: 'normal' as any,
+      attributes: enemy.stats,
+      secondaryStats: {
+        fatigue: 0,
+        stress: 0,
+        loyalty: 100,
+        age: 0,
+        maxAge: 365,
+      },
+      traits: [],
+      mood: 'neutral',
+      techniques: getStartingTechniques(enemy.line as any),
+      currentHp: enemy.stats.vitality * 5 + enemy.level * 10,
+      maxHp: enemy.stats.vitality * 5 + enemy.level * 10,
+      essence: 30 + enemy.level * 5,
+      maxEssence: 30 + enemy.level * 5,
+      birthWeek: 0,
+      lifeEvents: [],
+      victories: 0,
+      defeats: 0,
+      level: enemy.level,
+    };
+
+    // Fechar dungeon UI
+    closeDungeon();
+
+    // Iniciar batalha
+    const battle = initiateBattle(gameState.activeBeast, enemyBeast, false);
+    battle.phase = 'player_turn';
+
+    gameState.currentBattle = battle;
+
+    // Create battle UI
+    battleUI = new BattleUI(canvas, battle);
+
+    // Setup callbacks
+    battleUI.onPlayerAction = (action: CombatAction) => {
+      if (!gameState?.currentBattle) return;
+
+      const result = executePlayerAction(gameState.currentBattle, action);
+
+      if (result && battleUI) {
+        battleUI.updateBattle(gameState.currentBattle);
+
+        if (gameState.currentBattle.winner) {
+          battleUI.onBattleEnd();
+          return;
+        }
+
+        if (gameState.currentBattle.phase === 'enemy_turn') {
+          setTimeout(() => {
+            if (!gameState?.currentBattle || !battleUI) return;
+
+            executeEnemyTurn(gameState.currentBattle);
+            battleUI.updateBattle(gameState.currentBattle);
+
+            if (gameState.currentBattle.winner) {
+              battleUI.onBattleEnd();
+              return;
+            }
+
+            if (gameState.currentBattle.phase === 'player_turn') {
+              setTimeout(() => {
+                if (battleUI) {
+                  battleUI.checkAutoBattle();
+                }
+              }, 500);
+            }
+          }, 1500);
+        }
+      }
+    };
+
+    battleUI.onBattleEnd = () => {
+      if (!gameState?.currentBattle) return;
+
+      const battle = gameState.currentBattle;
+
+      if (battle.winner === 'player') {
+        // Vitória!
+        gameState.victories++;
+        gameState.activeBeast!.victories++;
+
+        // Atualizar progresso do dungeon
+        if (!gameState.dungeonProgress[dungeonId]) {
+          gameState.dungeonProgress[dungeonId] = {
+            currentFloor: 1,
+            completed: false,
+            clearedFloors: [],
+            firstClearClaimed: false,
+          };
+        }
+
+        const progress = gameState.dungeonProgress[dungeonId];
+        if (!progress.clearedFloors.includes(floor)) {
+          progress.clearedFloors.push(floor);
+        }
+
+        // Desbloquear próximo andar
+        if (floor === progress.currentFloor && floor < 5) {
+          progress.currentFloor = floor + 1;
+        }
+
+        // Completar dungeon se for andar 5
+        if (floor === 5) {
+          progress.completed = true;
+        }
+
+        // Dar recompensas
+        const reward = dungeon.rewards.completionRewards;
+        gameState.economy.coronas += reward.coronas;
+        if (gameState.activeBeast && reward.experience) {
+          gameState.activeBeast.experience = (gameState.activeBeast.experience || 0) + reward.experience;
+        }
+
+        // Bonus de primeira vez
+        if (!progress.firstClearClaimed && progress.completed) {
+          progress.firstClearClaimed = true;
+          gameState.economy.coronas += dungeon.rewards.firstClearBonus.coronas;
+          
+          showMessage(
+            `🎉 DUNGEON COMPLETADA!\n\n` +
+            `Recompensa: +${reward.coronas}💰 +${reward.experience} XP\n` +
+            `Bônus de Primeira Vez: +${dungeon.rewards.firstClearBonus.coronas}💰`,
+            '🏆 Vitória'
+          );
+        } else {
+          showMessage(
+            `Andar ${floor} completo!\n+${reward.coronas}💰 +${reward.experience} XP`,
+            '⚔️ Vitória'
+          );
+        }
+
+        emitBattleWon(gameState);
+        unlockQuests(gameState.quests);
+
+      } else if (battle.winner === 'enemy') {
+        gameState.defeats++;
+        gameState.activeBeast!.defeats++;
+
+        showMessage('Você foi derrotado!', '💀 Derrota');
+      }
+
+      // Update beast HP/Essence
+      if (gameState.activeBeast) {
+        gameState.activeBeast.currentHp = battle.player.currentHp;
+        gameState.activeBeast.essence = battle.player.currentEssence;
+      }
+
+      // Clear battle
+      gameState.currentBattle = undefined;
+      if (battleUI) {
+        battleUI.dispose();
+      }
+      battleUI = null;
+      inBattle = false;
+
+      // Save game
+      saveGame(gameState);
+
+      // Update UI
+      if (gameUI) {
+        gameUI.show3DViewer();
+        gameUI.updateGameState(gameState);
+      }
+    };
+
+    inBattle = true;
 }
 
 // ===== ACHIEVEMENTS SYSTEM =====
