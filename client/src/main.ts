@@ -2677,8 +2677,82 @@ function startExplorationBattle(enemy: WildEnemy) {
   console.log('- Player HP:', battle.player.currentHp, '/', gameState.activeBeast.maxHp);
   console.log('- Enemy HP:', battle.enemy.currentHp, '/', enemyBeast.maxHp);
 
-  // Create battle UI (3D or 2D based on toggle)
-  if (use3DBattle) {
+  // Create battle UI (HÍBRIDO, 3D completo, ou 2D clássico)
+  if (useHybridBattle) {
+    console.log('[Exploration Battle] 🎨 Using HYBRID Battle System (2D UI + 3D Arena)');
+    battleUI = new BattleUIHybrid(canvas, battle);
+    
+    // Setup HYBRID callbacks (mesma interface do 2D)
+    (battleUI as BattleUIHybrid).onPlayerAction = (action: CombatAction) => {
+      if (!gameState?.currentBattle) {
+        console.error('[Exploration Battle] No currentBattle in gameState!');
+        return;
+      }
+
+      const result = executePlayerAction(gameState.currentBattle, action);
+
+      if (result && battleUI) {
+        (battleUI as BattleUIHybrid).updateBattle(gameState.currentBattle);
+
+        if (gameState.currentBattle.winner) {
+          (battleUI as BattleUIHybrid).onBattleEnd();
+          return;
+        }
+
+        if (gameState.currentBattle.phase === 'enemy_turn') {
+          setTimeout(() => {
+            if (!gameState?.currentBattle || !battleUI) return;
+
+            executeEnemyTurn(gameState.currentBattle);
+            (battleUI as BattleUIHybrid).updateBattle(gameState.currentBattle);
+
+            if (gameState.currentBattle.winner) {
+              (battleUI as BattleUIHybrid).onBattleEnd();
+              return;
+            }
+
+            if (gameState.currentBattle.phase === 'player_turn') {
+              setTimeout(() => {
+                if (battleUI) {
+                  (battleUI as BattleUIHybrid).checkAutoBattle();
+                }
+              }, 500);
+            }
+          }, 1500);
+        }
+      }
+    };
+
+    (battleUI as BattleUIHybrid).onBattleEnd = async () => {
+      if (!gameState?.currentBattle) return;
+
+      const battle = gameState.currentBattle;
+      inBattle = false;
+      isExplorationBattle = false;
+
+      if (battle.winner === 'player') {
+        gameState.victories++;
+        if (gameState.activeBeast) gameState.activeBeast.victories++;
+        
+        emitBattleWon(gameState);
+        unlockQuests(gameState.quests);
+
+        await saveGame(gameState);
+
+        // Continue exploration
+        if (explorationState) {
+          explorationState.distance += 100;
+          explorationState.battlesWon++;
+        }
+      } else {
+        if (gameState.activeBeast) gameState.activeBeast.defeats++;
+        await saveGame(gameState);
+        await closeExploration();
+      }
+      
+      closeBattle();
+    };
+  } else if (use3DBattle) {
     console.log('[Exploration Battle] 🎮 Using 3D Immersive Battle System');
     battleUI = new BattleUI3D(canvas, battle);
     
@@ -3344,8 +3418,70 @@ function startTournamentBattle(rank: TournamentRank) {
   
   gameState.currentBattle = battle;
   
-  // Create battle UI (3D or 2D based on toggle)
-  if (use3DBattle) {
+  // Create battle UI (HÍBRIDO, 3D completo, ou 2D clássico)
+  if (useHybridBattle) {
+    console.log('[Tournament] 🎨 Using HYBRID Battle System (2D UI + 3D Arena)');
+    battleUI = new BattleUIHybrid(canvas, battle);
+    
+    // Setup HYBRID callbacks
+    (battleUI as BattleUIHybrid).onPlayerAction = (action: CombatAction) => {
+      if (!gameState?.currentBattle) return;
+      
+      const result = executePlayerAction(gameState.currentBattle, action);
+      
+      if (result && battleUI) {
+        (battleUI as BattleUIHybrid).updateBattle(gameState.currentBattle);
+
+        if (gameState.currentBattle.winner) {
+          (battleUI as BattleUIHybrid).onBattleEnd();
+          return;
+        }
+
+        if (gameState.currentBattle.phase === 'enemy_turn') {
+          setTimeout(() => {
+            if (!gameState?.currentBattle || !battleUI) return;
+            
+            executeEnemyTurn(gameState.currentBattle);
+            (battleUI as BattleUIHybrid).updateBattle(gameState.currentBattle);
+
+            if (gameState.currentBattle.winner) {
+              (battleUI as BattleUIHybrid).onBattleEnd();
+              return;
+            }
+
+            if (gameState.currentBattle.phase === 'player_turn') {
+              setTimeout(() => {
+                if (battleUI) {
+                  (battleUI as BattleUIHybrid).checkAutoBattle();
+                }
+              }, 500);
+            }
+          }, 1500);
+        }
+      }
+    };
+    
+    (battleUI as BattleUIHybrid).onBattleEnd = async () => {
+      if (!gameState?.currentBattle) return;
+
+      const battle = gameState.currentBattle;
+      inBattle = false;
+
+      if (battle.winner === 'player') {
+        gameState.victories++;
+        gameState.activeBeast!.victories++;
+        
+        emitBattleWon(gameState);
+        unlockQuests(gameState.quests);
+      } else {
+        gameState.defeats++;
+        gameState.activeBeast!.defeats++;
+      }
+
+      await saveGame(gameState);
+      closeBattle();
+    };
+  } else if (use3DBattle) {
     console.log('[Tournament] 🎮 Using 3D Immersive Battle System');
     battleUI = new BattleUI3D(canvas, battle);
     
