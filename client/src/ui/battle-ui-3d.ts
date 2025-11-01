@@ -441,9 +441,9 @@ export class BattleUI3D {
   // ===== TECHNIQUE MENU (COPIADO DO 2D) =====
   private drawTechniqueMenu() {
     const x = 30;
-    const y = 240;
+    const y = 300;
     const width = this.canvas.width - 60;
-    const height = 320;
+    const height = 220; // Reduzido de 320 para 220
     
     // Dark overlay
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -502,58 +502,31 @@ export class BattleUI3D {
       });
     }
 
-    techniques.forEach((techId, i) => {
-      const tech = TECHNIQUES[techId]; // ACESSO CORRETO (objeto, não array)
-      
-      if (!tech) {
-        console.warn('[BattleUI3D] Technique not found:', techId);
-        return;
-      }
+    techniques.forEach((tech, i) => {
+      console.log(`[BattleUI3D] Technique ${i}:`, tech);
       
       const col = i % techPerRow;
       const row = Math.floor(i / techPerRow);
-      const btnX = x + 20 + col * (techBtnWidth + techSpacing);
-      const btnY = y + 60 + row * (techBtnHeight + techSpacing);
+      const techBtnX = x + 10 + col * (techBtnWidth + techSpacing);
+      const techBtnY = y + 40 + row * (techBtnHeight + techSpacing);
 
-      const canUse = canUseTechnique(this.battle.player.beast, tech);
-      const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, techBtnWidth, techBtnHeight);
+      const canUse = canUseTechnique(tech, this.battle.player.currentEssence);
+      const techIsHovered = isMouseOver(this.mouseX, this.mouseY, techBtnX, techBtnY, techBtnWidth, techBtnHeight);
 
-      const btnColor = !canUse ? COLORS.ui.textDim : 
-                       this.selectedTechnique === techId ? COLORS.primary.gold : 
-                       COLORS.primary.purple;
-
-      drawButton(this.ctx, btnX, btnY, techBtnWidth, techBtnHeight, '', {
-        bgColor: btnColor,
-        isHovered: canUse && isHovered,
+      drawButton(this.ctx, techBtnX, techBtnY, techBtnWidth, techBtnHeight, 
+        `${tech.name} (${tech.essenceCost})`, {
+        bgColor: canUse ? COLORS.primary.purple : COLORS.bg.light,
+        isHovered: techIsHovered,
+        isDisabled: !canUse,
       });
 
-      // Technique name
-      drawText(this.ctx, tech.name, btnX + 10, btnY + 12, {
-        font: 'bold 14px monospace',
-        color: canUse ? COLORS.ui.text : COLORS.ui.textDim,
-      });
-
-      // Essence cost
-      drawText(this.ctx, `⚡ ${tech.essenceCost}`, btnX + techBtnWidth - 10, btnY + 12, {
-        align: 'right',
-        font: 'bold 13px monospace',
-        color: canUse ? COLORS.primary.purple : COLORS.ui.textDim,
-      });
-
-      // Description
-      const desc = tech.description || `Dano: ${tech.damage}`;
-      drawText(this.ctx, desc, btnX + 10, btnY + 35, {
-        font: '11px monospace',
-        color: COLORS.ui.textDim,
-      });
-
-      if (canUse) {
-        this.buttons.set(`tech_${techId}`, {
-          x: btnX,
-          y: btnY,
-          width: techBtnWidth,
-          height: techBtnHeight,
-          action: () => {
+      this.buttons.set(`tech_${tech.id}`, {
+        x: techBtnX,
+        y: techBtnY,
+        width: techBtnWidth,
+        height: techBtnHeight,
+        action: () => {
+          if (canUse) {
             console.log('[BattleUI3D] Using technique:', tech.name);
             this.selectedTechnique = null; // Close menu
             
@@ -566,14 +539,14 @@ export class BattleUI3D {
                 if (this.onPlayerAction) {
                   this.onPlayerAction({
                     type: 'technique',
-                    techniqueId: techId,
+                    techniqueId: tech.id,
                   });
                 }
               }, 600);
             }
-          },
-        });
-      }
+          }
+        },
+      });
     });
   }
 
