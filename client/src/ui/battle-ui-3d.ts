@@ -1,12 +1,14 @@
 /**
  * 3D Immersive Battle UI - Beast Keepers
  * Pokémon Arceus-style 3D battle interface
+ * CORRIGIDO: HUD completo com botões e logs
  */
 
-import type { BattleContext, CombatAction } from '../types';
+import type { BattleContext, CombatAction, Technique } from '../types';
 import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { canUseTechnique } from '../systems/combat';
+import { TECHNIQUES } from '../data/techniques';
 import { ImmersiveBattleScene3D } from '../3d/scenes/ImmersiveBattleScene3D';
 
 export class BattleUI3D {
@@ -27,13 +29,14 @@ export class BattleUI3D {
   private animationFrame = 0;
   private isAutoBattle = false;
   private autoBattleSpeed = 1;
+  private showTechniques = false; // Toggle para mostrar técnicas
   
   // Button positions (for HUD overlay)
   private buttons: Map<string, { x: number; y: number; width: number; height: number; action?: () => void }> = new Map();
 
   // Callbacks
   public onActionSelected: ((action: CombatAction) => void) | null = null;
-  public onBattleEnd: ((winner: 'player' | 'enemy') => Promise<void>) | null = null;
+  public onBattleEnd: ((winner: 'player' | 'enemy') => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement, battle: BattleContext) {
     this.canvas = canvas;
@@ -105,29 +108,52 @@ export class BattleUI3D {
   }
 
   private handleClick() {
-    console.log('[BattleUI3D] Click at:', this.mouseX, this.mouseY);
+    console.log('[BattleUI3D] Click at:', this.mouseX, this.mouseY, 'Phase:', this.battle.phase);
     
+    let clicked = false;
     this.buttons.forEach((button, key) => {
       if (isMouseOver(this.mouseX, this.mouseY, button.x, button.y, button.width, button.height)) {
         console.log('[BattleUI3D] Button clicked:', key);
+        clicked = true;
         if (button.action) {
           button.action();
         }
       }
     });
+    
+    if (!clicked) {
+      console.log('[BattleUI3D] No button clicked. Buttons:', this.buttons.size);
+    }
   }
 
   public draw() {
     this.animationFrame++;
     
-    // Clear 2D canvas (transparent for 3D background)
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // Clear 2D canvas with semi-transparent black (for better HUD visibility)
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Rebuild buttons
     this.buttons.clear();
 
-    // Draw semi-transparent HUD panels over 3D
-    this.drawHUD();
+    // Draw HUD based on phase
+    this.drawPlayerHUD();
+    this.drawEnemyHUD();
+    this.drawTurnIndicator();
+    
+    if (this.battle.phase === 'player_turn') {
+      this.drawActionButtons();
+      if (this.showTechniques) {
+        this.drawTechniqueList();
+      }
+    } else if (this.battle.phase === 'combat_log') {
+      this.drawCombatLog();
+    } else if (this.battle.phase === 'battle_end') {
+      this.drawBattleEnd();
+    }
+    
+    // Auto-battle toggle
+    this.drawAutoBattleToggle();
     
     // Update 3D scene health
     if (this.scene3D) {
@@ -136,57 +162,32 @@ export class BattleUI3D {
     }
   }
 
-  private drawHUD() {
-    // Top HUD: Beast info
-    this.drawBeastInfoHUD();
+  private drawPlayerHUD() {
+    const x = 50;
+    const y = 400;
+    const width = 280;
+    const height = 140;
     
-    // Bottom HUD: Actions/Techniques
-    if (this.battle.phase === 'player_turn') {
-      this.drawActionPanel();
-    } else if (this.battle.phase === 'combat_log') {
-      this.drawCombatLog();
-    } else if (this.battle.phase === 'battle_end') {
-      this.drawBattleEnd();
-    }
-    
-    // Auto-battle toggle (top right)
-    this.drawAutoBattleToggle();
-  }
-
-  private drawBeastInfoHUD() {
-    const panelHeight = 120;
-    const margin = 20;
-    
-    // Player beast info (top left)
-    const playerPanelX = margin;
-    const playerPanelY = margin;
-    const playerPanelWidth = 350;
-    
-    drawPanel(this.ctx, playerPanelX, playerPanelY, playerPanelWidth, panelHeight, {
-      bgColor: 'rgba(26, 32, 44, 0.85)',
+    drawPanel(this.ctx, x, y, width, height, {
+      bgColor: 'rgba(26, 32, 44, 0.9)',
       borderColor: COLORS.primary.green,
       borderWidth: 3,
     });
     
     const player = this.battle.player.beast;
     
-    drawText(this.ctx, player.name, playerPanelX + 15, playerPanelY + 15, {
-      font: 'bold 24px monospace',
+    drawText(this.ctx, player.name, x + 15, y + 15, {
+      font: 'bold 20px monospace',
       color: COLORS.primary.green,
     });
     
-    drawText(this.ctx, `Linha: ${player.line}`, playerPanelX + 15, playerPanelY + 45, {
-      font: '14px monospace',
-      color: COLORS.ui.textDim,
-    });
-    
     // HP Bar
-    drawText(this.ctx, 'HP:', playerPanelX + 15, playerPanelY + 70, {
-      font: 'bold 16px monospace',
+    drawText(this.ctx, 'HP:', x + 15, y + 50, {
+      font: 'bold 14px monospace',
       color: COLORS.ui.text,
     });
     
-    drawBar(this.ctx, playerPanelX + 55, playerPanelY + 72, playerPanelWidth - 70, 20, 
+    drawBar(this.ctx, x + 55, y + 52, width - 70, 18, 
       player.currentHp, player.maxHp, {
         bgColor: COLORS.bg.dark,
         fillColor: COLORS.ui.success,
@@ -195,41 +196,70 @@ export class BattleUI3D {
     );
     
     drawText(this.ctx, `${player.currentHp}/${player.maxHp}`, 
-      playerPanelX + playerPanelWidth / 2, playerPanelY + 87, {
-      font: '12px monospace',
+      x + width / 2, y + 66, {
+      font: '11px monospace',
       color: COLORS.ui.text,
       align: 'center',
     });
     
-    // Enemy beast info (top right)
-    const enemyPanelX = this.canvas.width - playerPanelWidth - margin;
-    const enemyPanelY = margin;
+    // Essence Bar
+    drawText(this.ctx, 'Essência:', x + 15, y + 90, {
+      font: 'bold 14px monospace',
+      color: COLORS.ui.text,
+    });
     
-    drawPanel(this.ctx, enemyPanelX, enemyPanelY, playerPanelWidth, panelHeight, {
-      bgColor: 'rgba(26, 32, 44, 0.85)',
+    const essence = this.battle.player.currentEssence;
+    const maxEssence = player.maxEssence || 100;
+    
+    drawBar(this.ctx, x + 100, y + 92, width - 115, 18, 
+      essence, maxEssence, {
+        bgColor: COLORS.bg.dark,
+        fillColor: COLORS.primary.purple,
+        borderColor: COLORS.ui.text,
+      }
+    );
+    
+    drawText(this.ctx, `${essence}/${maxEssence}`, 
+      x + width / 2 + 20, y + 106, {
+      font: '11px monospace',
+      color: COLORS.ui.text,
+      align: 'center',
+    });
+    
+    // Status
+    const status = this.battle.player.isDefending ? '🛡️ Defendendo' : '⚔️ Pronto';
+    drawText(this.ctx, status, x + 15, y + 125, {
+      font: '12px monospace',
+      color: COLORS.primary.gold,
+    });
+  }
+
+  private drawEnemyHUD() {
+    const width = 280;
+    const height = 140;
+    const x = this.canvas.width - width - 50;
+    const y = 400;
+    
+    drawPanel(this.ctx, x, y, width, height, {
+      bgColor: 'rgba(26, 32, 44, 0.9)',
       borderColor: COLORS.ui.error,
       borderWidth: 3,
     });
     
     const enemy = this.battle.enemy.beast;
     
-    drawText(this.ctx, enemy.name, enemyPanelX + 15, enemyPanelY + 15, {
-      font: 'bold 24px monospace',
+    drawText(this.ctx, enemy.name, x + 15, y + 15, {
+      font: 'bold 20px monospace',
       color: COLORS.ui.error,
     });
     
-    drawText(this.ctx, `Linha: ${enemy.line}`, enemyPanelX + 15, enemyPanelY + 45, {
-      font: '14px monospace',
-      color: COLORS.ui.textDim,
-    });
-    
     // HP Bar
-    drawText(this.ctx, 'HP:', enemyPanelX + 15, enemyPanelY + 70, {
-      font: 'bold 16px monospace',
+    drawText(this.ctx, 'HP:', x + 15, y + 50, {
+      font: 'bold 14px monospace',
       color: COLORS.ui.text,
     });
     
-    drawBar(this.ctx, enemyPanelX + 55, enemyPanelY + 72, playerPanelWidth - 70, 20, 
+    drawBar(this.ctx, x + 55, y + 52, width - 70, 18, 
       enemy.currentHp, enemy.maxHp, {
         bgColor: COLORS.bg.dark,
         fillColor: COLORS.ui.error,
@@ -238,137 +268,257 @@ export class BattleUI3D {
     );
     
     drawText(this.ctx, `${enemy.currentHp}/${enemy.maxHp}`, 
-      enemyPanelX + playerPanelWidth / 2, enemyPanelY + 87, {
-      font: '12px monospace',
+      x + width / 2, y + 66, {
+      font: '11px monospace',
       color: COLORS.ui.text,
+      align: 'center',
+    });
+    
+    // Essence Bar
+    drawText(this.ctx, 'Essência:', x + 15, y + 90, {
+      font: 'bold 14px monospace',
+      color: COLORS.ui.text,
+    });
+    
+    const essence = this.battle.enemy.currentEssence;
+    const maxEssence = enemy.maxEssence || 100;
+    
+    drawBar(this.ctx, x + 100, y + 92, width - 115, 18, 
+      essence, maxEssence, {
+        bgColor: COLORS.bg.dark,
+        fillColor: COLORS.primary.purple,
+        borderColor: COLORS.ui.text,
+      }
+    );
+    
+    drawText(this.ctx, `${essence}/${maxEssence}`, 
+      x + width / 2 + 20, y + 106, {
+      font: '11px monospace',
+      color: COLORS.ui.text,
+      align: 'center',
+    });
+    
+    // Status
+    const status = this.battle.enemy.isDefending ? '🛡️ Defendendo' : '⚔️ Pronto';
+    drawText(this.ctx, status, x + 15, y + 125, {
+      font: '12px monospace',
+      color: COLORS.primary.gold,
+    });
+  }
+
+  private drawTurnIndicator() {
+    const text = this.battle.phase === 'player_turn' ? 'SEU TURNO' : 'TURNO INIMIGO';
+    const color = this.battle.phase === 'player_turn' ? COLORS.primary.green : COLORS.ui.error;
+    
+    const boxWidth = 250;
+    const boxHeight = 60;
+    const boxX = (this.canvas.width - boxWidth) / 2;
+    const boxY = 30;
+    
+    drawPanel(this.ctx, boxX, boxY, boxWidth, boxHeight, {
+      bgColor: 'rgba(26, 32, 44, 0.9)',
+      borderColor: color,
+      borderWidth: 3,
+    });
+    
+    drawText(this.ctx, text, this.canvas.width / 2, boxY + 20, {
+      font: 'bold 24px monospace',
+      color,
+      align: 'center',
+    });
+    
+    drawText(this.ctx, `Turno ${this.battle.turnCount}`, this.canvas.width / 2, boxY + 45, {
+      font: '14px monospace',
+      color: COLORS.ui.textDim,
       align: 'center',
     });
   }
 
-  private drawActionPanel() {
-    const panelWidth = this.canvas.width - 40;
-    const panelHeight = 200;
-    const panelX = 20;
+  private drawActionButtons() {
+    const panelWidth = 600;
+    const panelHeight = 80;
+    const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = this.canvas.height - panelHeight - 20;
     
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: 'rgba(26, 32, 44, 0.9)',
-      borderColor: COLORS.primary.purple,
+      bgColor: 'rgba(26, 32, 44, 0.95)',
+      borderColor: COLORS.primary.gold,
       borderWidth: 3,
     });
     
-    drawText(this.ctx, 'Escolha sua ação:', panelX + 20, panelY + 20, {
-      font: 'bold 20px monospace',
+    drawText(this.ctx, 'AÇÕES', panelX + panelWidth / 2, panelY + 15, {
+      font: 'bold 18px monospace',
       color: COLORS.primary.gold,
+      align: 'center',
     });
     
-    // Techniques
-    const techniques = this.battle.player.beast.techniques || [];
-    const techStartX = panelX + 20;
-    let techCurrentX = techStartX;
-    let techCurrentY = panelY + 60;
-    const techBtnWidth = 180;
-    const techBtnHeight = 50;
-    const techSpacing = 15;
+    // Técnicas button
+    const techBtnWidth = 200;
+    const techBtnHeight = 40;
+    const techBtnX = panelX + 50;
+    const techBtnY = panelY + 30;
+    const techIsHovered = isMouseOver(this.mouseX, this.mouseY, techBtnX, techBtnY, techBtnWidth, techBtnHeight);
     
-    techniques.forEach((techId, index) => {
+    drawButton(this.ctx, techBtnX, techBtnY, techBtnWidth, techBtnHeight, '⚔️ Técnicas', {
+      bgColor: this.showTechniques ? COLORS.primary.purple : COLORS.primary.blue,
+      isHovered: techIsHovered,
+      fontSize: 16,
+    });
+    
+    this.buttons.set('btn_techniques', {
+      x: techBtnX,
+      y: techBtnY,
+      width: techBtnWidth,
+      height: techBtnHeight,
+      action: () => {
+        this.showTechniques = !this.showTechniques;
+      },
+    });
+    
+    // Defender button
+    const defendBtnWidth = 200;
+    const defendBtnHeight = 40;
+    const defendBtnX = panelX + panelWidth - defendBtnWidth - 50;
+    const defendBtnY = panelY + 30;
+    const defendIsHovered = isMouseOver(this.mouseX, this.mouseY, defendBtnX, defendBtnY, defendBtnWidth, defendBtnHeight);
+    
+    drawButton(this.ctx, defendBtnX, defendBtnY, defendBtnWidth, defendBtnHeight, '🛡️ Defender', {
+      bgColor: COLORS.primary.blue,
+      isHovered: defendIsHovered,
+      fontSize: 16,
+    });
+    
+    this.buttons.set('btn_defend', {
+      x: defendBtnX,
+      y: defendBtnY,
+      width: defendBtnWidth,
+      height: defendBtnHeight,
+      action: () => {
+        if (this.onActionSelected && this.scene3D) {
+          this.onActionSelected({ type: 'defend' });
+          this.showTechniques = false;
+        }
+      },
+    });
+  }
+
+  private drawTechniqueList() {
+    const techniques = this.battle.player.beast.techniques || [];
+    
+    const panelWidth = 700;
+    const panelHeight = Math.min(300, 100 + techniques.length * 70);
+    const panelX = (this.canvas.width - panelWidth) / 2;
+    const panelY = (this.canvas.height - panelHeight) / 2;
+    
+    drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
+      bgColor: 'rgba(26, 32, 44, 0.95)',
+      borderColor: COLORS.primary.purple,
+      borderWidth: 4,
+    });
+    
+    drawText(this.ctx, 'Escolha uma Técnica', panelX + panelWidth / 2, panelY + 25, {
+      font: 'bold 24px monospace',
+      color: COLORS.primary.gold,
+      align: 'center',
+    });
+    
+    let currentY = panelY + 70;
+    const btnWidth = panelWidth - 60;
+    const btnHeight = 55;
+    const spacing = 15;
+    
+    techniques.forEach((techId) => {
       const tech = this.getTechniqueData(techId);
       if (!tech) return;
       
       const canUse = canUseTechnique(this.battle.player.beast, tech);
-      const isSelected = this.selectedTechnique === techId;
+      const btnX = panelX + 30;
+      const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, currentY, btnWidth, btnHeight);
       
       const btnColor = !canUse ? COLORS.ui.textDim : 
-                       isSelected ? COLORS.primary.gold : 
+                       isHovered ? COLORS.primary.gold : 
                        COLORS.primary.purple;
       
-      const isHovered = isMouseOver(this.mouseX, this.mouseY, techCurrentX, techCurrentY, techBtnWidth, techBtnHeight);
-      
-      drawButton(this.ctx, techCurrentX, techCurrentY, techBtnWidth, techBtnHeight, 
-        `${tech.name}\n⚡${tech.essenceCost}`, {
+      drawButton(this.ctx, btnX, currentY, btnWidth, btnHeight, '', {
         bgColor: btnColor,
         isHovered: canUse && isHovered,
-        fontSize: 14,
+      });
+      
+      // Nome da técnica
+      drawText(this.ctx, tech.name, btnX + 15, currentY + 15, {
+        font: 'bold 18px monospace',
+        color: canUse ? COLORS.ui.text : COLORS.ui.textDim,
+      });
+      
+      // Custo de essência
+      const essenceColor = canUse ? COLORS.primary.purple : COLORS.ui.textDim;
+      drawText(this.ctx, `⚡ ${tech.essenceCost}`, btnX + btnWidth - 15, currentY + 15, {
+        font: 'bold 16px monospace',
+        color: essenceColor,
+        align: 'right',
+      });
+      
+      // Descrição
+      drawText(this.ctx, tech.description || `Dano: ${tech.damage}`, btnX + 15, currentY + 38, {
+        font: '12px monospace',
+        color: COLORS.ui.textDim,
       });
       
       if (canUse) {
         this.buttons.set(`tech_${techId}`, {
-          x: techCurrentX,
-          y: techCurrentY,
-          width: techBtnWidth,
-          height: techBtnHeight,
+          x: btnX,
+          y: currentY,
+          width: btnWidth,
+          height: btnHeight,
           action: () => {
-            this.selectedTechnique = techId;
+            console.log('[BattleUI3D] Technique selected:', tech.name);
+            this.showTechniques = false;
+            
             if (this.onActionSelected && this.scene3D) {
               // Play attack animation
               this.scene3D.playAttackAnimation('player', 'enemy');
               
               // Execute action after animation
               setTimeout(() => {
-                this.onActionSelected!({
-                  type: 'technique',
-                  techniqueId: techId,
-                });
-                this.selectedTechnique = null;
-              }, 800);
+                if (this.onActionSelected) {
+                  this.onActionSelected({
+                    type: 'technique',
+                    techniqueId: techId,
+                  });
+                }
+              }, 600);
             }
           },
         });
       }
       
-      techCurrentX += techBtnWidth + techSpacing;
-      if (techCurrentX + techBtnWidth > panelX + panelWidth - 20) {
-        techCurrentX = techStartX;
-        techCurrentY += techBtnHeight + 10;
-      }
-    });
-    
-    // Defend button
-    const defendX = panelX + panelWidth - 180 - 20;
-    const defendY = panelY + panelHeight - 60;
-    const defendIsHovered = isMouseOver(this.mouseX, this.mouseY, defendX, defendY, 180, 50);
-    
-    drawButton(this.ctx, defendX, defendY, 180, 50, '🛡️ Defender', {
-      bgColor: COLORS.primary.blue,
-      isHovered: defendIsHovered,
-      fontSize: 16,
-    });
-    
-    this.buttons.set('defend', {
-      x: defendX,
-      y: defendY,
-      width: 180,
-      height: 50,
-      action: () => {
-        if (this.onActionSelected) {
-          this.onActionSelected({ type: 'defend' });
-        }
-      },
+      currentY += btnHeight + spacing;
     });
   }
 
   private drawCombatLog() {
     const panelWidth = 600;
-    const panelHeight = 150;
+    const panelHeight = 120;
     const panelX = (this.canvas.width - panelWidth) / 2;
-    const panelY = this.canvas.height - panelHeight - 20;
+    const panelY = this.canvas.height / 2 + 100;
     
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: 'rgba(26, 32, 44, 0.95)',
-      borderColor: COLORS.primary.purple,
+      borderColor: COLORS.primary.blue,
+      borderWidth: 3,
     });
     
     // Show combat log messages
     const log = this.battle.combatLog || [];
-    let currentY = panelY + 20;
+    let currentY = panelY + 25;
     
-    log.slice(-4).forEach(message => {
+    log.slice(-3).forEach(message => {
       drawText(this.ctx, message, panelX + panelWidth / 2, currentY, {
-        font: '16px monospace',
+        font: '14px monospace',
         color: COLORS.ui.text,
         align: 'center',
       });
-      currentY += 30;
+      currentY += 28;
     });
   }
 
@@ -379,78 +529,99 @@ export class BattleUI3D {
     const panelY = (this.canvas.height - panelHeight) / 2;
     
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: 'rgba(26, 32, 44, 0.95)',
+      bgColor: 'rgba(26, 32, 44, 0.98)',
       borderColor: this.battle.winner === 'player' ? COLORS.primary.gold : COLORS.ui.error,
-      borderWidth: 4,
+      borderWidth: 5,
     });
     
     // Victory/Defeat message
     const message = this.battle.winner === 'player' ? '🏆 VITÓRIA!' : '💀 DERROTA';
     const color = this.battle.winner === 'player' ? COLORS.primary.gold : COLORS.ui.error;
     
-    drawText(this.ctx, message, panelX + panelWidth / 2, panelY + 80, {
-      font: 'bold 48px monospace',
+    drawText(this.ctx, message, panelX + panelWidth / 2, panelY + 100, {
+      font: 'bold 52px monospace',
       color,
       align: 'center',
     });
     
     // Continue button
-    const btnWidth = 200;
+    const btnWidth = 250;
     const btnHeight = 60;
     const btnX = (panelWidth - btnWidth) / 2 + panelX;
-    const btnY = panelY + panelHeight - 100;
+    const btnY = panelY + panelHeight - 90;
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
     
-    drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, 'Continuar', {
+    drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '➡️ Continuar', {
       bgColor: COLORS.primary.green,
       isHovered: btnIsHovered,
       fontSize: 20,
     });
     
-    this.buttons.set('continue', {
+    this.buttons.set('btn_continue', {
       x: btnX,
       y: btnY,
       width: btnWidth,
       height: btnHeight,
-      action: async () => {
-        if (this.onBattleEnd) {
-          await this.onBattleEnd(this.battle.winner!);
+      action: () => {
+        if (this.onBattleEnd && this.battle.winner) {
+          this.onBattleEnd(this.battle.winner);
         }
       },
     });
   }
 
   private drawAutoBattleToggle() {
-    const btnWidth = 180;
-    const btnHeight = 45;
-    const btnX = this.canvas.width - btnWidth - 20;
-    const btnY = this.canvas.height - btnHeight - 20;
-    const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
+    const width = 180;
+    const height = 40;
+    const x = this.canvas.width - width - 20;
+    const y = this.canvas.height - height - 120;
+    const isHovered = isMouseOver(this.mouseX, this.mouseY, x, y, width, height);
     
-    const btnLabel = this.isAutoBattle ? '⏸️ Pausar Auto' : '▶️ Auto Batalha';
+    drawPanel(this.ctx, x, y, width, height, {
+      bgColor: 'rgba(26, 32, 44, 0.9)',
+      borderColor: COLORS.primary.blue,
+      borderWidth: 2,
+    });
+    
+    drawText(this.ctx, 'COMBATE AUTO', x + width / 2, y + 8, {
+      font: '10px monospace',
+      color: COLORS.ui.textDim,
+      align: 'center',
+    });
+    
+    const btnLabel = this.isAutoBattle ? '⏸️ Pausar' : '▶️ Iniciar';
     const btnColor = this.isAutoBattle ? COLORS.ui.warning : COLORS.primary.green;
     
-    drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, btnLabel, {
+    drawButton(this.ctx, x + 10, y + 22, width - 20, 28, btnLabel, {
       bgColor: btnColor,
-      isHovered: btnIsHovered,
-      fontSize: 14,
+      isHovered: isHovered,
+      fontSize: 13,
     });
     
     this.buttons.set('auto_toggle', {
-      x: btnX,
-      y: btnY,
-      width: btnWidth,
-      height: btnHeight,
+      x: x + 10,
+      y: y + 22,
+      width: width - 20,
+      height: 28,
       action: () => {
         this.toggleAutoBattle();
       },
     });
+    
+    // Speed indicator
+    if (this.isAutoBattle) {
+      const speedText = this.autoBattleSpeed === 1 ? 'Normal' : 
+                       this.autoBattleSpeed === 2 ? 'Rápido' : 'Ultra';
+      drawText(this.ctx, speedText, x + width / 2, y + height - 6, {
+        font: '10px monospace',
+        color: COLORS.ui.textDim,
+        align: 'center',
+      });
+    }
   }
 
-  private getTechniqueData(techId: string) {
-    // Import technique data from database
-    const { TECHNIQUES } = require('../data/techniques');
-    return TECHNIQUES.find((t: any) => t.id === techId) || null;
+  private getTechniqueData(techId: string): Technique | null {
+    return TECHNIQUES.find(t => t.id === techId) || null;
   }
 
   private toggleAutoBattle() {
@@ -464,7 +635,7 @@ export class BattleUI3D {
     }
   }
 
-  private async executeAutoBattleAction() {
+  private executeAutoBattleAction() {
     // Simple AI: Use first available technique or defend
     const techniques = this.battle.player.beast.techniques || [];
     
@@ -475,11 +646,13 @@ export class BattleUI3D {
           this.scene3D.playAttackAnimation('player', 'enemy');
           
           setTimeout(() => {
-            this.onActionSelected!({
-              type: 'technique',
-              techniqueId: techId,
-            });
-          }, 800);
+            if (this.onActionSelected) {
+              this.onActionSelected({
+                type: 'technique',
+                techniqueId: techId,
+              });
+            }
+          }, 600);
         }
         return;
       }
@@ -503,6 +676,10 @@ export class BattleUI3D {
     this.battle = battle;
   }
 
+  public update3DViewersPosition() {
+    // Not needed for fullscreen 3D
+  }
+
   public dispose() {
     console.log('[BattleUI3D] Disposing...');
     
@@ -521,4 +698,3 @@ export class BattleUI3D {
     console.log('[BattleUI3D] ✓ Disposed');
   }
 }
-

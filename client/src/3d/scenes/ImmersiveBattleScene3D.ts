@@ -1,21 +1,26 @@
 /**
  * Immersive 3D Battle Scene - Pokémon Arceus Style
  * Beast Keepers - Cinematic 3D battle visualization
+ * CORRIGIDO: Usando BeastModel.ts (mesmo do rancho) + Cenário elaborado
  */
 
 import * as THREE from 'three';
-import { generateBeastModel, type BeastLine } from '../models/BeastModels';
+import { BeastModel } from '../models/BeastModel';
+import { PS1Grass } from '../vegetation/PS1Grass';
 
 export type CameraAngle = 'wide' | 'player' | 'enemy' | 'overhead' | 'cinematic';
 export type BattleAnimation = 'idle' | 'attack' | 'hit' | 'defend' | 'victory' | 'defeat';
 
 interface BeastActor {
-  model: THREE.Group;
+  model: BeastModel;
+  group: THREE.Group;
   basePosition: THREE.Vector3;
+  baseRotation: number;
   currentAnimation: BattleAnimation;
   animationTime: number;
   health: number;
   maxHealth: number;
+  shakeIntensity: number; // Para animação de dano
 }
 
 export class ImmersiveBattleScene3D {
@@ -31,12 +36,13 @@ export class ImmersiveBattleScene3D {
   private arena: THREE.Group;
   private lighting: THREE.Group;
   private particles: THREE.Points[] = [];
+  private grass: PS1Grass | null = null;
   
   // Camera system
   private currentCameraAngle: CameraAngle = 'wide';
   private cameraTargetPosition: THREE.Vector3;
   private cameraTargetLookAt: THREE.Vector3;
-  private cameraTransitionSpeed: number = 0.05;
+  private cameraTransitionSpeed: number = 0.08;
   
   // Animation
   private animationFrameId: number | null = null;
@@ -49,16 +55,17 @@ export class ImmersiveBattleScene3D {
   constructor(container: HTMLElement, width: number, height: number) {
     // Scene setup
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x0a0a1a, 15, 40);
+    this.scene.background = new THREE.Color(0x87ceeb); // Céu azul igual rancho
+    this.scene.fog = new THREE.Fog(0xa0d8ef, 20, 50);
     
-    // Camera setup (cinematic perspective)
-    this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 100);
-    this.cameraTargetPosition = new THREE.Vector3(0, 5, 12);
-    this.cameraTargetLookAt = new THREE.Vector3(0, 1, 0);
+    // Camera setup (estilo Pokémon)
+    this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+    this.cameraTargetPosition = new THREE.Vector3(0, 6, 12);
+    this.cameraTargetLookAt = new THREE.Vector3(0, 0, 0);
     this.camera.position.copy(this.cameraTargetPosition);
     this.camera.lookAt(this.cameraTargetLookAt);
     
-    // Renderer setup (high quality)
+    // Renderer setup (igual rancho)
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       alpha: false,
@@ -69,8 +76,6 @@ export class ImmersiveBattleScene3D {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
     
     container.appendChild(this.renderer.domElement);
     
@@ -83,298 +88,339 @@ export class ImmersiveBattleScene3D {
   }
 
   private setupEnvironment() {
-    // Sky gradient background
-    this.scene.background = new THREE.Color(0x1a1a2e);
-    
-    // Setup arena
+    // Setup arena (estilo rancho, mas arena de batalha)
     this.createBattleArena();
     
-    // Setup lighting (dramatic, cinematic)
-    this.setupCinematicLighting();
+    // Setup lighting (igual rancho - suave e natural)
+    this.setupNaturalLighting();
     
-    // Add atmospheric effects
-    this.createAtmosphericParticles();
+    // Add grass (igual rancho)
+    this.createGrassField();
+    
+    // Adicionar elementos decorativos
+    this.createBattleDecorations();
   }
 
   private createBattleArena() {
-    // Main platform (hexagonal)
-    const hexRadius = 10;
-    const hexShape = new THREE.Shape();
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const x = Math.cos(angle) * hexRadius;
-      const y = Math.sin(angle) * hexRadius;
-      if (i === 0) hexShape.moveTo(x, y);
-      else hexShape.lineTo(x, y);
-    }
-    hexShape.closePath();
-    
-    const hexGeometry = new THREE.ExtrudeGeometry(hexShape, {
-      depth: 0.3,
-      bevelEnabled: true,
-      bevelThickness: 0.1,
-      bevelSize: 0.1,
-      bevelSegments: 3
+    // Chão de grama natural (igual rancho)
+    const groundGeometry = new THREE.CircleGeometry(15, 32);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5a8f4a, // Verde grama
+      roughness: 0.9,
+      metalness: 0.1,
     });
     
-    const platformMaterial = new THREE.MeshStandardMaterial({
-      color: 0x2d2d44,
-      roughness: 0.7,
-      metalness: 0.3,
-    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    this.arena.add(ground);
     
-    const platform = new THREE.Mesh(hexGeometry, platformMaterial);
-    platform.rotation.x = -Math.PI / 2;
-    platform.receiveShadow = true;
-    this.arena.add(platform);
-    
-    // Glowing edge lines
-    const edgeGeometry = new THREE.TorusGeometry(hexRadius, 0.15, 8, 6);
-    const edgeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x9f7aea,
-      emissive: 0x9f7aea,
-      emissiveIntensity: 1.5,
-    });
-    const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-    edge.rotation.x = Math.PI / 2;
-    edge.position.y = 0.2;
-    this.arena.add(edge);
-    
-    // Center symbol (circle with inner glow)
-    const centerGeometry = new THREE.CircleGeometry(2, 32);
-    const centerMaterial = new THREE.MeshBasicMaterial({
-      color: 0x6b46c1,
+    // Círculo da arena (marcação no chão)
+    const arenaRingGeometry = new THREE.RingGeometry(8, 8.3, 32);
+    const arenaRingMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.5,
       side: THREE.DoubleSide
     });
-    const centerSymbol = new THREE.Mesh(centerGeometry, centerMaterial);
-    centerSymbol.rotation.x = -Math.PI / 2;
-    centerSymbol.position.y = 0.31;
-    this.arena.add(centerSymbol);
+    const arenaRing = new THREE.Mesh(arenaRingGeometry, arenaRingMaterial);
+    arenaRing.rotation.x = -Math.PI / 2;
+    arenaRing.position.y = 0.01;
+    this.arena.add(arenaRing);
     
-    // Energy pillars (6 corners)
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      const x = Math.cos(angle) * (hexRadius - 1);
-      const z = Math.sin(angle) * (hexRadius - 1);
-      
-      this.createEnergyPillar(x, z);
-    }
+    // Linha central (divisão entre os lados)
+    const lineGeometry = new THREE.PlaneGeometry(0.15, 16);
+    const lineMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.6,
+      side: THREE.DoubleSide
+    });
+    const centerLine = new THREE.Mesh(lineGeometry, lineMaterial);
+    centerLine.rotation.x = -Math.PI / 2;
+    centerLine.position.y = 0.01;
+    this.arena.add(centerLine);
     
-    // Player zone marker (left)
-    this.createZoneMarker(-4, 0, 0x48bb78, 'left');
+    // Pedras ao redor (igual rancho)
+    this.createRocks();
     
-    // Enemy zone marker (right)
-    this.createZoneMarker(4, 0, 0xfc8181, 'right');
+    // Árvores de fundo (igual rancho)
+    this.createBackgroundTrees();
+    
+    // Flores esparsas (igual rancho)
+    this.createFlowers();
     
     this.scene.add(this.arena);
   }
 
-  private createEnergyPillar(x: number, z: number) {
-    const pillarGroup = new THREE.Group();
+  private createRocks() {
+    const rockPositions = [
+      [-6, 0, -6],
+      [6, 0, -6],
+      [-6, 0, 6],
+      [6, 0, 6],
+      [-8, 0, 0],
+      [8, 0, 0],
+    ];
     
-    // Base
-    const baseGeometry = new THREE.CylinderGeometry(0.4, 0.5, 0.3, 6);
-    const baseMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a5568,
-      roughness: 0.8,
-      metalness: 0.4,
+    rockPositions.forEach(([x, y, z]) => {
+      const rockGroup = new THREE.Group();
+      
+      // Pedra principal
+      const rockGeometry = new THREE.DodecahedronGeometry(0.5, 0);
+      const rockMaterial = new THREE.MeshStandardMaterial({
+        color: 0x666666,
+        roughness: 0.9,
+        flatShading: true,
+      });
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      rock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      rock.castShadow = true;
+      rockGroup.add(rock);
+      
+      rockGroup.position.set(x, y + 0.3, z);
+      this.arena.add(rockGroup);
     });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = 0.15;
-    base.castShadow = true;
-    pillarGroup.add(base);
-    
-    // Energy beam (glowing)
-    const beamGeometry = new THREE.CylinderGeometry(0.15, 0.15, 4, 8);
-    const beamMaterial = new THREE.MeshBasicMaterial({
-      color: 0x9f7aea,
-      transparent: true,
-      opacity: 0.6,
-    });
-    const beam = new THREE.Mesh(beamGeometry, beamMaterial);
-    beam.position.y = 2.3;
-    pillarGroup.add(beam);
-    
-    // Crystal on top
-    const crystalGeometry = new THREE.OctahedronGeometry(0.4, 0);
-    const crystalMaterial = new THREE.MeshBasicMaterial({
-      color: 0xfbbf24,
-      emissive: 0xfbbf24,
-      emissiveIntensity: 2,
-    });
-    const crystal = new THREE.Mesh(crystalGeometry, crystalMaterial);
-    crystal.position.y = 4.5;
-    pillarGroup.add(crystal);
-    
-    pillarGroup.position.set(x, 0, z);
-    this.arena.add(pillarGroup);
   }
 
-  private createZoneMarker(x: number, z: number, color: number, side: 'left' | 'right') {
-    const ringGeometry = new THREE.RingGeometry(1.5, 1.8, 32);
-    const ringMaterial = new THREE.MeshBasicMaterial({
-      color,
+  private createBackgroundTrees() {
+    const treePositions = [
+      [-10, 0, -8],
+      [-8, 0, -10],
+      [10, 0, -8],
+      [8, 0, -10],
+      [-10, 0, 8],
+      [10, 0, 8],
+    ];
+    
+    treePositions.forEach(([x, y, z]) => {
+      const tree = new THREE.Group();
+      
+      // Trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 2, 6);
+      const trunkMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4a3520,
+        roughness: 1,
+        flatShading: true,
+      });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.y = 1;
+      trunk.castShadow = true;
+      tree.add(trunk);
+      
+      // Foliage (sphere)
+      const foliageGeometry = new THREE.SphereGeometry(1.2, 8, 6);
+      const foliageMaterial = new THREE.MeshStandardMaterial({
+        color: 0x2d7a3e,
+        roughness: 0.8,
+        flatShading: true,
+      });
+      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+      foliage.position.y = 2.5;
+      foliage.castShadow = true;
+      tree.add(foliage);
+      
+      tree.position.set(x, y, z);
+      this.arena.add(tree);
+    });
+  }
+
+  private createFlowers() {
+    const flowerCount = 30;
+    
+    for (let i = 0; i < flowerCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 3 + Math.random() * 5;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      
+      // Caule
+      const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
+      const stemMaterial = new THREE.MeshStandardMaterial({
+        color: 0x228b22,
+        flatShading: true,
+      });
+      const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+      stem.position.set(x, 0.15, z);
+      this.arena.add(stem);
+      
+      // Flor (círculo)
+      const flowerGeometry = new THREE.CircleGeometry(0.15, 6);
+      const flowerColors = [0xff69b4, 0xffff00, 0xff6347, 0x9370db];
+      const flowerColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const flowerMaterial = new THREE.MeshStandardMaterial({
+        color: flowerColor,
+        side: THREE.DoubleSide,
+        flatShading: true,
+      });
+      const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+      flower.position.set(x, 0.3, z);
+      flower.rotation.x = -Math.PI / 2;
+      this.arena.add(flower);
+    }
+  }
+
+  private createGrassField() {
+    // Usar PS1Grass (igual rancho)
+    this.grass = new PS1Grass(this.scene, 15); // Radius 15 (toda a arena)
+  }
+
+  private createBattleDecorations() {
+    // Marcadores de posição (círculos no chão)
+    const markerGeometry = new THREE.RingGeometry(1.2, 1.4, 32);
+    
+    // Marcador do jogador (verde)
+    const playerMarkerMaterial = new THREE.MeshBasicMaterial({
+      color: 0x48bb78,
       transparent: true,
       opacity: 0.4,
       side: THREE.DoubleSide
     });
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(x, 0.31, z);
+    const playerMarker = new THREE.Mesh(markerGeometry, playerMarkerMaterial);
+    playerMarker.rotation.x = -Math.PI / 2;
+    playerMarker.position.set(-4, 0.01, 0);
+    this.arena.add(playerMarker);
     
-    this.arena.add(ring);
+    // Marcador do inimigo (vermelho)
+    const enemyMarkerMaterial = new THREE.MeshBasicMaterial({
+      color: 0xfc8181,
+      transparent: true,
+      opacity: 0.4,
+      side: THREE.DoubleSide
+    });
+    const enemyMarker = new THREE.Mesh(markerGeometry, enemyMarkerMaterial);
+    enemyMarker.rotation.x = -Math.PI / 2;
+    enemyMarker.position.set(4, 0.01, 0);
+    this.arena.add(enemyMarker);
   }
 
-  private setupCinematicLighting() {
-    // Ambient light (soft base)
-    const ambient = new THREE.AmbientLight(0x404060, 0.4);
+  private setupNaturalLighting() {
+    // Luz ambiente suave (igual rancho)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     this.lighting.add(ambient);
     
-    // Main key light (from above-front)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    keyLight.position.set(5, 15, 10);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
-    keyLight.shadow.camera.left = -20;
-    keyLight.shadow.camera.right = 20;
-    keyLight.shadow.camera.top = 20;
-    keyLight.shadow.camera.bottom = -20;
-    this.lighting.add(keyLight);
+    // Sol (luz direcional)
+    const sunLight = new THREE.DirectionalLight(0xfff8dc, 0.8);
+    sunLight.position.set(10, 20, 10);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.left = -20;
+    sunLight.shadow.camera.right = 20;
+    sunLight.shadow.camera.top = 20;
+    sunLight.shadow.camera.bottom = -20;
+    this.lighting.add(sunLight);
     
-    // Fill light (from side)
-    const fillLight = new THREE.DirectionalLight(0x9f7aea, 0.6);
-    fillLight.position.set(-8, 8, 5);
+    // Fill light
+    const fillLight = new THREE.DirectionalLight(0x9dd9f3, 0.3);
+    fillLight.position.set(-5, 10, -5);
     this.lighting.add(fillLight);
-    
-    // Rim light (from behind, creates silhouette)
-    const rimLight = new THREE.DirectionalLight(0xfbbf24, 0.8);
-    rimLight.position.set(0, 10, -15);
-    this.lighting.add(rimLight);
-    
-    // Spot lights on beasts (dramatic)
-    const playerSpotlight = new THREE.SpotLight(0x48bb78, 1.5, 20, Math.PI / 6, 0.5);
-    playerSpotlight.position.set(-4, 10, 5);
-    playerSpotlight.target.position.set(-4, 0, 0);
-    this.lighting.add(playerSpotlight);
-    this.lighting.add(playerSpotlight.target);
-    
-    const enemySpotlight = new THREE.SpotLight(0xfc8181, 1.5, 20, Math.PI / 6, 0.5);
-    enemySpotlight.position.set(4, 10, 5);
-    enemySpotlight.target.position.set(4, 0, 0);
-    this.lighting.add(enemySpotlight);
-    this.lighting.add(enemySpotlight.target);
     
     this.scene.add(this.lighting);
   }
 
-  private createAtmosphericParticles() {
-    // Floating dust particles
-    const particleCount = 300;
-    const positions = new Float32Array(particleCount * 3);
-    
-    for (let i = 0; i < particleCount * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 40;
-      positions[i + 1] = Math.random() * 15;
-      positions[i + 2] = (Math.random() - 0.5) * 40;
-    }
-    
-    const particleGeometry = new THREE.BufferGeometry();
-    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    
-    const particleMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.05,
-      transparent: true,
-      opacity: 0.3,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const particles = new THREE.Points(particleGeometry, particleMaterial);
-    this.particles.push(particles);
-    this.scene.add(particles);
-  }
-
   /**
-   * Load player beast into the scene
+   * Load player beast into the scene (USANDO BeastModel.ts)
    */
   public setPlayerBeast(beastLine: string) {
     console.log('[ImmersiveBattle] Loading player beast:', beastLine);
     
     // Remove previous model
     if (this.playerBeast) {
-      this.scene.remove(this.playerBeast.model);
+      this.scene.remove(this.playerBeast.group);
+      this.playerBeast.model.dispose();
     }
     
-    // Create new model
-    const model = generateBeastModel(beastLine.toLowerCase() as BeastLine);
-    model.position.set(-4, 0, 0);
-    model.rotation.y = Math.PI / 4; // Face towards enemy
-    model.castShadow = true;
-    model.receiveShadow = true;
+    // Create new model (SISTEMA CORRETO do rancho)
+    const model = new BeastModel(beastLine.toLowerCase());
+    const group = model.getGroup();
+    
+    // Posicionar à ESQUERDA, virado para DIREITA (encarando inimigo)
+    group.position.set(-4, 0, 0);
+    group.rotation.y = Math.PI / 4; // Virado para direita
+    group.castShadow = true;
+    group.receiveShadow = true;
     
     // Apply shadows to all children
-    model.traverse((child) => {
+    group.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
     
-    this.scene.add(model);
+    this.scene.add(group);
+    
+    // Setup idle animation
+    const idleAnim = model.playIdleAnimation();
     
     this.playerBeast = {
       model,
+      group,
       basePosition: new THREE.Vector3(-4, 0, 0),
+      baseRotation: Math.PI / 4,
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
-      maxHealth: 100
+      maxHealth: 100,
+      shakeIntensity: 0
     };
     
-    console.log('[ImmersiveBattle] ✓ Player beast loaded');
+    console.log('[ImmersiveBattle] ✓ Player beast loaded (BeastModel)');
   }
 
   /**
-   * Load enemy beast into the scene
+   * Load enemy beast into the scene (USANDO BeastModel.ts)
    */
   public setEnemyBeast(beastLine: string) {
     console.log('[ImmersiveBattle] Loading enemy beast:', beastLine);
     
     // Remove previous model
     if (this.enemyBeast) {
-      this.scene.remove(this.enemyBeast.model);
+      this.scene.remove(this.enemyBeast.group);
+      this.enemyBeast.model.dispose();
     }
     
-    // Create new model
-    const model = generateBeastModel(beastLine.toLowerCase() as BeastLine);
-    model.position.set(4, 0, 0);
-    model.rotation.y = -Math.PI / 4; // Face towards player
-    model.castShadow = true;
-    model.receiveShadow = true;
+    // Create new model (SISTEMA CORRETO do rancho)
+    const model = new BeastModel(beastLine.toLowerCase());
+    const group = model.getGroup();
+    
+    // Posicionar à DIREITA, virado para ESQUERDA (encarando jogador)
+    group.position.set(4, 0, 0);
+    group.rotation.y = -Math.PI / 4 + Math.PI; // Virado para esquerda (180° + ajuste)
+    group.castShadow = true;
+    group.receiveShadow = true;
     
     // Apply shadows to all children
-    model.traverse((child) => {
+    group.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
     
-    this.scene.add(model);
+    this.scene.add(group);
+    
+    // Setup idle animation
+    const idleAnim = model.playIdleAnimation();
     
     this.enemyBeast = {
       model,
+      group,
       basePosition: new THREE.Vector3(4, 0, 0),
+      baseRotation: -Math.PI / 4 + Math.PI,
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
-      maxHealth: 100
+      maxHealth: 100,
+      shakeIntensity: 0
     };
     
-    console.log('[ImmersiveBattle] ✓ Enemy beast loaded');
+    console.log('[ImmersiveBattle] ✓ Enemy beast loaded (BeastModel)');
   }
 
   /**
@@ -386,38 +432,38 @@ export class ImmersiveBattleScene3D {
     switch (angle) {
       case 'wide':
         // Wide shot: See both beasts
-        this.cameraTargetPosition.set(0, 5, 12);
+        this.cameraTargetPosition.set(0, 6, 12);
         this.cameraTargetLookAt.set(0, 1, 0);
         break;
       
       case 'player':
         // Focus on player beast
-        this.cameraTargetPosition.set(-6, 3, 5);
+        this.cameraTargetPosition.set(-6, 4, 6);
         this.cameraTargetLookAt.set(-4, 1, 0);
         break;
       
       case 'enemy':
         // Focus on enemy beast
-        this.cameraTargetPosition.set(6, 3, 5);
+        this.cameraTargetPosition.set(6, 4, 6);
         this.cameraTargetLookAt.set(4, 1, 0);
         break;
       
       case 'overhead':
         // Top-down view
-        this.cameraTargetPosition.set(0, 15, 5);
+        this.cameraTargetPosition.set(0, 18, 3);
         this.cameraTargetLookAt.set(0, 0, 0);
         break;
       
       case 'cinematic':
         // Dynamic cinematic angle
-        this.cameraTargetPosition.set(-3, 6, 10);
-        this.cameraTargetLookAt.set(2, 2, 0);
+        this.cameraTargetPosition.set(-2, 5, 10);
+        this.cameraTargetLookAt.set(1, 2, 0);
         break;
     }
   }
 
   /**
-   * Play attack animation
+   * Play attack animation (ESTILO POKÉMON PORTÁTIL)
    */
   public playAttackAnimation(attacker: 'player' | 'enemy', target: 'player' | 'enemy') {
     console.log(`[ImmersiveBattle] Attack: ${attacker} -> ${target}`);
@@ -427,133 +473,46 @@ export class ImmersiveBattleScene3D {
     
     if (!attackerBeast || !targetBeast) return;
     
-    // Change camera to focus on attacker
-    this.setCameraAngle(attacker === 'player' ? 'player' : 'enemy');
-    
     // Set animation state
     attackerBeast.currentAnimation = 'attack';
     attackerBeast.animationTime = 0;
     
-    // Create attack effect
-    this.createAttackEffect(attackerBeast.model.position, targetBeast.model.position);
-    
-    // After animation, set target to hit
-    setTimeout(() => {
-      targetBeast.currentAnimation = 'hit';
-      targetBeast.animationTime = 0;
-      
-      // Return to wide shot
-      setTimeout(() => {
-        this.setCameraAngle('wide');
-        attackerBeast.currentAnimation = 'idle';
-        targetBeast.currentAnimation = 'idle';
-      }, 500);
-    }, 600);
-  }
-
-  private createAttackEffect(from: THREE.Vector3, to: THREE.Vector3) {
-    const effectGroup = new THREE.Group();
-    
-    // Energy projectile
-    const projectileGeometry = new THREE.SphereGeometry(0.3, 16, 16);
-    const projectileMaterial = new THREE.MeshBasicMaterial({
-      color: 0xfbbf24,
-      emissive: 0xfbbf24,
-      emissiveIntensity: 2,
-    });
-    const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
-    
-    // Trail particles
-    const trailGeometry = new THREE.BufferGeometry();
-    const trailPositions = new Float32Array(50 * 3);
-    trailGeometry.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
-    
-    const trailMaterial = new THREE.PointsMaterial({
-      color: 0xfbbf24,
-      size: 0.2,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending
-    });
-    const trail = new THREE.Points(trailGeometry, trailMaterial);
-    
-    effectGroup.add(projectile);
-    effectGroup.add(trail);
-    effectGroup.position.copy(from);
-    
-    this.scene.add(effectGroup);
-    this.attackEffects.push(effectGroup);
-    
-    // Animate projectile
+    // Atacante avança rapidamente
+    const attackDuration = 300;
     const startTime = Date.now();
-    const duration = 500;
     
-    const animate = () => {
+    const attackAnim = () => {
       const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      
-      // Move projectile
-      projectile.position.lerpVectors(from, to, progress);
-      
-      // Update trail
-      const positions = trail.geometry.attributes.position.array as Float32Array;
-      for (let i = positions.length - 3; i >= 3; i -= 3) {
-        positions[i] = positions[i - 3];
-        positions[i + 1] = positions[i - 2];
-        positions[i + 2] = positions[i - 1];
-      }
-      positions[0] = projectile.position.x;
-      positions[1] = projectile.position.y + 1;
-      positions[2] = projectile.position.z;
-      trail.geometry.attributes.position.needsUpdate = true;
+      const progress = Math.min(elapsed / attackDuration, 1);
       
       if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        // Remove effect
-        this.scene.remove(effectGroup);
-        const index = this.attackEffects.indexOf(effectGroup);
-        if (index > -1) this.attackEffects.splice(index, 1);
+        // Movimento de avanço
+        const lunge = Math.sin(progress * Math.PI) * 1.5;
+        const direction = attacker === 'player' ? 1 : -1;
+        attackerBeast.group.position.x = attackerBeast.basePosition.x + (lunge * direction);
         
-        // Create impact effect
-        this.createImpactEffect(to);
-      }
-    };
-    
-    animate();
-  }
-
-  private createImpactEffect(position: THREE.Vector3) {
-    const impactGeometry = new THREE.SphereGeometry(1, 16, 16);
-    const impactMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff4444,
-      transparent: true,
-      opacity: 0.8,
-    });
-    const impact = new THREE.Mesh(impactGeometry, impactMaterial);
-    impact.position.copy(position);
-    impact.position.y += 1;
-    
-    this.scene.add(impact);
-    
-    // Animate expansion and fade
-    const startTime = Date.now();
-    const duration = 300;
-    
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = elapsed / duration;
-      
-      if (progress < 1) {
-        impact.scale.setScalar(1 + progress * 2);
-        impactMaterial.opacity = 0.8 * (1 - progress);
-        requestAnimationFrame(animate);
+        requestAnimationFrame(attackAnim);
       } else {
-        this.scene.remove(impact);
+        // Fim do ataque - aplicar dano e shake
+        targetBeast.shakeIntensity = 0.3; // TREMOR FORTE
+        targetBeast.currentAnimation = 'hit';
+        targetBeast.animationTime = 0;
+        
+        // Voltar atacante à posição
+        setTimeout(() => {
+          attackerBeast.group.position.copy(attackerBeast.basePosition);
+          attackerBeast.currentAnimation = 'idle';
+        }, 200);
+        
+        // Parar shake do alvo após 500ms
+        setTimeout(() => {
+          targetBeast.shakeIntensity = 0;
+          targetBeast.currentAnimation = 'idle';
+        }, 500);
       }
     };
     
-    animate();
+    attackAnim();
   }
 
   /**
@@ -564,6 +523,14 @@ export class ImmersiveBattleScene3D {
     if (actor) {
       actor.health = health;
       actor.maxHealth = maxHealth;
+      
+      // Trigger shake if damaged
+      if (health < actor.health) {
+        actor.shakeIntensity = 0.2;
+        setTimeout(() => {
+          if (actor) actor.shakeIntensity = 0;
+        }, 300);
+      }
     }
   }
 
@@ -579,7 +546,11 @@ export class ImmersiveBattleScene3D {
       
       this.updateAnimations(delta);
       this.updateCamera(delta);
-      this.updateParticles(delta);
+      
+      // Update grass
+      if (this.grass) {
+        this.grass.update(delta);
+      }
       
       this.renderer.render(this.scene, this.camera);
     };
@@ -591,23 +562,14 @@ export class ImmersiveBattleScene3D {
     // Update player beast animation
     if (this.playerBeast) {
       this.updateBeastAnimation(this.playerBeast, delta);
+      this.updateBeastShake(this.playerBeast); // TREMOR
     }
     
     // Update enemy beast animation
     if (this.enemyBeast) {
       this.updateBeastAnimation(this.enemyBeast, delta);
+      this.updateBeastShake(this.enemyBeast); // TREMOR
     }
-    
-    // Rotate crystals on pillars
-    this.arena.children.forEach(child => {
-      if (child instanceof THREE.Group) {
-        child.children.forEach(grandchild => {
-          if (grandchild instanceof THREE.Mesh && grandchild.geometry instanceof THREE.OctahedronGeometry) {
-            grandchild.rotation.y += delta * 2;
-          }
-        });
-      }
-    });
   }
 
   private updateBeastAnimation(beast: BeastActor, delta: number) {
@@ -615,56 +577,65 @@ export class ImmersiveBattleScene3D {
     
     switch (beast.currentAnimation) {
       case 'idle':
-        // Gentle breathing/floating
-        const breathe = Math.sin(beast.animationTime * 2) * 0.1;
-        beast.model.position.y = beast.basePosition.y + breathe;
-        beast.model.rotation.y += delta * 0.5;
+        // Animação idle já é feita pelo BeastModel.playIdleAnimation()
         break;
       
       case 'attack':
-        // Lunge forward
-        const attackProgress = Math.min(beast.animationTime / 0.3, 1);
-        const lunge = Math.sin(attackProgress * Math.PI) * 0.5;
-        beast.model.position.z = beast.basePosition.z + lunge;
-        beast.model.scale.setScalar(1 + lunge * 0.2);
+        // Handled in playAttackAnimation
         break;
       
       case 'hit':
-        // Recoil back
+        // Recuo rápido
         const hitProgress = Math.min(beast.animationTime / 0.2, 1);
         const recoil = Math.sin(hitProgress * Math.PI) * -0.3;
-        beast.model.position.z = beast.basePosition.z + recoil;
+        beast.group.position.z = beast.basePosition.z + recoil;
         
-        // Flash red
-        beast.model.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            const mat = child.material as THREE.MeshStandardMaterial;
-            if (mat.emissive) {
-              mat.emissive.setHex(0xff0000);
-              mat.emissiveIntensity = 1 - hitProgress;
-            }
-          }
-        });
+        if (hitProgress >= 1) {
+          // Reset position
+          beast.group.position.z = beast.basePosition.z;
+        }
         break;
       
       case 'defend':
-        // Crouch/brace
-        beast.model.scale.y = 0.9;
+        // Crouch slightly
+        beast.group.scale.y = 0.9;
         break;
       
       case 'victory':
-        // Jump and celebrate
-        const victoryProgress = beast.animationTime % 2;
-        beast.model.position.y = beast.basePosition.y + Math.abs(Math.sin(victoryProgress * Math.PI)) * 1.5;
-        beast.model.rotation.y = beast.animationTime * 2;
+        // Jump celebration
+        const victoryProgress = beast.animationTime % 1.5;
+        beast.group.position.y = beast.basePosition.y + Math.abs(Math.sin(victoryProgress * Math.PI * 2)) * 0.8;
         break;
       
       case 'defeat':
         // Fall down
-        const defeatProgress = Math.min(beast.animationTime / 1.5, 1);
-        beast.model.rotation.x = defeatProgress * Math.PI / 2;
-        beast.model.position.y = beast.basePosition.y * (1 - defeatProgress);
+        const defeatProgress = Math.min(beast.animationTime / 2, 1);
+        beast.group.rotation.x = defeatProgress * Math.PI / 2;
+        beast.group.position.y = beast.basePosition.y * (1 - defeatProgress * 0.5);
         break;
+    }
+  }
+
+  /**
+   * TREMOR ao receber dano (estilo Pokémon Game Boy/DS)
+   */
+  private updateBeastShake(beast: BeastActor) {
+    if (beast.shakeIntensity > 0) {
+      // Tremor rápido horizontal + vertical
+      const shakeX = (Math.random() - 0.5) * beast.shakeIntensity;
+      const shakeZ = (Math.random() - 0.5) * beast.shakeIntensity;
+      
+      beast.group.position.x = beast.basePosition.x + shakeX;
+      beast.group.position.z = beast.basePosition.z + shakeZ;
+      
+      // Diminuir intensidade gradualmente
+      beast.shakeIntensity *= 0.95;
+      
+      if (beast.shakeIntensity < 0.01) {
+        beast.shakeIntensity = 0;
+        beast.group.position.x = beast.basePosition.x;
+        beast.group.position.z = beast.basePosition.z;
+      }
     }
   }
 
@@ -678,31 +649,6 @@ export class ImmersiveBattleScene3D {
     currentLookAt.multiplyScalar(10).add(this.camera.position);
     currentLookAt.lerp(this.cameraTargetLookAt, this.cameraTransitionSpeed);
     this.camera.lookAt(currentLookAt);
-    
-    // Add subtle camera shake during attacks
-    if (this.playerBeast?.currentAnimation === 'attack' || this.enemyBeast?.currentAnimation === 'attack') {
-      this.camera.position.x += (Math.random() - 0.5) * 0.02;
-      this.camera.position.y += (Math.random() - 0.5) * 0.02;
-    }
-  }
-
-  private updateParticles(delta: number) {
-    // Animate floating particles
-    this.particles.forEach(particleSystem => {
-      const positions = particleSystem.geometry.attributes.position.array as Float32Array;
-      
-      for (let i = 0; i < positions.length; i += 3) {
-        positions[i + 1] -= delta * 0.5; // Fall slowly
-        
-        // Reset if below ground
-        if (positions[i + 1] < 0) {
-          positions[i + 1] = 15;
-        }
-      }
-      
-      particleSystem.geometry.attributes.position.needsUpdate = true;
-      particleSystem.rotation.y += delta * 0.1;
-    });
   }
 
   /**
@@ -720,6 +666,18 @@ export class ImmersiveBattleScene3D {
   public dispose() {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
+    }
+    
+    if (this.playerBeast) {
+      this.playerBeast.model.dispose();
+    }
+    
+    if (this.enemyBeast) {
+      this.enemyBeast.model.dispose();
+    }
+    
+    if (this.grass) {
+      // PS1Grass has its own dispose if needed
     }
     
     this.scene.traverse((object) => {
@@ -745,4 +703,3 @@ export class ImmersiveBattleScene3D {
     return this.renderer.domElement;
   }
 }
-
