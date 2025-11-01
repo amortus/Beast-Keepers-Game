@@ -81,15 +81,16 @@ export class BattleUIHybrid {
       left: ${rect.left}px;
       width: ${rect.width}px;
       height: ${containerHeight}px;
-      z-index: 0;
+      z-index: 1;
       pointer-events: none;
       background: transparent;
     `;
     
-    // Garante que o canvas está acima do 3D
-    this.canvas.style.position = 'fixed';
-    this.canvas.style.zIndex = '10';
-    this.canvas.style.backgroundColor = 'transparent';
+    // Canvas 2D deve ficar ACIMA (z-index maior) mas NÃO modificar posição
+    // Apenas garante que está visível e acima do 3D
+    if (!this.canvas.style.zIndex || parseInt(this.canvas.style.zIndex) < 5) {
+      this.canvas.style.zIndex = '5';
+    }
     
     document.body.appendChild(this.arenaScene3DContainer);
     
@@ -104,8 +105,8 @@ export class BattleUIHybrid {
       this.arenaScene3D.setPlayerBeast(this.battle.player.beast.line);
       this.arenaScene3D.setEnemyBeast(this.battle.enemy.beast.line);
       
-      // Set camera to focus on beasts
-      this.arenaScene3D.setCameraAngle('wide');
+      // Set camera MAIS PRÓXIMA (cinematic para batalha)
+      this.arenaScene3D.setCameraAngle('cinematic');
       
       console.log('[BattleUI HYBRID] ✓ 3D arena created in beast area');
       console.log('[BattleUI HYBRID] Container position:', {
@@ -144,21 +145,29 @@ export class BattleUIHybrid {
   public draw() {
     this.animationFrame++;
     
+    // Debug log a cada 60 frames
+    if (this.animationFrame % 60 === 0) {
+      console.log('[BattleUI HYBRID] Drawing frame', this.animationFrame, '- Canvas visible:', this.canvas.style.display !== 'none');
+    }
+    
     // Update 3D arena
     if (this.arenaScene3D) {
       this.arenaScene3D.update(0.016); // ~60 FPS
     }
     
-    // Clear fundo
-    this.ctx.fillStyle = COLORS.bg.dark;
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // IMPORTANTE: Clear ANTES de desenhar qualquer coisa
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
-    // HÍBRIDO: Criar "buraco" transparente na área da arena para ver 3D
-    if (this.arenaScene3D) {
-      const arenaY = 150;
-      const arenaHeight = 200;
-      this.ctx.clearRect(0, arenaY, this.canvas.width, arenaHeight);
-    }
+    // Desenha fundo escuro em TUDO (exceto área da arena)
+    this.ctx.fillStyle = COLORS.bg.dark;
+    
+    // Fundo superior (acima da arena)
+    this.ctx.fillRect(0, 0, this.canvas.width, 150);
+    
+    // Fundo inferior (abaixo da arena)
+    this.ctx.fillRect(0, 350, this.canvas.width, this.canvas.height - 350);
+    
+    // Área da arena (150-350) fica TRANSPARENTE para ver 3D
 
     // Rebuild buttons
     this.buttons.clear();
