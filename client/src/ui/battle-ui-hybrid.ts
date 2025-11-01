@@ -735,7 +735,13 @@ export class BattleUIHybrid {
       width: btnWidth,
       height: btnHeight,
       action: () => {
-        this.onBattleEnd();
+        // Verificar se a batalha realmente terminou ANTES de chamar onBattleEnd
+        if (this.battle.phase === 'victory' || this.battle.phase === 'defeat' || this.battle.phase === 'fled') {
+          console.log('[Battle UI] ✓ Calling onBattleEnd with phase:', this.battle.phase);
+          this.onBattleEnd();
+        } else {
+          console.error('[Battle UI] ❌ Cannot call onBattleEnd - invalid phase:', this.battle.phase);
+        }
       },
     });
   }

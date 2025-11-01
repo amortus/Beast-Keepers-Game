@@ -437,7 +437,7 @@ export class ImmersiveBattleScene3D {
     
     // Posicionar à DIREITA, virado para ESQUERDA (encarando jogador)
     group.position.set(4, 0, 0);
-    group.rotation.y = Math.PI * 0.75; // 135° = virado para esquerda (frente ao jogador)
+    group.rotation.y = Math.PI * 1.25; // 225° = virado diretamente para o jogador (CORRIGIDO)
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -455,7 +455,7 @@ export class ImmersiveBattleScene3D {
       model,
       group,
       basePosition: new THREE.Vector3(4, 0, 0),
-      baseRotation: Math.PI * 0.75,
+      baseRotation: Math.PI * 1.25, // Corrigido para 225° (mesmo do rotation)
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
@@ -501,9 +501,9 @@ export class ImmersiveBattleScene3D {
         break;
       
       case 'cinematic':
-        // Dynamic cinematic angle
-        this.cameraTargetPosition.set(-2, 5, 10);
-        this.cameraTargetLookAt.set(1, 2, 0);
+        // Dynamic cinematic angle (MAIS PRÓXIMA - 30% mais perto)
+        this.cameraTargetPosition.set(-1.5, 3.5, 7);
+        this.cameraTargetLookAt.set(0, 1, 0);
         break;
     }
   }
