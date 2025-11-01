@@ -99,6 +99,9 @@ export class ImmersiveBattleScene3D {
     
     // Adicionar elementos decorativos
     this.createBattleDecorations();
+    
+    // Adicionar nuvens no céu
+    this.createClouds();
   }
 
   private createBattleArena() {
@@ -269,6 +272,49 @@ export class ImmersiveBattleScene3D {
     this.grass = new PS1Grass(this.scene, 15); // Radius 15 (toda a arena)
   }
 
+  private createClouds() {
+    // Nuvens baixas e visíveis (igual rancho)
+    const cloudPositions = [
+      [-15, 8, -20],
+      [12, 10, -25],
+      [-18, 9, -15],
+      [15, 11, -18],
+      [0, 10, -30],
+      [-10, 12, -22],
+      [8, 9, -28],
+    ];
+    
+    cloudPositions.forEach(([x, y, z]) => {
+      const cloud = new THREE.Group();
+      
+      // Nuvem composta por 3-5 esferas
+      const sphereCount = 3 + Math.floor(Math.random() * 3);
+      
+      for (let i = 0; i < sphereCount; i++) {
+        const sphereGeometry = new THREE.SphereGeometry(1.5 + Math.random() * 0.8, 8, 6);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 1,
+          flatShading: true,
+          transparent: true,
+          opacity: 0.8,
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.position.set(
+          (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 3
+        );
+        cloud.add(sphere);
+      }
+      
+      cloud.position.set(x, y, z);
+      this.arena.add(cloud);
+    });
+    
+    console.log('[ImmersiveBattle] ✓ Clouds created');
+  }
+
   private createBattleDecorations() {
     // Marcadores de posição (círculos no chão)
     const markerGeometry = new THREE.RingGeometry(1.2, 1.4, 32);
@@ -355,9 +401,6 @@ export class ImmersiveBattleScene3D {
     
     this.scene.add(group);
     
-    // Setup idle animation
-    const idleAnim = model.playIdleAnimation();
-    
     this.playerBeast = {
       model,
       group,
@@ -369,6 +412,9 @@ export class ImmersiveBattleScene3D {
       maxHealth: 100,
       shakeIntensity: 0
     };
+    
+    // Setup idle animation (PRECISA ser chamado no update loop)
+    console.log('[ImmersiveBattle] ✓ Player beast idle animation ready');
     
     console.log('[ImmersiveBattle] ✓ Player beast loaded (BeastModel)');
   }
@@ -405,9 +451,6 @@ export class ImmersiveBattleScene3D {
     
     this.scene.add(group);
     
-    // Setup idle animation
-    const idleAnim = model.playIdleAnimation();
-    
     this.enemyBeast = {
       model,
       group,
@@ -419,6 +462,9 @@ export class ImmersiveBattleScene3D {
       maxHealth: 100,
       shakeIntensity: 0
     };
+    
+    // Setup idle animation (PRECISA ser chamado no update loop)
+    console.log('[ImmersiveBattle] ✓ Enemy beast idle animation ready');
     
     console.log('[ImmersiveBattle] ✓ Enemy beast loaded (BeastModel)');
   }
@@ -577,7 +623,10 @@ export class ImmersiveBattleScene3D {
     
     switch (beast.currentAnimation) {
       case 'idle':
-        // Animação idle já é feita pelo BeastModel.playIdleAnimation()
+        // ANIMAÇÃO IDLE MANUAL (respiração + rotação lenta)
+        const breathe = Math.sin(beast.animationTime * 2) * 0.08;
+        beast.group.position.y = beast.basePosition.y + breathe;
+        beast.group.rotation.y = beast.baseRotation + Math.sin(beast.animationTime * 0.5) * 0.1;
         break;
       
       case 'attack':

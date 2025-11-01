@@ -64,7 +64,7 @@ export class BattleUI3D {
   private setup3DScene() {
     console.log('[BattleUI3D] Setting up immersive 3D scene...');
     
-    // Create container for 3D scene (full screen, behind 2D HUD)
+    // Create container for 3D scene (full screen, ATRÁS do canvas 2D)
     this.scene3DContainer = document.createElement('div');
     this.scene3DContainer.id = 'battle-scene-3d-container';
     this.scene3DContainer.style.cssText = `
@@ -73,7 +73,7 @@ export class BattleUI3D {
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 50;
+      z-index: 1;
       pointer-events: none;
     `;
     
@@ -129,9 +129,8 @@ export class BattleUI3D {
   public draw() {
     this.animationFrame++;
     
-    // Clear 2D canvas with semi-transparent black (for better HUD visibility)
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    // IMPORTANTE: Limpar canvas completamente para HUD ficar visível
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Rebuild buttons
     this.buttons.clear();
