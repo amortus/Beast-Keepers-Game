@@ -94,18 +94,25 @@ export class ExplorationUI {
     });
 
     // Title
-    drawText(this.ctx, '🗺️ EXPLORAÇÃO - Escolha a Zona', this.canvas.width / 2, panelY + 30, {
+    drawText(this.ctx, '🗺️ EXPLORAÇÃO', this.canvas.width / 2, panelY + 30, {
       align: 'center',
-      font: 'bold 28px monospace',
+      font: 'bold 32px monospace',
       color: COLORS.primary.gold,
+    });
+
+    // Subtitle
+    drawText(this.ctx, 'Escolha uma zona para explorar ou entre em uma Dungeon', this.canvas.width / 2, panelY + 65, {
+      align: 'center',
+      font: '16px monospace',
+      color: COLORS.ui.textDim,
     });
 
     // Zone cards
     const zones: ExplorationZone[] = ['forest', 'mountains', 'caves', 'desert', 'swamp', 'ruins'];
     const cardWidth = 300;
-    const cardHeight = 160;
+    const cardHeight = 150;
     const startX = panelX + 50;
-    const startY = panelY + 80;
+    const startY = panelY + 100;
     const spacing = 20;
     const perRow = 3;
 
@@ -116,6 +123,59 @@ export class ExplorationUI {
       const y = startY + row * (cardHeight + spacing);
 
       this.drawZoneCard(zone, x, y, cardWidth, cardHeight);
+    });
+    
+    // NOVO: Botão de Dungeons (destaque especial)
+    const dungeonBtnWidth = 940;
+    const dungeonBtnHeight = 80;
+    const dungeonBtnX = panelX + 30;
+    const dungeonBtnY = startY + 2 * (cardHeight + spacing) + 20;
+    const dungeonIsHovered = isMouseOver(this.mouseX, this.mouseY, dungeonBtnX, dungeonBtnY, dungeonBtnWidth, dungeonBtnHeight);
+    
+    // Background com gradiente especial
+    this.ctx.fillStyle = dungeonIsHovered ? 'rgba(138, 43, 226, 0.3)' : 'rgba(75, 0, 130, 0.25)';
+    this.ctx.fillRect(dungeonBtnX, dungeonBtnY, dungeonBtnWidth, dungeonBtnHeight);
+    
+    // Borda roxa brilhante
+    this.ctx.strokeStyle = dungeonIsHovered ? COLORS.primary.purple : 'rgba(138, 43, 226, 0.6)';
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(dungeonBtnX, dungeonBtnY, dungeonBtnWidth, dungeonBtnHeight);
+    
+    // Ícone e título
+    drawText(this.ctx, '⚔️', dungeonBtnX + 40, dungeonBtnY + 30, {
+      font: 'bold 48px monospace',
+      color: COLORS.primary.purple,
+    });
+    
+    drawText(this.ctx, 'DUNGEONS', dungeonBtnX + 120, dungeonBtnY + 25, {
+      font: 'bold 32px monospace',
+      color: COLORS.primary.purple,
+    });
+    
+    drawText(this.ctx, 'Masmorras perigosas com recompensas épicas', dungeonBtnX + 120, dungeonBtnY + 55, {
+      font: '16px monospace',
+      color: COLORS.ui.textDim,
+    });
+    
+    // Indicador de entrada
+    if (dungeonIsHovered) {
+      drawText(this.ctx, '▶ ENTRAR', dungeonBtnX + dungeonBtnWidth - 40, dungeonBtnY + 40, {
+        align: 'right',
+        font: 'bold 24px monospace',
+        color: COLORS.primary.gold,
+      });
+    }
+    
+    this.buttons.set('btn_dungeons', {
+      x: dungeonBtnX,
+      y: dungeonBtnY,
+      width: dungeonBtnWidth,
+      height: dungeonBtnHeight,
+      action: () => {
+        if (this.onDungeonOpen) {
+          this.onDungeonOpen();
+        }
+      },
     });
 
     // Close button
@@ -628,6 +688,7 @@ export class ExplorationUI {
 
   // Callbacks
   public onZoneSelected: (zone: ExplorationZone) => void = () => {};
+  public onDungeonOpen: () => void = () => {}; // NOVO: Callback para abrir dungeons
   public onWalk: () => void = () => {};
   public onBattleStart: (enemy: WildEnemy) => void = () => {};
   public onTreasureCollect: (treasure: Item[]) => void = () => {};

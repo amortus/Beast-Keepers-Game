@@ -1079,10 +1079,6 @@ async function setupGame() {
       openExploration();
     };
     
-    // Setup dungeons callback
-    gameUI.onOpenDungeons = () => {
-      openDungeon();
-    };
 
     // Setup navigate callback
     gameUI.onNavigate = (screen: string) => {
@@ -2370,6 +2366,12 @@ function openExploration() {
 
   explorationUI.onReturn = () => {
     finishExploration();
+  };
+
+  explorationUI.onDungeonOpen = () => {
+    // Fechar exploração e abrir dungeons
+    closeExploration();
+    openDungeon();
   };
 
   explorationUI.onClose = async () => {
