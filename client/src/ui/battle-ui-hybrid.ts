@@ -150,10 +150,8 @@ export class BattleUIHybrid {
       console.log('[BattleUI HYBRID] Drawing frame', this.animationFrame, '- Canvas visible:', this.canvas.style.display !== 'none');
     }
     
-    // Update 3D arena
-    if (this.arenaScene3D) {
-      this.arenaScene3D.update(0.016); // ~60 FPS
-    }
+    // 3D arena tem seu próprio loop interno (startAnimationLoop)
+    // Não precisa de update() manual aqui
     
     // IMPORTANTE: Clear ANTES de desenhar qualquer coisa
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
