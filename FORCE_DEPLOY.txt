@@ -1,4 +1,0 @@
-Force deploy trigger - 2024-11-01 15:30
-This file forces Vercel to rebuild the project.
-Dungeons button must appear in the menu!
-
