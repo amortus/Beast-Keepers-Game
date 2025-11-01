@@ -647,7 +647,8 @@ export class BattleUI3D {
   }
 
   private getTechniqueData(techId: string): Technique | null {
-    return TECHNIQUES.find(t => t.id === techId) || null;
+    // TECHNIQUES é um Record<string, Technique>, não um array
+    return TECHNIQUES[techId] || null;
   }
 
   private toggleAutoBattle() {
