@@ -2789,7 +2789,13 @@ function startExplorationBattle(enemy: WildEnemy) {
         console.log('[Exploration Battle] ✓ Victory - continuing exploration');
         
         gameState.victories++;
-        if (gameState.activeBeast) gameState.activeBeast.victories++;
+        if (gameState.activeBeast) {
+          gameState.activeBeast.victories++;
+          // Atualizar HP e Essência após batalha
+          gameState.activeBeast.currentHp = battle.player.currentHp;
+          gameState.activeBeast.essence = battle.player.currentEssence;
+          console.log('[Exploration Battle] Beast HP after victory:', gameState.activeBeast.currentHp, '/', gameState.activeBeast.maxHp);
+        }
         
         emitBattleWon(gameState);
         unlockQuests(gameState.quests);
@@ -2825,7 +2831,15 @@ function startExplorationBattle(enemy: WildEnemy) {
       else if (battle.phase === 'defeat') {
         console.log('[Exploration Battle] ✗ Defeat - closing exploration');
         
-        if (gameState.activeBeast) gameState.activeBeast.defeats++;
+        // Atualizar HP da besta com HP da batalha (baixo/0)
+        if (gameState.activeBeast) {
+          gameState.activeBeast.defeats++;
+          gameState.activeBeast.currentHp = Math.max(1, battle.player.currentHp); // Mínimo 1 HP
+          gameState.activeBeast.essence = battle.player.currentEssence;
+          
+          console.log('[Exploration Battle] Beast HP after defeat:', gameState.activeBeast.currentHp, '/', gameState.activeBeast.maxHp);
+        }
+        
         await saveGame(gameState);
         
         // Fechar batalha primeiro
