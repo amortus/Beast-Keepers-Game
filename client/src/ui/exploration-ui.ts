@@ -84,7 +84,7 @@ export class ExplorationUI {
 
   private drawZoneSelection() {
     const panelWidth = 1000;
-    const panelHeight = 650;
+    const panelHeight = 720; // AUMENTADO para caber o botão de dungeons
     const panelX = (this.canvas.width - panelWidth) / 2;
     const panelY = (this.canvas.height - panelHeight) / 2;
 
