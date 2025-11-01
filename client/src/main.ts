@@ -2735,7 +2735,30 @@ function startExplorationBattle(enemy: WildEnemy) {
 
       const battle = gameState.currentBattle;
       
-      console.log('[Exploration Battle] Battle ended -', battle.winner);
+      console.log('[Exploration Battle] Battle ended - Phase:', battle.phase, 'Winner:', battle.winner);
+
+      // FUGIU: Volta para exploração (sem penalidade)
+      if (battle.phase === 'fled') {
+        console.log('[Exploration Battle] ✓ Player fled - continuing exploration');
+        
+        // Fechar batalha
+        closeBattle();
+        
+        // Reativar exploração
+        if (explorationUI && explorationState) {
+          inExploration = true;
+          explorationUI.updateState(explorationState);
+          console.log('[Exploration Battle] ✓ Exploration reactivated after flee');
+          
+          // Continuar explorando automaticamente
+          setTimeout(() => {
+            console.log('[Exploration Battle] ✓ Auto-continuing after flee...');
+            walkExploration();
+          }, 800);
+        }
+        
+        return; // Sai do callback
+      }
 
       if (battle.winner === 'player') {
         // VITÓRIA: Continuar exploração
@@ -2761,6 +2784,15 @@ function startExplorationBattle(enemy: WildEnemy) {
         if (explorationUI && explorationState) {
           inExploration = true; // ← Volta para exploração
           console.log('[Exploration Battle] ✓ Exploration reactivated');
+          
+          // IMPORTANTE: Atualizar UI para mostrar progresso
+          explorationUI.updateState(explorationState);
+          
+          // Continuar explorando automaticamente após pequeno delay
+          setTimeout(() => {
+            console.log('[Exploration Battle] ✓ Auto-continuing exploration...');
+            walkExploration();
+          }, 800); // 800ms para jogador ver o progresso
         }
       } else {
         // DERROTA: Fechar exploração
