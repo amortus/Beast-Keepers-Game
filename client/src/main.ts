@@ -12,6 +12,7 @@ console.log('%cSe você não vê este log verde, ainda está com cache antigo!',
 
 import { GameUI } from './ui/game-ui';
 import { BattleUI } from './ui/battle-ui';
+import { BattleUI3D } from './ui/battle-ui-3d';
 import { TempleUI } from './ui/temple-ui';
 import { DialogueUI } from './ui/dialogue-ui';
 import { ShopUI } from './ui/shop-ui';
@@ -156,7 +157,8 @@ function setupAuthDOMProtection() {
 // Game state
 let gameState: GameState | null = null;
 let gameUI: GameUI | null = null;
-let battleUI: BattleUI | null = null;
+let battleUI: BattleUI | BattleUI3D | null = null; // Suporta ambos os sistemas
+let use3DBattle = true; // ⚡ TOGGLE: true = 3D imersivo, false = 2D clássico
 let templeUI: TempleUI | null = null;
 let dialogueUI: DialogueUI | null = null;
 let shopUI: ShopUI | null = null;
@@ -2109,10 +2111,74 @@ function startDungeonBattle(dungeonId: string, floor: number) {
 
   gameState.currentBattle = battle;
 
-  // Create battle UI
-  battleUI = new BattleUI(canvas, battle);
+  // Create battle UI (3D or 2D based on toggle)
+  if (use3DBattle) {
+    console.log('[Battle] 🎮 Using 3D Immersive Battle System');
+    battleUI = new BattleUI3D(canvas, battle);
+    
+    // Setup 3D callbacks
+    (battleUI as BattleUI3D).onActionSelected = (action: CombatAction) => {
+      if (!gameState?.currentBattle) return;
 
-    // Setup callbacks
+      const result = executePlayerAction(gameState.currentBattle, action);
+
+      if (result && battleUI) {
+        (battleUI as BattleUI3D).updateBattle(gameState.currentBattle);
+
+        if (gameState.currentBattle.phase === 'enemy_turn') {
+          setTimeout(() => {
+            if (!gameState?.currentBattle) return;
+            executeEnemyTurn(gameState.currentBattle);
+            if (battleUI) {
+              (battleUI as BattleUI3D).updateBattle(gameState.currentBattle);
+            }
+          }, 1000);
+        }
+      }
+    };
+    
+    (battleUI as BattleUI3D).onBattleEnd = async (winner: 'player' | 'enemy') => {
+      if (!gameState?.currentBattle) return;
+
+      inBattle = false;
+      isDungeonBattle = false;
+
+      if (winner === 'player') {
+        gameState.victories++;
+        if (gameState.activeBeast) gameState.activeBeast.victories++;
+        
+        emitBattleWon(gameState);
+        unlockQuests(gameState.quests);
+
+        await saveGame(gameState);
+
+        showMessage(
+          '🏆 Vitória! Seu beast venceu a batalha no andar da dungeon!',
+          '✨ Dungeon',
+          () => {
+            closeBattle();
+            openDungeon();
+          }
+        );
+      } else {
+        if (gameState.activeBeast) gameState.activeBeast.defeats++;
+
+        await saveGame(gameState);
+
+        showMessage(
+          '💀 Seu beast foi derrotado na dungeon. Você foi expulso.',
+          '☠️ Derrota',
+          () => {
+            closeBattle();
+          }
+        );
+      }
+    };
+  } else {
+    console.log('[Battle] 📺 Using 2D Classic Battle System');
+    battleUI = new BattleUI(canvas, battle);
+    
+    // Setup 2D callbacks (original)
     battleUI.onPlayerAction = (action: CombatAction) => {
       if (!gameState?.currentBattle) return;
 
@@ -2244,8 +2310,9 @@ function startDungeonBattle(dungeonId: string, floor: number) {
         gameUI.updateGameState(gameState);
       }
     };
+  } // Fecha o bloco else (2D Battle System)
 
-    inBattle = true;
+  inBattle = true;
 }
 
 // ===== ACHIEVEMENTS SYSTEM =====

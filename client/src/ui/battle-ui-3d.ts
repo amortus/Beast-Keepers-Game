@@ -42,7 +42,7 @@ export class BattleUI3D {
     this.ctx = ctx;
     this.battle = battle;
     
-    this.setup EventListeners();
+    this.setupEventListeners();
     this.setup3DScene();
   }
 
@@ -448,9 +448,9 @@ export class BattleUI3D {
   }
 
   private getTechniqueData(techId: string) {
-    // Import technique data
-    // (Implement based on your technique system)
-    return null;
+    // Import technique data from database
+    const { TECHNIQUES } = require('../data/techniques');
+    return TECHNIQUES.find((t: any) => t.id === techId) || null;
   }
 
   private toggleAutoBattle() {
