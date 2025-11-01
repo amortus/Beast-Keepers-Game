@@ -2774,11 +2774,11 @@ function startExplorationBattle(enemy: WildEnemy) {
           explorationUI.updateState(explorationState);
           console.log('[Exploration Battle] ✓ Exploration reactivated after flee');
           
-          // Continuar explorando automaticamente
+          // Continuar explorando RAPIDAMENTE após fuga
           setTimeout(() => {
             console.log('[Exploration Battle] ✓ Auto-continuing after flee...');
             walkExploration();
-          }, 800);
+          }, 200); // 200ms - rápido para prevenir re-batalha
         }
         
         return; // Sai do callback
@@ -2814,11 +2814,11 @@ function startExplorationBattle(enemy: WildEnemy) {
           // IMPORTANTE: Atualizar UI para mostrar progresso
           explorationUI.updateState(explorationState);
           
-          // Continuar explorando automaticamente após pequeno delay
+          // Continuar explorando RAPIDAMENTE (prevenir clique duplo)
           setTimeout(() => {
             console.log('[Exploration Battle] ✓ Auto-continuing exploration...');
             walkExploration();
-          }, 800); // 800ms para jogador ver o progresso
+          }, 200); // 200ms - rápido o suficiente para prevenir clique no mesmo inimigo
         }
       } 
       // DERROTA: Fechar exploração
