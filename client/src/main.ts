@@ -2734,10 +2734,11 @@ function startExplorationBattle(enemy: WildEnemy) {
       if (!gameState?.currentBattle) return;
 
       const battle = gameState.currentBattle;
-      inBattle = false;
-      isExplorationBattle = false;
+      
+      console.log('[Exploration Battle] Battle ended -', battle.winner);
 
       if (battle.winner === 'player') {
+        // VITÓRIA: Continuar exploração
         gameState.victories++;
         if (gameState.activeBeast) gameState.activeBeast.victories++;
         
@@ -2750,14 +2751,29 @@ function startExplorationBattle(enemy: WildEnemy) {
         if (explorationState) {
           explorationState.distance += 100;
           explorationState.battlesWon++;
+          console.log('[Exploration Battle] ✓ Continuing exploration - distance:', explorationState.distance);
+        }
+        
+        // Fechar apenas a batalha (não a exploração)
+        closeBattle();
+        
+        // CRÍTICO: Reativar flag de exploração
+        if (explorationUI && explorationState) {
+          inExploration = true; // ← Volta para exploração
+          console.log('[Exploration Battle] ✓ Exploration reactivated');
         }
       } else {
+        // DERROTA: Fechar exploração
+        console.log('[Exploration Battle] ✗ Defeat - closing exploration');
         if (gameState.activeBeast) gameState.activeBeast.defeats++;
         await saveGame(gameState);
+        
+        // Fechar batalha primeiro
+        closeBattle();
+        
+        // Depois fechar exploração (volta ao rancho)
         await closeExploration();
       }
-      
-      closeBattle();
     };
   } else if (use3DBattle) {
     console.log('[Exploration Battle] 🎮 Using 3D Immersive Battle System');
