@@ -385,8 +385,12 @@ export class GameUI {
 
   private drawGlobalMenu() {
     const menuY = 52;
-    const btnSpacing = 10;
-    let currentX = 30;
+    const btnSpacing = 8; // Reduzido de 10 para 8
+    let currentX = 20; // Reduzido de 30 para 20
+    
+    // Espaço reservado para botão Sair + Settings (direita)
+    const rightButtonsWidth = 160; // Settings + Sair
+    const rightMargin = 20;
 
     const menuItems = [
       { id: 'ranch', label: '🏠 Rancho', color: COLORS.primary.green, action: () => this.onNavigate('ranch') },
@@ -400,29 +404,20 @@ export class GameUI {
       { id: 'temple', label: '🏛️ Templo', color: COLORS.primary.purple, action: () => this.onOpenTemple() },
     ];
 
-    // AJUSTE: Calcular largura dinâmica baseada na quantidade de botões
-    // 9 botões: deixar mais compacto mas ainda legível
+    // Calcular largura disponível (descontando botões da direita)
     const totalItems = menuItems.length;
     const totalSpacing = (totalItems - 1) * btnSpacing;
-    const availableWidth = this.canvas.width - (currentX * 2); // Margens laterais
-    const btnWidth = Math.floor((availableWidth - totalSpacing) / totalItems);
+    const availableWidth = this.canvas.width - currentX - rightButtonsWidth - rightMargin;
+    const btnWidth = Math.max(90, Math.floor((availableWidth - totalSpacing) / totalItems)); // Mínimo 90px
     const btnHeight = 26;
 
-    console.log('[GameUI] Menu calculated:', {
-      totalItems,
-      availableWidth,
-      btnWidth,
-      btnSpacing,
-      items: menuItems.map(m => m.label)
-    });
-
     menuItems.forEach((item) => {
-      
       const isHovered = isMouseOver(this.mouseX, this.mouseY, currentX, menuY, btnWidth, btnHeight);
 
       drawButton(this.ctx, currentX, menuY, btnWidth, btnHeight, item.label, {
         bgColor: item.color,
         isHovered: isHovered,
+        fontSize: 11, // Reduzido de padrão para caber melhor
       });
 
       this.buttons.set(item.id, {
