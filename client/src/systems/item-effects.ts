@@ -207,6 +207,159 @@ export function useItem(item: Item, beast: Beast): ItemUseResult {
       result.message = 'Lealdade aumentada em 30!';
       break;
     
+    // ===== POÇÕES DE CURA (IDs DA LOJA) =====
+    case 'super_healing_potion_item':
+      result.changes.hp = Math.min(beast.currentHp + 50, beast.maxHp);
+      result.message = 'Curou 50 HP!';
+      break;
+    
+    case 'hyper_healing_potion_item':
+      result.changes.hp = Math.min(beast.currentHp + 100, beast.maxHp);
+      result.message = 'Curou 100 HP!';
+      break;
+    
+    case 'max_healing_potion_item':
+      result.changes.hp = beast.maxHp;
+      result.message = 'HP completamente restaurado!';
+      break;
+    
+    case 'full_restore_potion_item':
+      result.changes.hp = beast.maxHp;
+      result.changes.essence = beast.maxEssence;
+      result.changes.stress = 0;
+      result.message = 'HP e Essência restaurados, Stress e Fadiga removidos!';
+      break;
+    
+    // ===== ELIXIRES DE ESSÊNCIA =====
+    case 'basic_essence_elixir_item':
+      result.changes.essence = Math.min(beast.essence + 10, beast.maxEssence);
+      result.message = 'Restaurou 10 Essência!';
+      break;
+    
+    case 'super_essence_elixir_item':
+      result.changes.essence = Math.min(beast.essence + 25, beast.maxEssence);
+      result.message = 'Restaurou 25 Essência!';
+      break;
+    
+    case 'max_essence_elixir_item':
+      result.changes.essence = beast.maxEssence;
+      result.message = 'Essência completamente restaurada!';
+      break;
+    
+    // ===== ELIXIR ESPECIAL =====
+    case 'universal_elixir_item':
+      if (!result.changes.attributes) result.changes.attributes = {};
+      result.changes.attributes.might = (beast.attributes.might || 0) + 5;
+      result.changes.attributes.wit = (beast.attributes.wit || 0) + 5;
+      result.changes.attributes.focus = (beast.attributes.focus || 0) + 5;
+      result.changes.attributes.agility = (beast.attributes.agility || 0) + 5;
+      result.changes.attributes.ward = (beast.attributes.ward || 0) + 5;
+      result.changes.attributes.vitality = (beast.attributes.vitality || 0) + 5;
+      if (!beast.elixirUsage) beast.elixirUsage = {};
+      beast.elixirUsage.total = (beast.elixirUsage.total || 0) + 6;
+      result.message = '+5 em TODOS os atributos!';
+      break;
+    
+    // ===== ANTÍDOTO E OUTROS =====
+    case 'antidote_potion_item':
+      result.changes.stress = 0;
+      result.message = 'Todos os efeitos negativos removidos!';
+      break;
+    
+    case 'awakening_potion_item':
+      result.changes.stress = 0;
+      result.message = 'Fadiga removida e energia restaurada!';
+      break;
+    
+    // ===== ITENS DE ALIMENTO (se não estiverem no sistema antigo) =====
+    case 'vital_fruit':
+      result.changes.stress = Math.max(0, beast.secondaryStats.stress - 15);
+      result.message = 'Stress reduzido em 15!';
+      break;
+    
+    case 'serene_herb':
+      result.changes.stress = Math.max(0, beast.secondaryStats.stress - 10);
+      result.message = 'Stress reduzido em 10!';
+      break;
+    
+    case 'healing_herb':
+      result.changes.hp = Math.min(beast.currentHp + Math.floor(beast.maxHp * 0.3), beast.maxHp);
+      result.message = `Curou ${Math.floor(beast.maxHp * 0.3)} HP!`;
+      break;
+    
+    case 'energy_herb':
+      result.changes.essence = Math.min(beast.essence + Math.floor(beast.maxEssence * 0.25), beast.maxEssence);
+      result.message = `Restaurou ${Math.floor(beast.maxEssence * 0.25)} Essência!`;
+      break;
+    
+    case 'mood_herb':
+      result.message = 'Humor melhorado!';
+      break;
+    
+    // ===== ELIXIRES ESPECIAIS (LOJA) =====
+    case 'stress_relief_elixir_item':
+      result.changes.stress = 0;
+      result.message = 'Stress completamente removido!';
+      break;
+    
+    case 'loyalty_elixir_item':
+      result.changes.loyalty = 100;
+      result.message = 'Lealdade máxima atingida!';
+      break;
+    
+    case 'experience_elixir_item':
+      if (beast.experience) beast.experience += 500;
+      result.message = '+500 XP ganhos!';
+      break;
+    
+    // ===== POÇÕES TEMPORÁRIAS (BATALHA) =====
+    case 'x_might_potion_item':
+      result.message = '+5 Força por 3 batalhas!';
+      break;
+    
+    case 'x_ward_potion_item':
+      result.message = '+5 Resistência por 3 batalhas!';
+      break;
+    
+    case 'x_agility_potion_item':
+      result.message = '+5 Agilidade por 3 batalhas!';
+      break;
+    
+    case 'x_focus_potion_item':
+      result.message = '+5 Foco por 3 batalhas!';
+      break;
+    
+    // ===== ELIXIRES LENDÁRIOS =====
+    case 'divine_elixir_item':
+      if (!result.changes.attributes) result.changes.attributes = {};
+      result.changes.attributes.might = (beast.attributes.might || 0) + 10;
+      result.changes.attributes.wit = (beast.attributes.wit || 0) + 10;
+      result.changes.attributes.focus = (beast.attributes.focus || 0) + 10;
+      result.changes.attributes.agility = (beast.attributes.agility || 0) + 10;
+      result.changes.attributes.ward = (beast.attributes.ward || 0) + 10;
+      result.changes.attributes.vitality = (beast.attributes.vitality || 0) + 10;
+      result.changes.hp = beast.maxHp;
+      result.changes.essence = beast.maxEssence;
+      result.changes.stress = 0;
+      if (!beast.elixirUsage) beast.elixirUsage = {};
+      beast.elixirUsage.total = (beast.elixirUsage.total || 0) + 6;
+      result.message = 'Elixir Divino! +10 em TODOS os atributos + Cura completa!';
+      break;
+    
+    // ===== ALIMENTOS BÁSICOS =====
+    case 'basic_food':
+      result.message = 'Fadiga reduzida em 10!';
+      break;
+    
+    case 'premium_food':
+      result.message = 'Fadiga reduzida em 20!';
+      break;
+    
+    case 'feast':
+      result.changes.stress = Math.max(0, beast.secondaryStats.stress - 20);
+      result.message = 'Fadiga -30, Stress -20!';
+      break;
+    
     default:
       result.success = false;
       result.message = 'Item não pode ser usado!';

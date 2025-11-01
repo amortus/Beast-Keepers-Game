@@ -22,14 +22,24 @@ export interface ItemEffect {
  * Usa um item do inventário em uma Besta
  */
 export function useItem(gameState: GameState, item: Item, beast: Beast): ItemEffect {
+  // DEBUG: Log do inventário atual
+  console.log('[useItem] Tentando usar:', item.id, item.name);
+  console.log('[useItem] Inventário atual:', gameState.inventory.map(i => `${i.id} x${i.quantity}`));
+  
   // Verificar se o item está no inventário
   const inventoryItem = gameState.inventory.find(i => i.id === item.id);
   if (!inventoryItem || !inventoryItem.quantity || inventoryItem.quantity <= 0) {
+    console.error('[useItem] ❌ Item não encontrado!', {
+      searchId: item.id,
+      inventoryIds: gameState.inventory.map(i => i.id)
+    });
     return {
       success: false,
       message: 'Item não encontrado no inventário!',
     };
   }
+  
+  console.log('[useItem] ✅ Item encontrado:', inventoryItem.id, 'x' + inventoryItem.quantity);
 
   // Verificar se o item pode ser usado
   const canUse = canUseItem(item, beast);
