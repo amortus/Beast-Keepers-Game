@@ -63,6 +63,7 @@ export class AuthUI {
     // Criar container para inputs HTML
     this.inputsContainer = document.createElement('div');
     this.inputsContainer.id = 'auth-inputs-container';
+    this.inputsContainer.setAttribute('data-auth-container', 'true'); // NOVO: Identificador extra
     this.inputsContainer.style.cssText = `
       position: absolute;
       left: 50%;

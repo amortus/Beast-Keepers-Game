@@ -356,8 +356,35 @@ async function init() {
       isAuthenticated = true;
       inAuth = false;
       
+      // NOVO: Adicionar classe 'authenticated' ao body para CSS forçar esconder
+      document.body.classList.add('authenticated');
+      console.log('[Auth] ✅ Added "authenticated" class to body');
+      
       // CORREÇÃO: Esconder completamente o AuthUI após login
       authUI.hide();
+      
+      // NOVO: Função de cleanup que será executada periodicamente
+      const cleanupAuthElements = () => {
+        const authContainers = document.querySelectorAll('#auth-inputs-container, [data-auth-container]');
+        const orphanInputs = document.querySelectorAll('input[data-field], input[placeholder*="email"], input[placeholder*="senha"], input[placeholder*="nome"]');
+        
+        if (authContainers.length > 0 || orphanInputs.length > 0) {
+          console.warn(`[Auth Cleanup] Removing ${authContainers.length} containers and ${orphanInputs.length} inputs`);
+          
+          authContainers.forEach(c => {
+            (c as HTMLElement).style.display = 'none';
+            (c as HTMLElement).style.visibility = 'hidden';
+            (c as HTMLElement).style.pointerEvents = 'none';
+            (c as HTMLElement).style.zIndex = '-9999';
+            c.remove();
+          });
+          
+          orphanInputs.forEach(input => {
+            (input as HTMLElement).style.display = 'none';
+            input.remove();
+          });
+        }
+      };
       
       // PROTEÇÃO EXTRA: Forçar remoção agressiva de qualquer container de auth residual
       setTimeout(() => {
@@ -433,8 +460,35 @@ async function init() {
       isAuthenticated = true;
       inAuth = false;
       
+      // NOVO: Adicionar classe 'authenticated' ao body para CSS forçar esconder
+      document.body.classList.add('authenticated');
+      console.log('[Auth] ✅ Added "authenticated" class to body');
+      
       // CORREÇÃO: Esconder completamente o AuthUI após registro
       authUI.hide();
+      
+      // NOVO: Função de cleanup que será executada periodicamente (mesma do login)
+      const cleanupAuthElements = () => {
+        const authContainers = document.querySelectorAll('#auth-inputs-container, [data-auth-container]');
+        const orphanInputs = document.querySelectorAll('input[data-field], input[placeholder*="email"], input[placeholder*="senha"], input[placeholder*="nome"]');
+        
+        if (authContainers.length > 0 || orphanInputs.length > 0) {
+          console.warn(`[Auth Cleanup] Removing ${authContainers.length} containers and ${orphanInputs.length} inputs`);
+          
+          authContainers.forEach(c => {
+            (c as HTMLElement).style.display = 'none';
+            (c as HTMLElement).style.visibility = 'hidden';
+            (c as HTMLElement).style.pointerEvents = 'none';
+            (c as HTMLElement).style.zIndex = '-9999';
+            c.remove();
+          });
+          
+          orphanInputs.forEach(input => {
+            (input as HTMLElement).style.display = 'none';
+            input.remove();
+          });
+        }
+      };
       
       // PROTEÇÃO EXTRA: Forçar remoção agressiva de qualquer container de auth residual
       setTimeout(() => {
