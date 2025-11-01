@@ -886,7 +886,14 @@ async function loadGameFromServer() {
           
           // Sistema de ciclo diário
           ageInDays: serverBeast.age_in_days || 0,
-          lastDayProcessed: serverBeast.last_day_processed || 0
+          lastDayProcessed: serverBeast.last_day_processed || 0,
+          
+          // Histórico de batalhas (CRÍTICO: prevenir NaN)
+          victories: serverBeast.victories ?? 0,
+          defeats: serverBeast.defeats ?? 0,
+          
+          // Eventos de vida
+          lifeEvents: serverBeast.life_events || []
         };
         
         console.log('[Game] Loaded Beast from server:', gameState.activeBeast.name, `(${gameState.activeBeast.line})`);
