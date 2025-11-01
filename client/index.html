@@ -10,7 +10,7 @@
   <title>Beast Keepers</title>
   <style>
     /* ===== AUTH CLEANUP CSS (INLINE) ===== */
-    /* CRÍTICO: Força esconder inputs de auth APENAS quando autenticado */
+    /* ESTRATÉGIA 1: Esconder quando body tem classe authenticated */
     body.authenticated #auth-inputs-container,
     body.authenticated [id^="auth-inputs"],
     body.authenticated [data-auth-container="true"],
@@ -31,6 +31,40 @@
       z-index: -9999 !important;
       width: 0 !important;
       height: 0 !important;
+    }
+    
+    /* ESTRATÉGIA 2: Esconder SEMPRE containers de auth com data-auth-container */
+    [data-auth-container="true"] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+      top: -9999px !important;
+      z-index: -9999 !important;
+    }
+    
+    /* ESTRATÉGIA 3: Esconder inputs de auth que tenham atributos específicos */
+    input[data-field] {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      position: absolute !important;
+      left: -9999px !important;
+      z-index: -9999 !important;
+    }
+    
+    /* ESTRATÉGIA 4: Durante o jogo (quando canvas está visível), esconder todos os inputs HTML */
+    body:has(#game) input[type="email"],
+    body:has(#game) input[type="password"],
+    body:has(#game) input[type="text"][placeholder*="email"],
+    body:has(#game) input[type="text"][placeholder*="nome"],
+    body:has(#game) input[type="password"][placeholder*="senha"] {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
     }
     * {
       margin: 0;
