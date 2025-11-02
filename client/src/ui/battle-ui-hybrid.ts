@@ -30,6 +30,10 @@ export class BattleUIHybrid {
   private arenaScene3DContainer: HTMLDivElement | null = null;
   private resizeHandler: (() => void) | null = null;
   
+  // Event listeners (para cleanup)
+  private mouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private mouseDownHandler: (() => void) | null = null;
+  
   // Mini viewers (não usado no híbrido, mas mantém compatibilidade)
   private playerViewer3D: BeastMiniViewer3D | null = null;
   private playerViewer3DContainer: HTMLDivElement | null = null;
@@ -51,15 +55,19 @@ export class BattleUIHybrid {
   }
 
   private setupEventListeners() {
-    this.canvas.addEventListener('mousemove', (e) => {
+    // Guardar referências para poder remover depois
+    this.mouseMoveHandler = (e: MouseEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       this.mouseX = ((e.clientX - rect.left) / rect.width) * this.canvas.width;
       this.mouseY = ((e.clientY - rect.top) / rect.height) * this.canvas.height;
-    });
+    };
 
-    this.canvas.addEventListener('mousedown', () => {
+    this.mouseDownHandler = () => {
       this.handleClick();
-    });
+    };
+    
+    this.canvas.addEventListener('mousemove', this.mouseMoveHandler);
+    this.canvas.addEventListener('mousedown', this.mouseDownHandler);
     
     // Resize listener para reposicionar arena 3D
     this.resizeHandler = () => {
@@ -948,6 +956,19 @@ export class BattleUIHybrid {
 
   public dispose() {
     console.log('[BattleUI HYBRID] Disposing...');
+    
+    // CRÍTICO: Remover event listeners do canvas
+    if (this.mouseMoveHandler) {
+      this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
+      this.mouseMoveHandler = null;
+      console.log('[BattleUI HYBRID] ✓ MouseMove listener removed');
+    }
+    
+    if (this.mouseDownHandler) {
+      this.canvas.removeEventListener('mousedown', this.mouseDownHandler);
+      this.mouseDownHandler = null;
+      console.log('[BattleUI HYBRID] ✓ MouseDown listener removed');
+    }
     
     // Remove resize listener
     if (this.resizeHandler) {
