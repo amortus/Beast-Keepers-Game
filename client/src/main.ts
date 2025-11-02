@@ -31,7 +31,7 @@ import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
-import { isBeastAlive, calculateBeastAge } from './systems/beast';
+import { isBeastAlive, calculateBeastAge, recalculateDerivedStats } from './systems/beast';
 import { 
   canStartAction,
   startAction,
@@ -895,6 +895,10 @@ async function loadGameFromServer() {
           // Eventos de vida
           lifeEvents: serverBeast.life_events || []
         };
+        
+        // CRÍTICO: Recalcular stats derivados baseados nos atributos atuais
+        // Isso garante que HP/Essência máximos estejam corretos após treino
+        recalculateDerivedStats(gameState.activeBeast);
         
         console.log('[Game] Loaded Beast from server:', gameState.activeBeast.name, `(${gameState.activeBeast.line})`);
         

@@ -23,8 +23,10 @@ function generateBeastId(): string {
  * Vitality 30 → 140 HP
  * Vitality 50 → 200 HP
  * Vitality 100 → 350 HP
+ * 
+ * EXPORTADO: Usado para recalcular HP ao carregar do servidor
  */
-function calculateMaxHp(vitality: number): number {
+export function calculateMaxHp(vitality: number): number {
   return Math.floor(vitality * 3 + 50);
 }
 
@@ -34,9 +36,39 @@ function calculateMaxHp(vitality: number): number {
  * Wit 30 + Focus 30 → 60 Essência
  * Wit 50 + Focus 50 → 80 Essência
  * Wit 100 + Focus 100 → 130 Essência
+ * 
+ * EXPORTADO: Usado para recalcular Essência ao carregar do servidor
  */
-function calculateMaxEssence(wit: number, focus: number): number {
+export function calculateMaxEssence(wit: number, focus: number): number {
   return Math.floor((wit + focus) / 2 + 30);
+}
+
+/**
+ * Recalcula TODOS os stats derivados de uma beast baseado nos atributos atuais
+ * Útil ao carregar do servidor ou após usar elixires
+ * 
+ * IMPORTANTE: Preserva HP e Essência atuais proporcionalmente
+ */
+export function recalculateDerivedStats(beast: Beast): void {
+  const attrs = beast.attributes;
+  
+  // Salvar proporções atuais
+  const hpRatio = beast.maxHp > 0 ? beast.currentHp / beast.maxHp : 1;
+  const essenceRatio = beast.maxEssence > 0 ? beast.essence / beast.maxEssence : 1;
+  
+  // Recalcular stats máximos
+  const newMaxHp = calculateMaxHp(attrs.vitality);
+  const newMaxEssence = calculateMaxEssence(attrs.wit, attrs.focus);
+  
+  // Atualizar máximos
+  beast.maxHp = newMaxHp;
+  beast.maxEssence = newMaxEssence;
+  
+  // Atualizar valores atuais mantendo proporção
+  beast.currentHp = Math.min(Math.floor(newMaxHp * hpRatio), newMaxHp);
+  beast.essence = Math.min(Math.floor(newMaxEssence * essenceRatio), newMaxEssence);
+  
+  console.log(`[Beast] Stats recalculados: HP ${beast.currentHp}/${beast.maxHp}, Essência ${beast.essence}/${beast.maxEssence}`);
 }
 
 /**

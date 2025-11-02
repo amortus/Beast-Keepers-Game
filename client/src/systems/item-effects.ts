@@ -4,6 +4,7 @@
  */
 
 import { Beast, Item } from '../types';
+import { recalculateDerivedStats } from './beast';
 
 export interface ItemUseResult {
   success: boolean;

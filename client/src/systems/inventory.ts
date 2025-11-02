@@ -5,6 +5,7 @@
 
 import type { GameState, Beast, Item } from '../types';
 import { canUseItem, useItem as useItemEffect, type ItemUseResult } from './item-effects';
+import { recalculateDerivedStats } from './beast';
 
 export interface ItemEffect {
   success: boolean;
@@ -62,6 +63,7 @@ export function useItem(gameState: GameState, item: Item, beast: Beast): ItemEff
     }
 
     // Aplicar mudanças na besta
+    let attributesChanged = false;
     if (result.changes) {
       if (result.changes.hp !== undefined) {
         beast.currentHp = result.changes.hp;
@@ -71,6 +73,7 @@ export function useItem(gameState: GameState, item: Item, beast: Beast): ItemEff
       }
       if (result.changes.attributes) {
         Object.assign(beast.attributes, result.changes.attributes);
+        attributesChanged = true;
       }
       if (result.changes.stress !== undefined) {
         beast.secondaryStats.stress = result.changes.stress;
@@ -80,6 +83,12 @@ export function useItem(gameState: GameState, item: Item, beast: Beast): ItemEff
       }
       if (result.changes.age !== undefined) {
         beast.secondaryStats.age = result.changes.age;
+      }
+      
+      // CRÍTICO: Recalcular HP/Essência máximos se atributos mudaram (Vitality/Wit/Focus)
+      if (attributesChanged) {
+        console.log('[Inventory] Atributos mudaram - recalculando stats derivados...');
+        recalculateDerivedStats(beast);
       }
     }
   }
