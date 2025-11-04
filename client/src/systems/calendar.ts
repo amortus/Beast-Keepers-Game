@@ -15,47 +15,10 @@ export interface ActionResult {
 }
 
 /**
- * Verifica se é um novo dia e reseta contadores diários
- * @returns true se resetou os contadores
- */
-function checkAndResetDailyLimits(beast: Beast): boolean {
-  const now = Date.now();
-  const lastReset = beast.lastTrainingReset || 0;
-  const lastPotionReset = beast.lastPotionReset || 0;
-  
-  // Calcula meia-noite de hoje (00:00)
-  const todayMidnight = new Date();
-  todayMidnight.setHours(0, 0, 0, 0);
-  const midnightTimestamp = todayMidnight.getTime();
-  
-  let didReset = false;
-  
-  // Reset treinos diários se passou da meia-noite
-  if (lastReset < midnightTimestamp) {
-    beast.dailyTrainingCount = 0;
-    beast.lastTrainingReset = now;
-    console.log('[DailyLimit] 🔄 Reset treinos diários - novo dia!');
-    didReset = true;
-  }
-  
-  // Reset poção diária se passou da meia-noite
-  if (lastPotionReset < midnightTimestamp) {
-    beast.dailyPotionUsed = false;
-    beast.lastPotionReset = now;
-    console.log('[DailyLimit] 🔄 Reset poção diária - novo dia!');
-    didReset = true;
-  }
-  
-  return didReset;
-}
-
-/**
  * Verifica se pode treinar (limite diário)
+ * NOTA: Reset é feito pelo servidor no ciclo diário à meia-noite de Brasília
  */
 function canTrain(beast: Beast): { can: boolean; reason?: string; remaining?: number } {
-  // Sempre verificar se precisa resetar
-  checkAndResetDailyLimits(beast);
-  
   const trainingCount = beast.dailyTrainingCount || 0;
   const limit = 5;
   

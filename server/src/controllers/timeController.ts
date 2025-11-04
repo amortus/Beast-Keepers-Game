@@ -411,18 +411,22 @@ export async function processDailyCycle(req: AuthRequest, res: Response) {
       console.log(`[DailyCycle] Beast ${beastId} died at age ${newAgeInDays} (max: ${maxAge})`);
     }
     
-    // Atualizar no banco
+    // Atualizar no banco (incluindo resets diários)
     await query(
       `UPDATE beasts
        SET age_in_days = $2,
            last_day_processed = $3,
            is_active = $4,
-           last_update = $5
+           last_update = $5,
+           daily_training_count = 0,
+           daily_potion_used = false,
+           exploration_count = 0
        WHERE id = $1`,
       [beastId, newAgeInDays, midnightTimestamp, isActive, now]
     );
     
     console.log(`[DailyCycle] Beast ${beastId} aged from ${currentAgeInDays} to ${newAgeInDays} days. Alive: ${isAlive}`);
+    console.log(`[DailyCycle] Reset daily limits: training count, potion use, exploration count`);
     
     return res.status(200).json({
       success: true,

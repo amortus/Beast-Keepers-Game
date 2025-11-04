@@ -161,6 +161,11 @@ async function processDailyCycle() {
         updateValues.push(now);
       }
       
+      // NOVO: Resetar limites diários à meia-noite de Brasília
+      updateFields.push('daily_training_count = 0');
+      updateFields.push('daily_potion_used = false');
+      updateFields.push('exploration_count = 0');
+      
       if (!isAlive) {
         updateFields.push('is_active = false');
         console.log(`[EventScheduler] Beast ${beast.id} died at age ${newAgeInDays} (max: ${maxAgeDays})`);
@@ -178,6 +183,7 @@ async function processDailyCycle() {
     }
     
     console.log(`[EventScheduler] Daily cycle complete: ${processedCount} aged, ${diedCount} died`);
+    console.log(`[EventScheduler] Reset daily limits (training, potion, exploration) for all beasts`);
     
   } catch (error) {
     console.error('[EventScheduler] Daily cycle error:', error);
