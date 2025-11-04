@@ -373,6 +373,14 @@ export const CRAFTED_ITEMS: Item[] = [
     description: 'Elixir especial que fortalece o vínculo com a Besta.',
   },
   {
+    id: 'renewed_vigor_potion_item',
+    name: 'Poção de Vigor Renovado',
+    category: 'herb',
+    effect: 'Reseta o limite de treinos diários (+5 treinos)',
+    price: 1500,
+    description: 'Poção rara que renova a energia de treino. Permite mais 5 treinos hoje. Limite: 1 uso por dia.',
+  },
+  {
     id: 'youth_elixir_item',
     name: 'Elixir da Juventude',
     category: 'crystal',

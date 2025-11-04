@@ -207,6 +207,21 @@ export const POKEMON_INSPIRED_RECIPES: CraftRecipe[] = [
     result: { itemId: 'loyalty_elixir_item', quantity: 1 },
   },
 
+  // Poção de Vigor Renovado (Único - Reseta treinos diários)
+  {
+    id: 'renewed_vigor_potion',
+    name: 'Poção de Vigor Renovado',
+    description: 'Poção rara que reseta o limite de treinos diários. Permite mais 5 treinos hoje. Limite: 1 uso por dia.',
+    ingredients: [
+      { itemId: 'energy_herb', quantity: 5 },
+      { itemId: 'phoenix_ash', quantity: 2 },
+      { itemId: 'ethereal_dust', quantity: 3 },
+      { itemId: 'rejuvenation_crystal', quantity: 1 },
+      { itemId: 'ancient_blood', quantity: 1 },
+    ],
+    result: { itemId: 'renewed_vigor_potion_item', quantity: 1 },
+  },
+
   // Elixir da Juventude (Inspirado em Rare Candy)
   {
     id: 'youth_elixir',
@@ -395,7 +410,7 @@ export function getPokemonRecipesByCategory(category: 'healing' | 'essence' | 's
     healing: ['basic_healing_potion', 'super_healing_potion', 'hyper_healing_potion', 'max_healing_potion', 'full_restore_potion'],
     essence: ['basic_essence_elixir', 'super_essence_elixir', 'max_essence_elixir'],
     stats: ['might_elixir', 'wit_elixir', 'focus_elixir', 'agility_elixir', 'ward_elixir', 'vitality_elixir', 'universal_elixir'],
-    special: ['stress_relief_elixir', 'loyalty_elixir', 'youth_elixir', 'experience_elixir'],
+    special: ['stress_relief_elixir', 'loyalty_elixir', 'renewed_vigor_potion', 'youth_elixir', 'experience_elixir'],
     temporary: ['x_might_potion', 'x_ward_potion', 'x_agility_potion', 'x_focus_potion'],
     status: ['antidote_potion', 'awakening_potion'],
     legendary: ['immortality_elixir', 'divine_elixir'],
@@ -421,7 +436,7 @@ export function getPokemonRecipesByDifficulty(difficulty: 'easy' | 'medium' | 'h
     ],
     hard: [
       'hyper_healing_potion', 'max_essence_elixir', 'vitality_elixir', 'youth_elixir',
-      'experience_elixir', 'full_restore_potion', 'universal_elixir'
+      'experience_elixir', 'full_restore_potion', 'universal_elixir', 'renewed_vigor_potion'
     ],
     legendary: [
       'max_healing_potion', 'immortality_elixir', 'divine_elixir'

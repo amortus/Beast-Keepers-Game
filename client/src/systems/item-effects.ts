@@ -308,6 +308,20 @@ export function useItem(item: Item, beast: Beast): ItemUseResult {
       result.message = 'Lealdade máxima atingida!';
       break;
     
+    case 'renewed_vigor_potion_item':
+      // Verifica se já usou hoje
+      if (beast.dailyPotionUsed) {
+        result.success = false;
+        result.message = 'Você já usou uma Poção de Vigor Renovado hoje! Aguarde até amanhã.';
+      } else {
+        // Reseta contador de treinos diários
+        beast.dailyTrainingCount = 0;
+        beast.dailyPotionUsed = true;
+        beast.lastPotionReset = Date.now();
+        result.message = '✨ Vigor renovado! Você pode treinar mais 5 vezes hoje!';
+      }
+      break;
+    
     case 'experience_elixir_item':
       if (beast.experience) beast.experience += 500;
       result.message = '+500 XP ganhos!';

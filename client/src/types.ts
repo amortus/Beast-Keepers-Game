@@ -164,6 +164,12 @@ export interface Beast {
   
   // Bônus de trabalho (limite 10 vezes)
   workBonusCount?: number;      // 0-10 bônus recebidos
+  
+  // Sistema de treinos diários (NOVO)
+  dailyTrainingCount?: number;  // 0-5 treinos realizados hoje
+  lastTrainingReset?: number;   // timestamp do último reset (meia-noite)
+  dailyPotionUsed?: boolean;    // se usou Poção de Vigor Renovado hoje
+  lastPotionReset?: number;     // timestamp do último reset da poção
 }
 
 export interface LifeEvent {

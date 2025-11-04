@@ -15,6 +15,65 @@ export interface ActionResult {
 }
 
 /**
+ * Verifica se é um novo dia e reseta contadores diários
+ * @returns true se resetou os contadores
+ */
+function checkAndResetDailyLimits(beast: Beast): boolean {
+  const now = Date.now();
+  const lastReset = beast.lastTrainingReset || 0;
+  const lastPotionReset = beast.lastPotionReset || 0;
+  
+  // Calcula meia-noite de hoje (00:00)
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const midnightTimestamp = todayMidnight.getTime();
+  
+  let didReset = false;
+  
+  // Reset treinos diários se passou da meia-noite
+  if (lastReset < midnightTimestamp) {
+    beast.dailyTrainingCount = 0;
+    beast.lastTrainingReset = now;
+    console.log('[DailyLimit] 🔄 Reset treinos diários - novo dia!');
+    didReset = true;
+  }
+  
+  // Reset poção diária se passou da meia-noite
+  if (lastPotionReset < midnightTimestamp) {
+    beast.dailyPotionUsed = false;
+    beast.lastPotionReset = now;
+    console.log('[DailyLimit] 🔄 Reset poção diária - novo dia!');
+    didReset = true;
+  }
+  
+  return didReset;
+}
+
+/**
+ * Verifica se pode treinar (limite diário)
+ */
+function canTrain(beast: Beast): { can: boolean; reason?: string; remaining?: number } {
+  // Sempre verificar se precisa resetar
+  checkAndResetDailyLimits(beast);
+  
+  const trainingCount = beast.dailyTrainingCount || 0;
+  const limit = 5;
+  
+  if (trainingCount >= limit) {
+    return {
+      can: false,
+      reason: `Limite de ${limit} treinos diários atingido! Use uma Poção de Vigor Renovado ou aguarde até amanhã.`,
+      remaining: 0,
+    };
+  }
+  
+  return {
+    can: true,
+    remaining: limit - trainingCount,
+  };
+}
+
+/**
  * Executa uma ação de treino
  */
 function executeTraining(
@@ -30,6 +89,15 @@ function executeTraining(
     ward: 'Resistência',
     vitality: 'Vitalidade',
   };
+
+  // NOVO: Verifica limite diário de treinos
+  const trainingCheck = canTrain(beast);
+  if (!trainingCheck.can) {
+    return {
+      success: false,
+      message: trainingCheck.reason || 'Não pode treinar agora.',
+    };
+  }
 
   // Verifica se já está muito cansado
   if (beast.secondaryStats.fatigue > 80) {
@@ -61,6 +129,11 @@ function executeTraining(
   addFatigue(beast, fatigueGain);
   addStress(beast, stressGain);
 
+  // NOVO: Incrementa contador de treinos diários
+  beast.dailyTrainingCount = (beast.dailyTrainingCount || 0) + 1;
+  const remaining = 5 - beast.dailyTrainingCount;
+  console.log(`[DailyLimit] 🏋️ Treino realizado! Restantes hoje: ${remaining}/5`);
+
   // Adiciona evento
   addLifeEvent(
     beast,
@@ -71,7 +144,7 @@ function executeTraining(
 
   return {
     success: true,
-    message: `${beast.name} treinou ${attributeNames[attribute]}!`,
+    message: `${beast.name} treinou ${attributeNames[attribute]}! (${remaining}/5 treinos restantes hoje)`,
     attributeGains: { [attribute]: growth },
     fatigueChange: fatigueGain,
     stressChange: stressGain,
