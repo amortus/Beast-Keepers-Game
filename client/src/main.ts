@@ -27,6 +27,7 @@ import { ExplorationUI } from './ui/exploration-ui';
 import { AuthUI } from './ui/auth-ui';
 import { GameInitUI } from './ui/game-init-ui';
 import { Ranch3DUI } from './ui/ranch-3d-ui';
+import { Village3DUI } from './ui/village-3d-ui';
 import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
@@ -172,6 +173,7 @@ let dungeonUI: DungeonUI | null = null;
 let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
 let ranch3DUI: Ranch3DUI | null = null;
+let village3DUI: Village3DUI | null = null;
 let chatUI: ChatUI | null = null;
 let optionsMenuUI: OptionsMenuUI | null = null;
 let inBattle = false;
@@ -1384,40 +1386,77 @@ function closeTemple() {
 // ===== NPC & DIALOGUE SYSTEM =====
 
 function openVillage() {
-  if (!gameState || !modalUI) return;
+  if (!gameState) return;
 
-  // Hide 3D viewer when opening Vila modal
+  // Hide 3D viewer when opening village
   if (gameUI) {
     gameUI.hide3DViewer();
-    console.log('[Main] Vila opened - 3D viewer hidden');
+    console.log('[Main] Village opened - 3D viewer hidden');
   }
 
-  // Show NPC selection usando modal
-  const npcs = Object.values(NPCS).filter(npc => npc.unlocked);
-  const npcChoices = npcs.map(npc => `${npc.name} - ${npc.title}`);
-
-  modalUI.show({
-    type: 'choice',
-    title: '🏘️ Vila',
-    message: 'Quem você quer visitar na vila?',
-    choices: npcChoices,
-    onConfirm: (choice) => {
-      if (choice !== undefined) {
-        // Find NPC by matching the choice text
-        const npcIndex = npcChoices.indexOf(choice);
-        if (npcIndex >= 0 && npcIndex < npcs.length) {
-          openDialogueWith(npcs[npcIndex].id);
-        }
+  // Create village 3D UI if doesn't exist
+  if (!village3DUI) {
+    village3DUI = new Village3DUI();
+    
+    // Connect callbacks to open different functionalities
+    village3DUI.onOpenShop = () => {
+      openShop();
+    };
+    
+    village3DUI.onOpenTemple = () => {
+      openTemple();
+    };
+    
+    village3DUI.onOpenCraft = () => {
+      openCraft();
+    };
+    
+    village3DUI.onOpenInventory = () => {
+      openInventory();
+    };
+    
+    village3DUI.onOpenQuests = () => {
+      openQuests();
+    };
+    
+    village3DUI.onOpenAchievements = () => {
+      openAchievements();
+    };
+    
+    village3DUI.onOpenExploration = () => {
+      startExploration();
+    };
+    
+    village3DUI.onOpenDungeons = () => {
+      openDungeon();
+    };
+    
+    village3DUI.onOpenRanch = () => {
+      // Close village and show ranch 3D viewer
+      if (village3DUI) {
+        village3DUI.hide();
       }
-    },
-    onCancel: () => {
-      // Show 3D viewer when returning to ranch
       if (gameUI) {
         gameUI.show3DViewer();
-        console.log('[Main] Vila closed - 3D viewer shown');
       }
-    },
-  });
+    };
+    
+    console.log('[Main] Village 3D UI created');
+  }
+  
+  village3DUI.show();
+}
+
+function closeVillage() {
+  if (village3DUI) {
+    village3DUI.hide();
+  }
+  
+  // Show 3D viewer when returning to ranch
+  if (gameUI) {
+    gameUI.show3DViewer();
+    console.log('[Main] Village closed - 3D viewer shown');
+  }
 }
 
 function openDialogueWith(npcId: string) {
