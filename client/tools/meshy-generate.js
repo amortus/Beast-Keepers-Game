@@ -18,14 +18,14 @@ async function imageTo3D({ imagePath, prompt, category }) {
     form.append('category', category);
   }
 
-  const response = await fetch(${API_BASE}/image-to-3d, {
+  const response = await fetch(`${API_BASE}/image-to-3d`, {
     method: 'POST',
-    headers: { Authorization: Bearer  },
+    headers: { Authorization: `Bearer ${API_KEY}` },
     body: form,
   });
 
   if (!response.ok) {
-    throw new Error(Meshy API error:  );
+    throw new Error(`Meshy API error: ${response.status} ${await response.text()}`);
   }
 
   const { task_id } = await response.json();
@@ -34,12 +34,12 @@ async function imageTo3D({ imagePath, prompt, category }) {
 
 async function pollTask(taskId) {
   while (true) {
-    const response = await fetch(${API_BASE}/tasks/, {
-      headers: { Authorization: Bearer  },
+    const response = await fetch(`${API_BASE}/tasks/${taskId}`, {
+      headers: { Authorization: `Bearer ${API_KEY}` },
     });
 
     if (!response.ok) {
-      throw new Error(Falha ao consultar task : );
+      throw new Error(`Falha ao consultar task ${taskId}: ${response.status} ${await response.text()}`);
     }
 
     const data = await response.json();
@@ -49,10 +49,10 @@ async function pollTask(taskId) {
     }
 
     if (data.status === 'failed') {
-      throw new Error(Task  falhou: );
+      throw new Error(`Task ${taskId} falhou: ${data.error}`);
     }
 
-    console.log([Meshy] Task  em progresso ()...);
+    console.log(`[Meshy] Task ${taskId} em progresso (${data.status})...`);
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }
 }
@@ -60,25 +60,43 @@ async function pollTask(taskId) {
 async function downloadFile(url, outputPath) {
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(Falha ao baixar arquivo: );
+    throw new Error(`Falha ao baixar arquivo: ${res.status} ${await res.text()}`);
   }
   const buffer = await res.arrayBuffer();
   fs.writeFileSync(outputPath, Buffer.from(buffer));
 }
 
 async function main() {
-  const referencePath = path.resolve('tools/references/beast-guardian.png');
-  if (!fs.existsSync(referencePath)) {
-    throw new Error('Coloque a imagem de referência em client/tools/references/beast-guardian.png');
+  const args = process.argv.slice(2);
+  console.log('[Meshy] CLI args:', args);
+  const params = Object.fromEntries(
+    args
+      .map((part) => part.split('='))
+      .map(([key, value]) => [key.replace(/^--/, ''), value])
+      .filter(([key]) => key.length > 0),
+  );
+  console.log('[Meshy] Params parsed:', params);
+
+  const defaultImage = path.resolve('tools/references/beast-guardian.png');
+  const imagePath = params.image ? path.resolve(params.image) : defaultImage;
+
+  if (!fs.existsSync(imagePath)) {
+    throw new Error(`Imagem de referÃªncia nÃ£o encontrada em ${imagePath}`);
   }
 
+  const prompt =
+    params.prompt ||
+    'Cluster Guardian Beast - hybrid of wolf and dragon, majestic stance, metallic armor plates with glowing blue rune engravings, hand-painted textures, stylized for turn-based RPG battle, exudes protective aura.';
+
+  const category = params.category || 'character';
+
   const taskId = await imageTo3D({
-    imagePath: referencePath,
-    prompt: 'Cute guardian beast, stylized hand-painted textures, glowing blue rune details, for a turn-based RPG battle.',
-    category: 'character',
+    imagePath,
+    prompt,
+    category,
   });
 
-  console.log([Meshy] Task criada , aguardando processamento...);
+  console.log(`[Meshy] Task criada ${taskId}, aguardando processamento...`);
   const result = await pollTask(taskId);
 
   const glb = result.files?.find((file) => file.format === 'glb');
@@ -88,16 +106,16 @@ async function main() {
 
   const outputPath = path.resolve('public/assets/3d/beasts/guardian-meshy.glb');
   await downloadFile(glb.url, outputPath);
-  console.log([Meshy] Modelo salvo em );
+  console.log(`[Meshy] Modelo salvo em ${outputPath}`);
 
   const textureZip = result.files?.find((file) => file.format === 'zip');
   if (textureZip?.url) {
     const zipPath = path.resolve('public/assets/3d/beasts/guardian-meshy-textures.zip');
     await downloadFile(textureZip.url, zipPath);
-    console.log([Meshy] Texturas extras salvas em );
+    console.log(`[Meshy] Texturas extras salvas em ${zipPath}`);
   }
 
-  console.log('[Meshy] Processo concluído. Revise o modelo antes de integrar.');
+  console.log('[Meshy] Processo concluÃ­do. Revise o modelo antes de integrar.');
 }
 
 main().catch((err) => {

@@ -21,7 +21,17 @@ interface BeastActor {
   health: number;
   maxHealth: number;
   shakeIntensity: number; // Para animação de dano
+  activeRigClip?: string | null;
 }
+
+const RIGGED_ANIMATION_MAP: Record<BattleAnimation, { clip: string; loop: THREE.AnimationActionLoopStyles; clamp?: boolean }> = {
+  idle: { clip: 'idle', loop: THREE.LoopRepeat },
+  attack: { clip: 'skill', loop: THREE.LoopOnce, clamp: true },
+  hit: { clip: 'hit', loop: THREE.LoopOnce, clamp: true },
+  defend: { clip: 'walk', loop: THREE.LoopRepeat },
+  victory: { clip: 'run', loop: THREE.LoopRepeat },
+  defeat: { clip: 'dead', loop: THREE.LoopOnce, clamp: true },
+};
 
 export class ImmersiveBattleScene3D {
   private scene: THREE.Scene;
@@ -410,7 +420,8 @@ export class ImmersiveBattleScene3D {
       animationTime: 0,
       health: 100,
       maxHealth: 100,
-      shakeIntensity: 0
+      shakeIntensity: 0,
+      activeRigClip: null
     };
     
     // Setup idle animation (PRECISA ser chamado no update loop)
@@ -460,7 +471,8 @@ export class ImmersiveBattleScene3D {
       animationTime: 0,
       health: 100,
       maxHealth: 100,
-      shakeIntensity: 0
+      shakeIntensity: 0,
+      activeRigClip: null
     };
     
     // Setup idle animation (PRECISA ser chamado no update loop)
@@ -522,6 +534,7 @@ export class ImmersiveBattleScene3D {
     // Set animation state
     attackerBeast.currentAnimation = 'attack';
     attackerBeast.animationTime = 0;
+    attackerBeast.activeRigClip = null;
     
     // Atacante avança rapidamente
     const attackDuration = 300;
@@ -543,17 +556,20 @@ export class ImmersiveBattleScene3D {
         targetBeast.shakeIntensity = 0.3; // TREMOR FORTE
         targetBeast.currentAnimation = 'hit';
         targetBeast.animationTime = 0;
+        targetBeast.activeRigClip = null;
         
         // Voltar atacante à posição
         setTimeout(() => {
           attackerBeast.group.position.copy(attackerBeast.basePosition);
           attackerBeast.currentAnimation = 'idle';
+          attackerBeast.activeRigClip = null;
         }, 200);
         
         // Parar shake do alvo após 500ms
         setTimeout(() => {
           targetBeast.shakeIntensity = 0;
           targetBeast.currentAnimation = 'idle';
+          targetBeast.activeRigClip = null;
         }, 500);
       }
     };
@@ -620,6 +636,13 @@ export class ImmersiveBattleScene3D {
 
   private updateBeastAnimation(beast: BeastActor, delta: number) {
     beast.animationTime += delta;
+
+    beast.model.update(delta);
+
+    if (beast.model.hasRiggedAnimations()) {
+      this.ensureRiggedAnimation(beast);
+      return;
+    }
     
     switch (beast.currentAnimation) {
       case 'idle':
@@ -662,6 +685,36 @@ export class ImmersiveBattleScene3D {
         beast.group.rotation.x = defeatProgress * Math.PI / 2;
         beast.group.position.y = beast.basePosition.y * (1 - defeatProgress * 0.5);
         break;
+    }
+  }
+
+  private ensureRiggedAnimation(beast: BeastActor) {
+    const config = RIGGED_ANIMATION_MAP[beast.currentAnimation] ?? RIGGED_ANIMATION_MAP.idle;
+    let clipName = config.clip;
+
+    if (!beast.model.hasAnimation(clipName)) {
+      if (clipName !== 'idle' && beast.model.hasAnimation('idle')) {
+        clipName = 'idle';
+      } else {
+        return;
+      }
+    }
+
+    const shouldRestart = beast.activeRigClip !== clipName;
+    const played = beast.model.playAnimation(clipName, {
+      loop: config.loop,
+      clampWhenFinished: config.clamp ?? false,
+      forceRestart: shouldRestart,
+    });
+
+    if (played) {
+      beast.activeRigClip = clipName;
+    }
+
+    if (clipName === 'idle') {
+      beast.group.position.copy(beast.basePosition);
+      beast.group.rotation.y = beast.baseRotation;
+      beast.group.rotation.x = 0;
     }
   }
 

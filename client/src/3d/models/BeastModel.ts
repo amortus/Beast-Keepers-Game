@@ -4,11 +4,27 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+interface RegisteredAnimationOptions {
+  loop?: THREE.AnimationActionLoopStyles;
+  clampWhenFinished?: boolean;
+  timeScale?: number;
+}
+
+interface PlayAnimationOptions extends RegisteredAnimationOptions {
+  fadeIn?: number;
+  fadeOut?: number;
+  forceRestart?: boolean;
+}
 
 export class BeastModel {
   private group: THREE.Group;
   private mixer: THREE.AnimationMixer | null = null;
   private animations: Map<string, THREE.AnimationAction> = new Map();
+  private animationDefaults: Map<string, RegisteredAnimationOptions> = new Map();
+  private currentAnimationName: string | null = null;
+  private isImportedModel = false;
 
   constructor(beastLine: string) {
     this.group = new THREE.Group();
@@ -37,7 +53,7 @@ export class BeastModel {
         this.createIgnar();
         break;
       case 'mirella':
-        this.createMirella();
+        this.loadMirellaModel();
         break;
       case 'umbrix':
         this.createUmbrix();
@@ -424,8 +440,152 @@ export class BeastModel {
     this.group.add(mesh);
   }
 
-  // Mirella - Criatura anfíbia
-  private createMirella() {
+  private loadMirellaModel() {
+    this.isImportedModel = true;
+    const loader = new GLTFLoader();
+    const basePath = '/assets/3d/beasts/Mirella/';
+
+    loader.load(
+      `${basePath}Animation_Idle_withSkin.glb`,
+      (gltf) => {
+        const scene = gltf.scene;
+        if (!scene) {
+          console.warn('[BeastModel] Mirella GLB returned empty scene. Falling back to procedural model.');
+          this.isImportedModel = false;
+          this.createMirellaFallback();
+          return;
+        }
+
+        this.prepareImportedScene(scene);
+        this.group.add(scene);
+
+        this.mixer = new THREE.AnimationMixer(scene);
+
+        if (gltf.animations && gltf.animations.length > 0) {
+          this.registerAnimation('idle', gltf.animations[0], {
+            loop: THREE.LoopRepeat,
+          });
+          this.playAnimation('idle', {
+            loop: THREE.LoopRepeat,
+            fadeIn: 0.2,
+            forceRestart: true,
+          });
+        }
+
+        const additionalAnimations: Array<{ name: string; file: string; defaults: RegisteredAnimationOptions }> = [
+          { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+          { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+          { name: 'skill', file: 'Animation_Skill_01_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+          { name: 'hit', file: 'Animation_BeHit_FlyUp_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+          { name: 'dead', file: 'Animation_Dead_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+          { name: 'arise', file: 'Animation_Arise_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        ];
+
+        additionalAnimations.forEach(({ name, file, defaults }) => {
+          this.loadAdditionalAnimation(`${basePath}${file}`, name, defaults);
+        });
+      },
+      undefined,
+      (error) => {
+        console.error('[BeastModel] Failed to load Mirella GLB:', error);
+        this.isImportedModel = false;
+        this.createMirellaFallback();
+      }
+    );
+  }
+
+  private prepareImportedScene(root: THREE.Object3D) {
+    root.traverse((child) => {
+      if (child instanceof THREE.Light || child instanceof THREE.Camera) {
+        child.parent?.remove(child);
+        return;
+      }
+
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        if (Array.isArray(child.material)) {
+          child.material.forEach((material) => {
+            material.side = THREE.DoubleSide;
+          });
+        } else if (child.material) {
+          child.material.side = THREE.DoubleSide;
+        }
+      }
+    });
+
+    root.updateMatrixWorld(true);
+
+    const boundingBox = new THREE.Box3().setFromObject(root);
+    if (boundingBox.isEmpty()) {
+      return;
+    }
+
+    const size = new THREE.Vector3();
+    boundingBox.getSize(size);
+
+    const targetHeight = 2.4;
+    if (size.y > 0) {
+      const scale = targetHeight / size.y;
+      root.scale.setScalar(scale);
+    }
+
+    root.updateMatrixWorld(true);
+
+    const scaledBox = new THREE.Box3().setFromObject(root);
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    const min = scaledBox.min;
+
+    root.position.set(-center.x, -min.y, -center.z);
+
+    root.updateMatrixWorld(true);
+  }
+
+  private loadAdditionalAnimation(url: string, name: string, defaults: RegisteredAnimationOptions) {
+    const loader = new GLTFLoader();
+    loader.load(
+      url,
+      (gltf) => {
+        if (!this.mixer) {
+          return;
+        }
+
+        const [clip] = gltf.animations ?? [];
+        if (!clip) {
+          console.warn(`[BeastModel] No animation clip found in ${url}`);
+          return;
+        }
+
+        this.registerAnimation(name, clip, defaults);
+      },
+      undefined,
+      (error) => {
+        console.error(`[BeastModel] Failed to load animation "${name}" from ${url}:`, error);
+      }
+    );
+  }
+
+  private registerAnimation(name: string, clip: THREE.AnimationClip, defaults: RegisteredAnimationOptions) {
+    if (!this.mixer) {
+      return;
+    }
+
+    const action = this.mixer.clipAction(clip);
+    const loop = defaults.loop ?? THREE.LoopRepeat;
+    action.enabled = false;
+    action.stop();
+    action.clampWhenFinished = defaults.clampWhenFinished ?? false;
+    action.setLoop(loop, loop === THREE.LoopOnce ? 1 : Infinity);
+    action.timeScale = defaults.timeScale ?? 1;
+
+    this.animations.set(name, action);
+    this.animationDefaults.set(name, defaults);
+  }
+
+  // Mirella - Criatura anfíbia (fallback procedural model)
+  private createMirellaFallback() {
+    this.isImportedModel = false;
     // Body (rounded, amphibian-like)
     const bodyGeometry = new THREE.SphereGeometry(0.7, 8, 6);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -632,6 +792,70 @@ export class BeastModel {
     }
   }
 
+  public update(delta: number) {
+    if (this.mixer) {
+      this.mixer.update(delta);
+    }
+  }
+
+  public playAnimation(name: string, options?: PlayAnimationOptions): boolean {
+    if (!this.mixer) {
+      return false;
+    }
+
+    const action = this.animations.get(name);
+    if (!action) {
+      return false;
+    }
+
+    const defaults = this.animationDefaults.get(name) ?? {};
+    const loop = options?.loop ?? defaults.loop ?? THREE.LoopRepeat;
+    const clampWhenFinished = options?.clampWhenFinished ?? defaults.clampWhenFinished ?? false;
+    const timeScale = options?.timeScale ?? defaults.timeScale ?? 1;
+    const fadeIn = options?.fadeIn ?? 0.15;
+    const fadeOut = options?.fadeOut ?? 0.15;
+    const forceRestart = options?.forceRestart ?? false;
+
+    if (!forceRestart && this.currentAnimationName === name) {
+      return true;
+    }
+
+    if (this.currentAnimationName && this.currentAnimationName !== name) {
+      const previousAction = this.animations.get(this.currentAnimationName);
+      previousAction?.fadeOut(fadeOut);
+    }
+
+    action.enabled = true;
+    action.clampWhenFinished = clampWhenFinished;
+    action.timeScale = timeScale;
+    action.setLoop(loop, loop === THREE.LoopOnce ? 1 : Infinity);
+    action.reset();
+    action.fadeIn(fadeIn);
+    action.play();
+
+    this.currentAnimationName = name;
+    return true;
+  }
+
+  public hasAnimation(name: string): boolean {
+    return this.animations.has(name);
+  }
+
+  public hasRiggedAnimations(): boolean {
+    return this.isImportedModel && this.mixer !== null && this.animations.size > 0;
+  }
+
+  public stopAnimations() {
+    if (!this.mixer) {
+      return;
+    }
+
+    this.animations.forEach((action) => {
+      action.stop();
+    });
+    this.currentAnimationName = null;
+  }
+
   // Simple idle animation
   public playIdleAnimation() {
     // Breathing/bobbing animation
@@ -652,6 +876,16 @@ export class BeastModel {
   }
 
   public dispose() {
+    if (this.mixer) {
+      this.mixer.stopAllAction();
+      this.mixer.uncacheRoot(this.group);
+      this.mixer = null;
+    }
+    this.animations.clear();
+    this.animationDefaults.clear();
+    this.currentAnimationName = null;
+    this.isImportedModel = false;
+
     this.group.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.geometry.dispose();
