@@ -24,6 +24,7 @@ export class RanchScene3D {
   private idleAnimation: (() => void) | null = null;
   private needsFit = false;
   private baseYPosition = 0;
+  private activeRigAnimation: string | null = null;
   private grass: PS1Grass | null = null; // Grama procedural
   private water: PS1Water | null = null; // Água animada
   private mountains: THREE.Group | null = null; // Colinas distantes
@@ -213,6 +214,9 @@ export class RanchScene3D {
     if (target) {
       this.currentTarget = target;
       this.isMoving = true;
+      if (this.beastModel?.hasRiggedAnimations()) {
+        this.playRigAnimation('walk');
+      }
     } else {
       // Não encontrou ponto válido, tentar novamente em breve
       this.nextMoveTime = 2;
@@ -735,6 +739,7 @@ export class RanchScene3D {
       this.beastModel?.dispose();
     }
     this.idleAnimation = null;
+    this.activeRigAnimation = null;
 
     // Create new model
     this.beastModel = new BeastModel(beastLine);
@@ -750,6 +755,7 @@ export class RanchScene3D {
     // Setup idle animation
     if (this.beastModel.hasRiggedAnimations()) {
       this.idleAnimation = null;
+      this.playRigAnimation('idle');
     } else {
       this.idleAnimation = this.beastModel.playIdleAnimation();
     }
@@ -811,6 +817,9 @@ export class RanchScene3D {
     
     // Se não está se movendo, aguardar um tempo e escolher novo destino
     if (!this.isMoving) {
+      if (this.beastModel?.hasRiggedAnimations()) {
+        this.playRigAnimation('idle');
+      }
       this.nextMoveTime -= delta;
       
       if (this.nextMoveTime <= 0) {
@@ -839,6 +848,9 @@ export class RanchScene3D {
         this.isMoving = false;
         this.currentTarget = null;
         this.nextMoveTime = 2 + Math.random() * 3; // Ficar parado 2-5 segundos
+        if (this.beastModel?.hasRiggedAnimations()) {
+          this.playRigAnimation('idle');
+        }
         return;
       }
       
@@ -868,6 +880,9 @@ export class RanchScene3D {
           this.isMoving = false;
           this.currentTarget = null;
           this.nextMoveTime = 1;
+          if (this.beastModel?.hasRiggedAnimations()) {
+            this.playRigAnimation('idle');
+          }
         }
         
         return;
@@ -876,6 +891,9 @@ export class RanchScene3D {
       // Posição válida! Mover
       currentPos.x = newX;
       currentPos.z = newZ;
+      if (this.beastModel?.hasRiggedAnimations()) {
+        this.playRigAnimation('walk');
+      }
       
       // Rotacionar criatura na direção do movimento
       const targetAngle = Math.atan2(direction.x, direction.z);
@@ -960,6 +978,34 @@ export class RanchScene3D {
 
   public render() {
     this.threeScene.render();
+  }
+
+  private playRigAnimation(name: 'idle' | 'walk') {
+    if (!this.beastModel || !this.beastModel.hasRiggedAnimations()) {
+      return;
+    }
+
+    let clip = name;
+    if (!this.beastModel.hasAnimation(clip)) {
+      if (clip !== 'idle' && this.beastModel.hasAnimation('idle')) {
+        clip = 'idle';
+      } else {
+        return;
+      }
+    }
+
+    const shouldRestart = this.activeRigAnimation !== clip;
+    const played = this.beastModel.playAnimation(clip, {
+      loop: clip === 'walk' ? THREE.LoopRepeat : THREE.LoopRepeat,
+      clampWhenFinished: false,
+      fadeIn: 0.2,
+      fadeOut: 0.2,
+      forceRestart: shouldRestart,
+    });
+
+    if (played) {
+      this.activeRigAnimation = clip;
+    }
   }
 
   private fitBeastToRanch(group: THREE.Group): boolean {
