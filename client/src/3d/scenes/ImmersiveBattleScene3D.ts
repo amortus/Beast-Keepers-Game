@@ -24,12 +24,12 @@ interface BeastActor {
   activeRigClip?: string | null;
 }
 
-const RIGGED_ANIMATION_MAP: Record<BattleAnimation, { clip: string; loop: THREE.AnimationActionLoopStyles; clamp?: boolean }> = {
+const RIGGED_ANIMATION_MAP: Record<BattleAnimation, { clip: string; loop: THREE.AnimationActionLoopStyles; clamp?: boolean; fallbackClip?: string }> = {
   idle: { clip: 'idle', loop: THREE.LoopRepeat },
   attack: { clip: 'skill', loop: THREE.LoopOnce, clamp: true },
   hit: { clip: 'hit', loop: THREE.LoopOnce, clamp: true },
   defend: { clip: 'walk', loop: THREE.LoopRepeat },
-  victory: { clip: 'run', loop: THREE.LoopRepeat },
+  victory: { clip: 'victory', loop: THREE.LoopRepeat, fallbackClip: 'run' },
   defeat: { clip: 'dead', loop: THREE.LoopOnce, clamp: true },
 };
 
@@ -691,6 +691,10 @@ export class ImmersiveBattleScene3D {
   private ensureRiggedAnimation(beast: BeastActor) {
     const config = RIGGED_ANIMATION_MAP[beast.currentAnimation] ?? RIGGED_ANIMATION_MAP.idle;
     let clipName = config.clip;
+
+    if (!beast.model.hasAnimation(clipName) && config.fallbackClip) {
+      clipName = config.fallbackClip;
+    }
 
     if (!beast.model.hasAnimation(clipName)) {
       if (clipName !== 'idle' && beast.model.hasAnimation('idle')) {

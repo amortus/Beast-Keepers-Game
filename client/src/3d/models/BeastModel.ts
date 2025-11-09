@@ -18,6 +18,22 @@ interface PlayAnimationOptions extends RegisteredAnimationOptions {
   forceRestart?: boolean;
 }
 
+interface ImportedAnimationConfig {
+  name: string;
+  file: string;
+  defaults: RegisteredAnimationOptions;
+}
+
+interface ImportedModelConfig {
+  basePath: string;
+  idleFile: string;
+  idleName?: string;
+  idleDefaults?: RegisteredAnimationOptions;
+  fallback: () => void;
+  animations: ImportedAnimationConfig[];
+  targetHeight?: number;
+}
+
 export class BeastModel {
   private group: THREE.Group;
   private mixer: THREE.AnimationMixer | null = null;
@@ -38,7 +54,7 @@ export class BeastModel {
         this.createOlgrim();
         break;
       case 'terravox':
-        this.createTerravox();
+        this.loadTerravoxModel();
         break;
       case 'feralis':
         this.createFeralis();
@@ -116,6 +132,7 @@ export class BeastModel {
 
   // Terravox - Golem de pedra
   private createTerravox() {
+    this.isImportedModel = false;
     // Body (cube with rough texture)
     const bodyGeometry = new THREE.BoxGeometry(1.2, 1.5, 1);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -440,61 +457,99 @@ export class BeastModel {
     this.group.add(mesh);
   }
 
-  private loadMirellaModel() {
+  private loadImportedModel(config: ImportedModelConfig) {
     this.isImportedModel = true;
     const loader = new GLTFLoader();
-    const basePath = '/assets/3d/beasts/Mirella/';
+    const idleName = config.idleName ?? 'idle';
+    const idleDefaults = config.idleDefaults ?? { loop: THREE.LoopRepeat };
 
     loader.load(
-      `${basePath}Animation_Idle_withSkin.glb`,
+      `${config.basePath}${config.idleFile}`,
       (gltf) => {
         const scene = gltf.scene;
         if (!scene) {
-          console.warn('[BeastModel] Mirella GLB returned empty scene. Falling back to procedural model.');
+          console.warn('[BeastModel] Imported GLB returned empty scene. Falling back to procedural model.');
           this.isImportedModel = false;
-          this.createMirellaFallback();
+          this.animations.clear();
+          this.animationDefaults.clear();
+          this.mixer = null;
+          this.currentAnimationName = null;
+          config.fallback();
           return;
         }
 
-        this.prepareImportedScene(scene);
+        this.prepareImportedScene(scene, config.targetHeight);
         this.group.add(scene);
 
         this.mixer = new THREE.AnimationMixer(scene);
 
         if (gltf.animations && gltf.animations.length > 0) {
-          this.registerAnimation('idle', gltf.animations[0], {
-            loop: THREE.LoopRepeat,
+          this.registerAnimation(idleName, gltf.animations[0], {
+            loop: idleDefaults.loop ?? THREE.LoopRepeat,
+            clampWhenFinished: idleDefaults.clampWhenFinished ?? false,
+            timeScale: idleDefaults.timeScale ?? 1,
           });
-          this.playAnimation('idle', {
-            loop: THREE.LoopRepeat,
+          this.playAnimation(idleName, {
+            ...idleDefaults,
+            loop: idleDefaults.loop ?? THREE.LoopRepeat,
             fadeIn: 0.2,
             forceRestart: true,
           });
         }
 
-        const additionalAnimations: Array<{ name: string; file: string; defaults: RegisteredAnimationOptions }> = [
-          { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
-          { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
-          { name: 'skill', file: 'Animation_Skill_01_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-          { name: 'hit', file: 'Animation_BeHit_FlyUp_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-          { name: 'dead', file: 'Animation_Dead_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-          { name: 'arise', file: 'Animation_Arise_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-        ];
-
-        additionalAnimations.forEach(({ name, file, defaults }) => {
-          this.loadAdditionalAnimation(`${basePath}${file}`, name, defaults);
+        config.animations.forEach(({ name, file, defaults }) => {
+          this.loadAdditionalAnimation(`${config.basePath}${file}`, name, defaults);
         });
       },
       undefined,
       (error) => {
-        console.error('[BeastModel] Failed to load Mirella GLB:', error);
+        console.error('[BeastModel] Failed to load imported GLB:', error);
         this.isImportedModel = false;
-        this.createMirellaFallback();
+        this.animations.clear();
+        this.animationDefaults.clear();
+        this.mixer = null;
+        this.currentAnimationName = null;
+        config.fallback();
       }
     );
   }
 
-  private prepareImportedScene(root: THREE.Object3D) {
+  private loadMirellaModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Mirella/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createMirellaFallback(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_Skill_01_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_BeHit_FlyUp_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_Dead_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'arise', file: 'Animation_Arise_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+    });
+  }
+
+  private loadTerravoxModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Terravox/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createTerravox(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_Indoor_Swing_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_Basic_Jump_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
+        { name: 'dead', file: 'Animation_dying_backwards_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'arise', file: 'Animation_Arise_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'victory', file: 'Animation_Cheer_with_Both_Hands_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'throw', file: 'Animation_Female_Crouch_Pick_Throw_Forward_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.6,
+    });
+  }
+
+  private prepareImportedScene(root: THREE.Object3D, targetHeight: number = 2.4) {
     root.traverse((child) => {
       if (child instanceof THREE.Light || child instanceof THREE.Camera) {
         child.parent?.remove(child);
@@ -525,7 +580,6 @@ export class BeastModel {
     const size = new THREE.Vector3();
     boundingBox.getSize(size);
 
-    const targetHeight = 2.4;
     if (size.y > 0) {
       const scale = targetHeight / size.y;
       root.scale.setScalar(scale);
