@@ -5,14 +5,17 @@
 
 import * as THREE from 'three';
 import type { Beast } from '../types';
-import { generateBeastModel, type BeastLine } from './models/BeastModels';
+import { BeastModel } from './models/BeastModel';
 
 export class BeastViewer3D {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private beastModel: THREE.Group | null = null;
+  private beastModel: BeastModel | null = null;
+  private beastGroup: THREE.Group | null = null;
   private animationFrameId: number | null = null;
+  private needsFit = false;
+  private baseYPosition = 0;
   
   // Camera controls
   private cameraAngle = 0;
@@ -114,21 +117,24 @@ export class BeastViewer3D {
   
   private loadBeastModel() {
     try {
-      // Generate 3D model for beast line
-      const beastLine = this.beast.line.toLowerCase() as BeastLine;
-      this.beastModel = generateBeastModel(beastLine);
-      
-      // Position model
-      this.beastModel.position.set(0, 0, 0);
-      
-      this.scene.add(this.beastModel);
-      
-      console.log(`[3D] Loaded 3D model for ${this.beast.line}`);
-      
+      if (this.beastModel && this.beastGroup) {
+        this.scene.remove(this.beastGroup);
+        this.beastModel.dispose();
+      }
+
+      const beastLine = this.beast.line.toLowerCase();
+      this.beastModel = new BeastModel(beastLine);
+      this.beastGroup = this.beastModel.getGroup();
+      this.needsFit = true;
+      this.baseYPosition = 0;
+
+      this.scene.add(this.beastGroup);
+
+      console.log(`[3D] Loaded BeastModel for ${this.beast.line}`);
+
     } catch (error) {
       console.error('[3D] Failed to load beast model:', error);
-      
-      // Fallback: Create colored cube as placeholder
+
       const geometry = new THREE.BoxGeometry(2, 2, 2);
       const material = new THREE.MeshStandardMaterial({ color: 0xff00ff });
       const cube = new THREE.Mesh(geometry, material);
@@ -149,15 +155,30 @@ export class BeastViewer3D {
   private animate() {
     this.animationFrameId = requestAnimationFrame(() => this.animate());
     
-    this.time += 0.016; // ~60 FPS
+    const delta = 0.016; // ~60 FPS
+    this.time += delta;
+    
+    if (this.beastModel) {
+      this.beastModel.update(delta);
+    }
+
+    if (this.needsFit && this.beastGroup) {
+      const fitted = this.fitModelToView(this.beastGroup);
+      if (fitted) {
+        this.needsFit = false;
+      }
+    }
     
     // Idle animation: gentle breathing/bobbing
-    if (this.beastModel) {
-      const breathingOffset = Math.sin(this.time * 2) * 0.05; // Subtle breathing
-      this.beastModel.position.y = breathingOffset;
-      
-      // Slight rotation animation
-      this.beastModel.rotation.y = Math.sin(this.time * 0.5) * 0.1;
+    if (this.beastGroup) {
+      if (!this.beastModel?.hasRiggedAnimations()) {
+        const breathingOffset = Math.sin(this.time * 2) * 0.05;
+        this.beastGroup.position.y = this.baseYPosition + breathingOffset;
+        this.beastGroup.rotation.y = Math.sin(this.time * 0.5) * 0.1;
+      } else {
+        this.beastGroup.position.y = this.baseYPosition;
+        this.beastGroup.rotation.y = 0;
+      }
     }
     
     // Slow camera orbit (auto-rotate)
@@ -214,6 +235,12 @@ export class BeastViewer3D {
     
     this.renderer.dispose();
     this.container.removeChild(this.renderer.domElement);
+
+    if (this.beastModel) {
+      this.beastModel.dispose();
+      this.beastModel = null;
+      this.beastGroup = null;
+    }
     
     // Dispose of all geometries and materials
     this.scene.traverse((object) => {
@@ -236,6 +263,26 @@ export class BeastViewer3D {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+
+  private fitModelToView(group: THREE.Group): boolean {
+    const box = new THREE.Box3().setFromObject(group);
+    if (box.isEmpty()) {
+      return false;
+    }
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = maxDim > 0 ? 2.4 / maxDim : 1;
+
+    group.scale.setScalar(scale);
+
+    const offset = center.multiplyScalar(scale);
+    group.position.set(-offset.x, this.baseYPosition - offset.y, -offset.z);
+
+    console.log('[BeastViewer3D] ✓ Model fitted to viewport (scale:', scale.toFixed(2), ')');
+    return true;
   }
 }
 

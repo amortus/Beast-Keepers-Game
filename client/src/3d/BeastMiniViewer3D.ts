@@ -5,19 +5,21 @@
 
 import * as THREE from 'three';
 import type { Beast } from '../types';
-import { generateBeastModel, type BeastLine } from './models/BeastModels';
+import { BeastModel } from './models/BeastModel';
 
 export class BeastMiniViewer3D {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private beastModel: THREE.Group | null = null;
+  private beastModel: BeastModel | null = null;
+  private beastGroup: THREE.Group | null = null;
   private animationFrameId: number | null = null;
   private container: HTMLElement;
   
   // Animation state
   private time = 0;
   private baseYPosition = -2.0; // Store the base Y position (centered)
+  private needsFit = false;
   
   constructor(container: HTMLElement, beast: Beast, width: number = 120, height: number = 120) {
     this.container = container;
@@ -88,38 +90,17 @@ export class BeastMiniViewer3D {
     console.log('[MiniViewer3D] Beast:', beast.name, '/', beast.line);
     
     try {
-      // Generate 3D model for beast line
-      const beastLine = beast.line.toLowerCase() as BeastLine;
-      console.log('[MiniViewer3D] Generating model for line:', beastLine);
-      
-      this.beastModel = generateBeastModel(beastLine);
-      console.log('[MiniViewer3D] ✓ Model generated, children:', this.beastModel.children.length);
-      
-      // Center and scale the model to fit the viewport
-      const box = new THREE.Box3().setFromObject(this.beastModel);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      
-      console.log('[MiniViewer3D] Model size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2));
-      console.log('[MiniViewer3D] Model center:', center.x.toFixed(2), center.y.toFixed(2), center.z.toFixed(2));
-      
-      // Calculate scale to fit in view (slightly larger for better visibility)
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const scale = 1.8 / maxDim;
-      
-      this.beastModel.scale.setScalar(scale);
-      
-      // Center the model at origin
-      const offset = center.clone().multiplyScalar(scale);
-      this.beastModel.position.sub(offset);
-      
-      // Adjust Y position to center vertically in viewport (centered position)
+      const beastLine = beast.line.toLowerCase();
+      console.log('[MiniViewer3D] Generating BeastModel for line:', beastLine);
+
+      this.beastModel = new BeastModel(beastLine);
+      this.beastGroup = this.beastModel.getGroup();
+      this.needsFit = true;
       this.baseYPosition = -2.0;
-      this.beastModel.position.y = this.baseYPosition;
+
+      this.scene.add(this.beastGroup);
       
-      this.scene.add(this.beastModel);
-      
-      console.log('[MiniViewer3D] ✓ Model added to scene (scale:', scale.toFixed(2), ')');
+      console.log('[MiniViewer3D] ✓ BeastModel group added to scene');
       console.log('[MiniViewer3D] Scene children count:', this.scene.children.length);
       
     } catch (error) {
@@ -148,14 +129,27 @@ export class BeastMiniViewer3D {
     
     this.time += 0.016; // ~60 FPS
     
-    // Gentle idle animation
     if (this.beastModel) {
+      this.beastModel.update(0.016);
+    }
+
+    if (this.needsFit && this.beastGroup) {
+      const fitted = this.fitModelToView(this.beastGroup);
+      if (fitted) {
+        this.needsFit = false;
+      }
+    }
+    
+    // Gentle idle animation
+    if (this.beastGroup) {
       // Subtle breathing - ADD to base position, don't overwrite!
-      const breathingOffset = Math.sin(this.time * 2) * 0.05;
-      this.beastModel.position.y = this.baseYPosition + breathingOffset;
-      
-      // Slow auto-rotation
-      this.beastModel.rotation.y = this.time * 0.3;
+      if (!this.beastModel?.hasRiggedAnimations()) {
+        const breathingOffset = Math.sin(this.time * 2) * 0.05;
+        this.beastGroup.position.y = this.baseYPosition + breathingOffset;
+        this.beastGroup.rotation.y = this.time * 0.3;
+      } else {
+        this.beastGroup.position.y = this.baseYPosition;
+      }
     }
     
     // Render the scene
@@ -169,10 +163,13 @@ export class BeastMiniViewer3D {
   // Update to new beast
   public updateBeast(beast: Beast) {
     // Remove old model
-    if (this.beastModel) {
-      this.scene.remove(this.beastModel);
+    if (this.beastModel && this.beastGroup) {
+      this.scene.remove(this.beastGroup);
+      this.beastModel.dispose();
       this.beastModel = null;
+      this.beastGroup = null;
     }
+    this.needsFit = false;
     
     // Load new model
     this.loadBeastModel(beast);
@@ -188,6 +185,12 @@ export class BeastMiniViewer3D {
     
     if (this.container.contains(this.renderer.domElement)) {
       this.container.removeChild(this.renderer.domElement);
+    }
+
+    if (this.beastModel) {
+      this.beastModel.dispose();
+      this.beastModel = null;
+      this.beastGroup = null;
     }
     
     // Dispose of all geometries and materials
@@ -208,6 +211,26 @@ export class BeastMiniViewer3D {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+  }
+
+  private fitModelToView(group: THREE.Group): boolean {
+    const box = new THREE.Box3().setFromObject(group);
+    if (box.isEmpty()) {
+      return false;
+    }
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = maxDim > 0 ? 1.8 / maxDim : 1;
+
+    group.scale.setScalar(scale);
+
+    const offset = center.multiplyScalar(scale);
+    group.position.set(-offset.x, this.baseYPosition - offset.y, -offset.z);
+
+    console.log('[MiniViewer3D] ✓ Model fitted to viewport (scale:', scale.toFixed(2), ')');
+    return true;
   }
 }
 

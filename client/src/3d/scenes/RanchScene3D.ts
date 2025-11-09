@@ -22,6 +22,8 @@ export class RanchScene3D {
   private beastModel: BeastModel | null = null;
   private beastGroup: THREE.Group | null = null;
   private idleAnimation: (() => void) | null = null;
+  private needsFit = false;
+  private baseYPosition = 0;
   private grass: PS1Grass | null = null; // Grama procedural
   private water: PS1Water | null = null; // Água animada
   private mountains: THREE.Group | null = null; // Colinas distantes
@@ -732,10 +734,13 @@ export class RanchScene3D {
       this.threeScene.removeObject(this.beastGroup);
       this.beastModel?.dispose();
     }
+    this.idleAnimation = null;
 
     // Create new model
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
+    this.needsFit = true;
+    this.baseYPosition = 0;
     
     // Position in center
     this.beastGroup.position.set(0, 0, 0);
@@ -743,7 +748,11 @@ export class RanchScene3D {
     this.threeScene.addObject(this.beastGroup);
 
     // Setup idle animation
-    this.idleAnimation = this.beastModel.playIdleAnimation();
+    if (this.beastModel.hasRiggedAnimations()) {
+      this.idleAnimation = null;
+    } else {
+      this.idleAnimation = this.beastModel.playIdleAnimation();
+    }
     
     // Iniciar sistema de movimento
     this.nextMoveTime = 2 + Math.random() * 3; // Primeiro movimento em 2-5 segundos
@@ -751,8 +760,24 @@ export class RanchScene3D {
 
   public update(delta: number) {
     // Update beast animation
-    if (this.idleAnimation) {
+    if (this.beastModel) {
+      this.beastModel.update(delta);
+      if (this.beastModel.hasRiggedAnimations() && this.idleAnimation) {
+        this.idleAnimation = null;
+      }
+    }
+
+    if (this.needsFit && this.beastGroup) {
+      const fitted = this.fitBeastToRanch(this.beastGroup);
+      if (fitted) {
+        this.needsFit = false;
+      }
+    }
+
+    if (!this.beastModel?.hasRiggedAnimations() && this.idleAnimation) {
       this.idleAnimation();
+    } else if (this.beastGroup && this.beastModel?.hasRiggedAnimations()) {
+      this.beastGroup.position.y = this.baseYPosition;
     }
     
     // Update grass animation (wind)
@@ -935,6 +960,26 @@ export class RanchScene3D {
 
   public render() {
     this.threeScene.render();
+  }
+
+  private fitBeastToRanch(group: THREE.Group): boolean {
+    const box = new THREE.Box3().setFromObject(group);
+    if (box.isEmpty()) {
+      return false;
+    }
+
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scale = maxDim > 0 ? 1.6 / maxDim : 1;
+
+    group.scale.setScalar(scale);
+
+    const offset = center.multiplyScalar(scale);
+    group.position.set(-offset.x, this.baseYPosition - offset.y, -offset.z);
+
+    console.log('[RanchScene3D] ✓ Beast fitted to ranch (scale:', scale.toFixed(2), ')');
+    return true;
   }
 
   public startLoop() {
