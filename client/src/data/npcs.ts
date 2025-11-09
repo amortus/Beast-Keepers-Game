@@ -97,6 +97,102 @@ export const NPCS: Record<string, NPC> = {
     unlocked: true,
   },
 
+  koran: {
+    id: 'koran',
+    name: 'Koran',
+    title: 'Mestre Ferreiro',
+    description: 'Um artesão lendário que forja equipamentos e aprimora Relíquias com precisão.',
+    affinity: 0,
+    dialogues: {
+      greeting: [
+        'Bem-vindo à forja. O fogo está pronto e as engrenagens girando.',
+        'Ah, você voltou. Tem algo para reforjar ou quer aprender técnicas novas?',
+        'Aqui o aço canta alto. Traga sua peça e veremos o que dá pra fazer.',
+      ],
+      craft: [
+        'Metal bom precisa de paciência. Não apresse o fogo ou ele te trai.',
+        'Balance a essência com o peso da arma. Só assim ela responde ao guardião.',
+        'Tenho uma nova liga que pode canalizar mais essência. Quer experimentar?',
+      ],
+      reward: [
+        'Belo trabalho na exploração. Esse minério raro rende upgrades poderosos.',
+        'Quando trouxer um Núcleo Prisma, posso liberar todo o potencial da sua arma.',
+        'Com essa qualidade, dá até pra enfrentar bestas de elite.',
+      ],
+      farewell: [
+        'Volte quando tiver mais materiais. O fogo não descansa.',
+        'Cuide bem do que forjei pra você. Cada golpe carrega meu nome.',
+        'Se precisar reforçar armaduras, sabe onde me achar.',
+      ],
+    },
+    location: 'blacksmith',
+    unlocked: true,
+  },
+
+  toran: {
+    id: 'toran',
+    name: 'Toran',
+    title: 'Mestre das Missões',
+    description: 'O responsável pelo quadro de missões da guilda, sempre em busca de guardiões confiáveis.',
+    affinity: 0,
+    dialogues: {
+      greeting: [
+        'Guardião! Tenho contratos que combinam com seu nível.',
+        'Ainda bem que veio. O quadro está cheio de pedidos urgentes.',
+        'Olá! Preciso de alguém para lidar com algumas criaturas à solta.',
+      ],
+      quests: [
+        'Missões de escolta pagam bem, mas exigem preparo. Avalie antes de aceitar.',
+        'Alguns clientes querem itens raros. Dá para conciliar com suas explorações.',
+        'Missões de elite liberam recompensas únicas. Traga aliados se precisar.',
+      ],
+      lore: [
+        'A guilda existe desde os primórdios dos Guardiões. Honre seus contratos.',
+        'Já vi muitos guardiões caírem por falta de planejamento. Sempre revise seus suprimentos.',
+        'Os contratos mais perigosos costumam envolver Relíquias corrompidas. Prepare-se.',
+      ],
+      farewell: [
+        'Boa caçada! E traga o relatório assim que terminar.',
+        'Voltarei a atualizar o quadro em breve. Fique atento.',
+        'Leve este selo. Ele concede acesso a missões especiais.',
+      ],
+    },
+    location: 'guild',
+    unlocked: true,
+  },
+
+  eryon: {
+    id: 'eryon',
+    name: 'Eryon',
+    title: 'Bardo Itinerante',
+    description: 'Músico e contador de histórias que conhece segredos de todo o reino.',
+    affinity: 0,
+    dialogues: {
+      greeting: [
+        'Saudações! Um pouco de música antes da próxima aventura?',
+        'Olhe só quem chegou! Tenho novas canções sobre Guardiões lendários.',
+        'Entre! O palco está sempre aberto para heróis como você.',
+      ],
+      stories: [
+        'Ouvi falar de uma Besta ancestral que dorme nas montanhas ao norte...',
+        'Há relicários escondidos nos bosques de Aurath. Só quem conhece as lendas encontra.',
+        'Um guardião de eras passadas domou uma Besta com a própria voz. Imagine isso!',
+      ],
+      tips: [
+        'Lembre-se: afinidade não se compra. Demonstre cuidado e sua Besta confiará em você.',
+        'O ritmo certo numa batalha muda tudo. Observe o tempo entre os golpes do inimigo.',
+        'Às vezes, uma pausa na taverna ajuda mais do que mais um treino exaustivo.',
+      ],
+      farewell: [
+        'Que a melodia da vitória te acompanhe.',
+        'Volte para me contar suas histórias. Posso compor uma balada!',
+        'Boa sorte, Guardião! Que os ecos respondam ao seu chamado.',
+      ],
+    },
+    location: 'tavern',
+    unlocked: true,
+  },
+
   alya: {
     id: 'alya',
     name: 'Alya',

@@ -1,36 +1,16 @@
 /**
  * Vila 3D Interativa - Beast Keepers
- * Cena 3D da vila com casas clicáveis que abrem diferentes funcionalidades
+ * Cena dinâmica onde cada casa representa um NPC ou estrutura da vila.
  */
 
 import * as THREE from 'three';
 
-// Tipos de edificações da vila
-export type BuildingType = 
-  | 'shop'          // 🛒 Loja do Dalan
-  | 'temple'        // 🏛️ Templo dos Ecos
-  | 'craft'         // ⚗️ Oficina de Craft
-  | 'inventory'     // 🎒 Armazém (Inventário)
-  | 'quests'        // 📜 Tábua de Missões
-  | 'achievements'  // 🏆 Salão da Fama
-  | 'exploration'   // 🗺️ Portal de Exploração
-  | 'dungeons'      // ⚔️ Entrada das Dungeons
-  | 'ranch';        // 🏡 Rancho (Beast atual)
+import type { VillageBuildingConfig } from '../../types/village';
 
-// Configuração de uma edificação
-export interface BuildingConfig {
-  type: BuildingType;
-  position: THREE.Vector3;
-  name: string;
-  icon: string;
-  color: string;
-}
-
-// Edificação 3D
-interface Building3D {
-  config: BuildingConfig;
-  mesh: THREE.Group;
-  highlightMesh?: THREE.Mesh;
+interface BuildingInstance {
+  config: VillageBuildingConfig;
+  group: THREE.Group;
+  highlight: THREE.Mesh;
   isHovered: boolean;
 }
 
@@ -38,422 +18,619 @@ export class VillageScene3D {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private buildings: Building3D[] = [];
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
-  
-  // Callbacks
-  public onBuildingClick?: (type: BuildingType) => void;
-  public onBuildingHover?: (type: BuildingType | null, name: string) => void;
-  
   private animationId: number | null = null;
-  private hoveredBuilding: Building3D | null = null;
 
-  constructor(container: HTMLElement, width: number, height: number) {
-    // Scene
+  private buildingGroup: THREE.Group;
+  private buildings: BuildingInstance[] = [];
+  private hoveredBuilding: BuildingInstance | null = null;
+
+  private mouseMoveHandler: (event: MouseEvent) => void;
+  private clickHandler: (event: MouseEvent) => void;
+
+  public onBuildingClick?: (building: VillageBuildingConfig) => void;
+  public onBuildingHover?: (building: VillageBuildingConfig | null) => void;
+
+  constructor(
+    container: HTMLElement,
+    width: number,
+    height: number,
+    buildings: VillageBuildingConfig[],
+  ) {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87CEEB); // Céu azul
-    this.scene.fog = new THREE.Fog(0x87CEEB, 30, 100);
-    
-    // Camera (visão isométrica elevada)
+    this.scene.background = new THREE.Color(0x87ceeb);
+    this.scene.fog = new THREE.Fog(0x87ceeb, 35, 110);
+
     this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 200);
-    this.camera.position.set(0, 25, 35);
+    this.camera.position.set(8, 24, 38);
     this.camera.lookAt(0, 0, 0);
-    
-    // Renderer
-    this.renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: false,
-    });
+
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
-    
-    // Raycaster para cliques
+
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
-    
-    // Setup inicial
+
+    this.buildingGroup = new THREE.Group();
+    this.scene.add(this.buildingGroup);
+
     this.setupLights();
     this.createGround();
-    this.createBuildings();
     this.createDecoration();
-    
-    // Event listeners
+    this.setBuildings(buildings);
     this.setupEventListeners();
-    
-    // Start animation
+
     this.animate();
-    
     console.log('[VillageScene3D] Vila 3D inicializada');
   }
 
-  /**
-   * Configura iluminação da cena
-   */
-  private setupLights(): void {
-    // Luz ambiente suave
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambientLight);
-    
-    // Luz direcional (sol)
-    const sunLight = new THREE.DirectionalLight(0xfff4e6, 0.8);
-    sunLight.position.set(20, 40, 15);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 100;
-    sunLight.shadow.camera.left = -40;
-    sunLight.shadow.camera.right = 40;
-    sunLight.shadow.camera.top = 40;
-    sunLight.shadow.camera.bottom = -40;
-    this.scene.add(sunLight);
-    
-    // Luz hemisférica (céu/chão)
-    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x6B8E23, 0.4);
-    this.scene.add(hemiLight);
-  }
+  public setBuildings(buildings: VillageBuildingConfig[]): void {
+    this.clearBuildings();
 
-  /**
-   * Cria o chão da vila
-   */
-  private createGround(): void {
-    // Grama
-    const groundGeometry = new THREE.PlaneGeometry(80, 80);
-    const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x5FAD56, // Verde grama
-      roughness: 0.8,
-      metalness: 0.1,
-    });
-    
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-    
-    // Caminho de pedra (circular no centro)
-    const pathGeometry = new THREE.CircleGeometry(12, 32);
-    const pathMaterial = new THREE.MeshStandardMaterial({
-      color: 0xD2B48C, // Bege/areia
-      roughness: 0.9,
-    });
-    
-    const path = new THREE.Mesh(pathGeometry, pathMaterial);
-    path.rotation.x = -Math.PI / 2;
-    path.position.y = 0.01; // Ligeiramente acima da grama
-    path.receiveShadow = true;
-    this.scene.add(path);
-  }
+    for (const config of buildings) {
+      const group = this.createBuildingMesh(config);
+      group.position.set(config.position.x, config.position.y, config.position.z);
+      if (config.rotation) {
+        group.rotation.y = config.rotation;
+      }
+      group.castShadow = true;
+      group.receiveShadow = true;
+      group.userData.buildingId = config.id;
 
-  /**
-   * Cria fonte central
-   */
-  private createFountain(): THREE.Group {
-    const fountain = new THREE.Group();
-    
-    // Base
-    const baseGeometry = new THREE.CylinderGeometry(1.2, 1.5, 0.3, 16);
-    const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.castShadow = true;
-    fountain.add(base);
-    
-    // Bacia de água
-    const basinGeometry = new THREE.CylinderGeometry(1, 1.1, 0.5, 16);
-    const basinMaterial = new THREE.MeshStandardMaterial({ color: 0x4682B4 });
-    const basin = new THREE.Mesh(basinGeometry, basinMaterial);
-    basin.position.y = 0.4;
-    basin.castShadow = true;
-    fountain.add(basin);
-    
-    // Coluna central
-    const columnGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1, 8);
-    const columnMaterial = new THREE.MeshStandardMaterial({ color: 0x708090 });
-    const column = new THREE.Mesh(columnGeometry, columnMaterial);
-    column.position.y = 1;
-    column.castShadow = true;
-    fountain.add(column);
-    
-    // Topo
-    const topGeometry = new THREE.SphereGeometry(0.25, 8, 8);
-    const top = new THREE.Mesh(topGeometry, baseMaterial);
-    top.position.y = 1.6;
-    top.castShadow = true;
-    fountain.add(top);
-    
-    return fountain;
-  }
-
-  /**
-   * Cria uma casa 3D
-   */
-  private createHouse(config: BuildingConfig): THREE.Group {
-    const house = new THREE.Group();
-    
-    // Paredes
-    const wallGeometry = new THREE.BoxGeometry(3, 2.5, 3);
-    const wallMaterial = new THREE.MeshStandardMaterial({
-      color: config.color,
-      roughness: 0.7,
-    });
-    
-    const walls = new THREE.Mesh(wallGeometry, wallMaterial);
-    walls.position.y = 1.25;
-    walls.castShadow = true;
-    walls.receiveShadow = true;
-    house.add(walls);
-    
-    // Telhado
-    const roofGeometry = new THREE.ConeGeometry(2.5, 1.5, 4);
-    const roofMaterial = new THREE.MeshStandardMaterial({
-      color: 0xD2691E, // Laranja terracota
-      roughness: 0.8,
-    });
-    
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.y = 3.25;
-    roof.rotation.y = Math.PI / 4; // 45° para ficar alinhado
-    roof.castShadow = true;
-    house.add(roof);
-    
-    // Porta
-    const doorGeometry = new THREE.BoxGeometry(0.8, 1.5, 0.1);
-    const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
-    const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 0.75, 1.51);
-    house.add(door);
-    
-    // Janelas
-    const windowGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.1);
-    const windowMaterial = new THREE.MeshStandardMaterial({ color: 0x87CEEB });
-    
-    const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
-    window1.position.set(-0.8, 1.5, 1.51);
-    house.add(window1);
-    
-    const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
-    window2.position.set(0.8, 1.5, 1.51);
-    house.add(window2);
-    
-    return house;
-  }
-
-  /**
-   * Cria edificações da vila
-   */
-  private createBuildings(): void {
-    // Configuração das edificações
-    const buildingConfigs: BuildingConfig[] = [
-      { type: 'shop', position: new THREE.Vector3(-10, 0, -8), name: 'Loja do Dalan', icon: '🛒', color: 0xFFD700 },
-      { type: 'temple', position: new THREE.Vector3(10, 0, -8), name: 'Templo dos Ecos', icon: '🏛️', color: 0x9370DB },
-      { type: 'craft', position: new THREE.Vector3(-15, 0, 3), name: 'Oficina de Craft', icon: '⚗️', color: 0x32CD32 },
-      { type: 'inventory', position: new THREE.Vector3(15, 0, 3), name: 'Armazém', icon: '🎒', color: 0xA0522D },
-      { type: 'quests', position: new THREE.Vector3(-10, 0, 14), name: 'Tábua de Missões', icon: '📜', color: 0xDAA520 },
-      { type: 'achievements', position: new THREE.Vector3(10, 0, 14), name: 'Salão da Fama', icon: '🏆', color: 0xFFD700 },
-      { type: 'exploration', position: new THREE.Vector3(-20, 0, -3), name: 'Portal de Exploração', icon: '🗺️', color: 0x4169E1 },
-      { type: 'dungeons', position: new THREE.Vector3(20, 0, -3), name: 'Entrada das Dungeons', icon: '⚔️', color: 0x8B008B },
-      { type: 'ranch', position: new THREE.Vector3(0, 0, 20), name: 'Seu Rancho', icon: '🏡', color: 0xCD853F },
-    ];
-    
-    // Criar cada edificação
-    for (const config of buildingConfigs) {
-      const houseMesh = this.createHouse(config);
-      houseMesh.position.copy(config.position);
-      this.scene.add(houseMesh);
-      
-      // Highlight (círculo de seleção invisível inicialmente)
-      const highlightGeometry = new THREE.CylinderGeometry(2, 2, 0.1, 32);
-      const highlightMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFFFF00,
-        transparent: true,
-        opacity: 0,
-      });
-      const highlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+      const highlight = this.createHighlightCircle(config);
       highlight.position.set(config.position.x, 0.05, config.position.z);
-      highlight.rotation.x = -Math.PI / 2;
-      this.scene.add(highlight);
-      
-      // Adicionar à lista
+      highlight.userData.buildingId = config.id;
+
+      this.buildingGroup.add(group);
+      this.buildingGroup.add(highlight);
+
       this.buildings.push({
         config,
-        mesh: houseMesh,
-        highlightMesh: highlight,
+        group,
+        highlight,
         isHovered: false,
       });
     }
-    
-    console.log(`[VillageScene3D] ${this.buildings.length} edificações criadas`);
+
+    console.log(`[VillageScene3D] Carregado ${this.buildings.length} edifícios.`);
   }
 
-  /**
-   * Cria decorações (árvores, arbustos, fonte)
-   */
+  private clearBuildings(): void {
+    for (const building of this.buildings) {
+      this.disposeObject(building.group);
+      this.disposeObject(building.highlight);
+      this.buildingGroup.remove(building.group);
+      this.buildingGroup.remove(building.highlight);
+    }
+    this.buildings = [];
+    this.hoveredBuilding = null;
+  }
+
+  private disposeObject(object: THREE.Object3D): void {
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        if (Array.isArray(child.material)) {
+          child.material.forEach((material) => material.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
+  }
+
+  private setupLights(): void {
+    const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+    this.scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xfff2d5, 0.8);
+    sun.position.set(18, 38, 18);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 120;
+    sun.shadow.camera.left = -50;
+    sun.shadow.camera.right = 50;
+    sun.shadow.camera.top = 50;
+    sun.shadow.camera.bottom = -50;
+    this.scene.add(sun);
+
+    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x5c8a3a, 0.35);
+    this.scene.add(hemi);
+  }
+
+  private createGround(): void {
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(90, 90),
+      new THREE.MeshStandardMaterial({ color: 0x62b357, roughness: 0.8 }),
+    );
+    plane.rotation.x = -Math.PI / 2;
+    plane.receiveShadow = true;
+    this.scene.add(plane);
+
+    const plaza = new THREE.Mesh(
+      new THREE.CircleGeometry(13, 40),
+      new THREE.MeshStandardMaterial({ color: 0xd6b183, roughness: 0.9 }),
+    );
+    plaza.rotation.x = -Math.PI / 2;
+    plaza.position.y = 0.01;
+    plaza.receiveShadow = true;
+    this.scene.add(plaza);
+
+    const paths = new THREE.Mesh(
+      new THREE.RingGeometry(13.5, 17, 40, 1),
+      new THREE.MeshStandardMaterial({ color: 0xe3c49c, roughness: 0.8 }),
+    );
+    paths.rotation.x = -Math.PI / 2;
+    paths.position.y = 0.01;
+    paths.receiveShadow = true;
+    this.scene.add(paths);
+
+    const centralPath = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 0.1, 20),
+      new THREE.MeshStandardMaterial({ color: 0xe3c49c, roughness: 0.85 }),
+    );
+    centralPath.position.set(0, 0, 8);
+    centralPath.rotation.y = Math.PI / 4;
+    centralPath.receiveShadow = true;
+    this.scene.add(centralPath);
+  }
+
   private createDecoration(): void {
-    // Fonte central
     const fountain = this.createFountain();
     fountain.position.set(0, 0, 0);
     this.scene.add(fountain);
-    
-    // Árvores ao redor
+
     const treePositions = [
-      new THREE.Vector3(-25, 0, -10),
-      new THREE.Vector3(25, 0, -10),
-      new THREE.Vector3(-25, 0, 10),
-      new THREE.Vector3(25, 0, 10),
-      new THREE.Vector3(0, 0, -20),
+      [-26, -12],
+      [24, -12],
+      [-24, 12],
+      [22, 12],
+      [-10, 22],
+      [12, 22],
     ];
-    
-    for (const pos of treePositions) {
+
+    for (const [x, z] of treePositions) {
       const tree = this.createTree();
-      tree.position.copy(pos);
+      tree.position.set(x, 0, z);
       this.scene.add(tree);
     }
   }
 
-  /**
-   * Cria uma árvore simples
-   */
+  private createFountain(): THREE.Group {
+    const group = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.6, 1.8, 0.25, 20),
+      new THREE.MeshStandardMaterial({ color: 0x9aa5b1, roughness: 0.6 }),
+    );
+    base.castShadow = true;
+    group.add(base);
+
+    const water = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.1, 0.35, 20),
+      new THREE.MeshStandardMaterial({ color: 0x4f9dd3, roughness: 0.2, transparent: true, opacity: 0.85 }),
+    );
+    water.position.y = 0.3;
+    group.add(water);
+
+    const pillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.3, 1.2, 12),
+      new THREE.MeshStandardMaterial({ color: 0xb8c1cc, roughness: 0.4 }),
+    );
+    pillar.position.y = 0.9;
+    pillar.castShadow = true;
+    group.add(pillar);
+
+    const top = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.4 }),
+    );
+    top.position.y = 1.6;
+    top.castShadow = true;
+    group.add(top);
+
+    return group;
+  }
+
   private createTree(): THREE.Group {
     const tree = new THREE.Group();
-    
-    // Tronco
-    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
-    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = 1.5;
+
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.45, 3.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x7b4a25, roughness: 0.9 }),
+    );
+    trunk.position.y = 1.6;
     trunk.castShadow = true;
     tree.add(trunk);
-    
-    // Copa (3 esferas)
-    const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-    
+
+    const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x2a8a2d, roughness: 0.7 });
     for (let i = 0; i < 3; i++) {
-      const foliageGeometry = new THREE.SphereGeometry(1.2 - i * 0.2, 8, 8);
-      const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-      foliage.position.y = 3 + i * 0.8;
+      const foliage = new THREE.Mesh(new THREE.SphereGeometry(1.4 - i * 0.2, 10, 10), foliageMaterial);
+      foliage.position.y = 3 + i * 0.9;
       foliage.castShadow = true;
       tree.add(foliage);
     }
-    
+
     return tree;
   }
 
-  /**
-   * Setup event listeners
-   */
+  private createHighlightCircle(config: VillageBuildingConfig): THREE.Mesh {
+    const highlightColor = config.highlightColor ?? 0xffd257;
+    const geometry = new THREE.CircleGeometry(2.4, 40);
+    const material = new THREE.MeshBasicMaterial({
+      color: highlightColor,
+      transparent: true,
+      opacity: 0,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
+  }
+
+  private createBuildingMesh(config: VillageBuildingConfig): THREE.Group {
+    switch (config.variant) {
+      case 'shop':
+        return this.createShop(config);
+      case 'blacksmith':
+        return this.createBlacksmith(config);
+      case 'temple':
+        return this.createTemple(config);
+      case 'tavern':
+        return this.createTavern(config);
+      case 'guild':
+        return this.createGuildHall(config);
+      case 'house':
+      default:
+        return this.createHouse(config);
+    }
+  }
+
+  private createHouse(config: VillageBuildingConfig): THREE.Group {
+    const house = new THREE.Group();
+
+    const walls = new THREE.Mesh(
+      new THREE.BoxGeometry(3.4, 2.6, 3.4),
+      new THREE.MeshStandardMaterial({ color: config.color, roughness: 0.75 }),
+    );
+    walls.position.y = 1.3;
+    walls.castShadow = true;
+    walls.receiveShadow = true;
+    house.add(walls);
+
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(2.8, 1.6, 4),
+      new THREE.MeshStandardMaterial({ color: 0xcb623a, roughness: 0.85 }),
+    );
+    roof.position.y = 3.1;
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    house.add(roof);
+
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(0.9, 1.6, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x6a4630, roughness: 0.6 }),
+    );
+    door.position.set(0, 0.8, 1.75);
+    house.add(door);
+
+    const windowMaterial = new THREE.MeshStandardMaterial({ color: 0x8bd5ff, roughness: 0.2, metalness: 0 });
+    const windowGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.12);
+
+    const leftWindow = new THREE.Mesh(windowGeometry, windowMaterial);
+    leftWindow.position.set(-1.1, 1.6, 1.76);
+    house.add(leftWindow);
+
+    const rightWindow = leftWindow.clone();
+    rightWindow.position.x = 1.1;
+    house.add(rightWindow);
+
+    return house;
+  }
+
+  private createShop(config: VillageBuildingConfig): THREE.Group {
+    const shop = this.createHouse(config);
+
+    const awning = new THREE.Mesh(
+      new THREE.BoxGeometry(3.4, 0.1, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xf5a65b, roughness: 0.6 }),
+    );
+    awning.position.set(0, 2.05, 1.76);
+    shop.add(awning);
+
+    const stripes = new THREE.Mesh(
+      new THREE.BoxGeometry(3.4, 0.01, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xffe1a6, roughness: 0.5 }),
+    );
+    stripes.position.set(0, 2.0, 1.77);
+    shop.add(stripes);
+
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 0.6, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x3c2f2f, roughness: 0.7 }),
+    );
+    sign.position.set(0, 2.7, 1.62);
+    shop.add(sign);
+
+    const signText = this.createBillboardText(config.icon, 0.4);
+    signText.position.set(0, 2.7, 1.78);
+    shop.add(signText);
+
+    return shop;
+  }
+
+  private createBlacksmith(config: VillageBuildingConfig): THREE.Group {
+    const smith = this.createHouse(config);
+
+    const chimney = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 1.5, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0x5c4b3b, roughness: 0.9 }),
+    );
+    chimney.position.set(-1.4, 3.2, -0.9);
+    smith.add(chimney);
+
+    const smoke = new THREE.Mesh(
+      new THREE.SphereGeometry(0.35, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xccc9c3, transparent: true, opacity: 0.65 }),
+    );
+    smoke.position.set(-1.4, 4.2, -0.9);
+    smith.add(smoke);
+
+    const anvil = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 0.35, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x35363a, roughness: 0.4, metalness: 0.8 }),
+    );
+    anvil.position.set(1.7, 0.45, 1.2);
+    smith.add(anvil);
+
+    const hammerHandle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6),
+      new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7 }),
+    );
+    hammerHandle.position.set(1.9, 0.95, 1.5);
+    hammerHandle.rotation.z = Math.PI / 4;
+    smith.add(hammerHandle);
+
+    const hammerHead = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.25, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0x474a4f, roughness: 0.4, metalness: 0.9 }),
+    );
+    hammerHead.position.set(2.1, 1.2, 1.7);
+    hammerHead.rotation.z = Math.PI / 4;
+    smith.add(hammerHead);
+
+    return smith;
+  }
+
+  private createTemple(config: VillageBuildingConfig): THREE.Group {
+    const temple = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(6.8, 3.2, 6),
+      new THREE.MeshStandardMaterial({ color: config.color, roughness: 0.6 }),
+    );
+    base.position.y = 1.6;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    temple.add(base);
+
+    const roof = new THREE.Mesh(
+      new THREE.CylinderGeometry(0, 4.6, 3.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0xb7a0e3, roughness: 0.8 }),
+    );
+    roof.position.y = 3.8;
+    roof.castShadow = true;
+    temple.add(roof);
+
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }),
+    );
+    dome.position.y = 5.1;
+    temple.add(dome);
+
+    const columnMaterial = new THREE.MeshStandardMaterial({ color: 0xf2ebff, roughness: 0.4 });
+    for (let i = -2; i <= 2; i += 2) {
+      const column = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3.2, 12), columnMaterial);
+      column.position.set(i, 1.6, 2.9);
+      column.castShadow = true;
+      temple.add(column);
+    }
+
+    const stairs = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 0.6, 3),
+      new THREE.MeshStandardMaterial({ color: 0xd8c7ff, roughness: 0.6 }),
+    );
+    stairs.position.set(0, 0.3, 3.2);
+    temple.add(stairs);
+
+    const emblem = this.createBillboardText(config.icon, 0.6);
+    emblem.position.set(0, 3, 3.6);
+    temple.add(emblem);
+
+    return temple;
+  }
+
+  private createTavern(config: VillageBuildingConfig): THREE.Group {
+    const tavern = this.createHouse(config);
+
+    const banner = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 2.4, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0x50322d, roughness: 0.8 }),
+    );
+    banner.position.set(-1.9, 2.1, 1.6);
+    tavern.add(banner);
+
+    const flag = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.6, 1.1),
+      new THREE.MeshStandardMaterial({
+        color: 0xffd280,
+        roughness: 0.5,
+        side: THREE.DoubleSide,
+      }),
+    );
+    flag.position.set(-2.7, 2.0, 1.6);
+    flag.rotation.y = Math.PI / 2;
+    tavern.add(flag);
+
+    const note = this.createBillboardText(config.icon, 0.35);
+    note.position.set(0, 2.6, 1.7);
+    tavern.add(note);
+
+    return tavern;
+  }
+
+  private createGuildHall(config: VillageBuildingConfig): THREE.Group {
+    const hall = this.createHouse(config);
+
+    const roof = new THREE.Mesh(
+      new THREE.CylinderGeometry(0, 3.6, 2.6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x9b6434, roughness: 0.7 }),
+    );
+    roof.position.y = 3.4;
+    hall.add(roof);
+
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 0.6, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x3a2d2a, roughness: 0.7 }),
+    );
+    sign.position.set(0, 2.5, 1.7);
+    hall.add(sign);
+
+    const emblem = this.createBillboardText(config.icon, 0.38);
+    emblem.position.set(0, 2.5, 1.85);
+    hall.add(emblem);
+
+    return hall;
+  }
+
+  private createBillboardText(icon: string, scale: number): THREE.Mesh {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '180px sans-serif';
+      ctx.fillText(icon, canvas.width / 2, canvas.height / 2 + 10);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 4;
+    texture.needsUpdate = true;
+
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(scale * 2, scale * 2), material);
+    plane.renderOrder = 10;
+    return plane;
+  }
+
   private setupEventListeners(): void {
     const canvas = this.renderer.domElement;
-    
-    // Mouse move para hover
-    canvas.addEventListener('mousemove', (event) => {
+
+    this.mouseMoveHandler = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      
       this.updateHover();
-    });
-    
-    // Click para interagir
-    canvas.addEventListener('click', () => {
-      if (this.hoveredBuilding && this.onBuildingClick) {
-        console.log(`[VillageScene3D] Clicked: ${this.hoveredBuilding.config.name}`);
-        this.onBuildingClick(this.hoveredBuilding.config.type);
+    };
+
+    this.clickHandler = () => {
+      if (this.hoveredBuilding && this.onBuildingClick && !this.hoveredBuilding.config.isLocked) {
+        this.onBuildingClick(this.hoveredBuilding.config);
       }
-    });
-    
-    // Cursor pointer quando hover
+    };
+
+    canvas.addEventListener('mousemove', this.mouseMoveHandler);
+    canvas.addEventListener('click', this.clickHandler);
+
     canvas.style.cursor = 'default';
   }
 
-  /**
-   * Atualiza hover state
-   */
   private updateHover(): void {
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    
-    // Verificar interseção com edificações
-    const meshes = this.buildings.map(b => b.mesh);
-    const intersects = this.raycaster.intersectObjects(meshes, true);
-    
-    // Resetar hover anterior
+    const intersects = this.raycaster.intersectObjects(this.buildingGroup.children, true);
+
     if (this.hoveredBuilding) {
-      if (this.hoveredBuilding.highlightMesh) {
-        (this.hoveredBuilding.highlightMesh.material as THREE.MeshBasicMaterial).opacity = 0;
-      }
+      const material = this.hoveredBuilding.highlight.material as THREE.MeshBasicMaterial;
+      material.opacity = 0;
       this.hoveredBuilding.isHovered = false;
     }
-    
-    // Atualizar novo hover
-    if (intersects.length > 0) {
-      // Encontrar qual edificação foi atingida
-      const hitMesh = intersects[0].object.parent;
-      const building = this.buildings.find(b => b.mesh === hitMesh);
-      
-      if (building) {
-        this.hoveredBuilding = building;
-        building.isHovered = true;
-        
-        if (building.highlightMesh) {
-          (building.highlightMesh.material as THREE.MeshBasicMaterial).opacity = 0.3;
-        }
-        
-        this.renderer.domElement.style.cursor = 'pointer';
-        
-        if (this.onBuildingHover) {
-          this.onBuildingHover(building.config.type, `${building.config.icon} ${building.config.name}`);
-        }
-      }
-    } else {
+
+    if (intersects.length === 0) {
       this.hoveredBuilding = null;
       this.renderer.domElement.style.cursor = 'default';
-      
-      if (this.onBuildingHover) {
-        this.onBuildingHover(null, '');
-      }
+      this.onBuildingHover?.(null);
+      return;
     }
+
+    const targetBuilding = this.findBuildingFromObject(intersects[0].object);
+    if (!targetBuilding) {
+      this.hoveredBuilding = null;
+      this.renderer.domElement.style.cursor = 'default';
+      this.onBuildingHover?.(null);
+      return;
+    }
+
+    this.hoveredBuilding = targetBuilding;
+    this.hoveredBuilding.isHovered = true;
+    const material = this.hoveredBuilding.highlight.material as THREE.MeshBasicMaterial;
+    material.opacity = this.hoveredBuilding.config.isLocked ? 0.15 : 0.35;
+    material.color.setHex(this.hoveredBuilding.config.highlightColor ?? 0xffd257);
+    this.renderer.domElement.style.cursor = this.hoveredBuilding.config.isLocked ? 'not-allowed' : 'pointer';
+    this.onBuildingHover?.(this.hoveredBuilding.config);
   }
 
-  /**
-   * Animation loop
-   */
+  private findBuildingFromObject(object: THREE.Object3D): BuildingInstance | null {
+    let current: THREE.Object3D | null = object;
+    while (current) {
+      const buildingId = current.userData.buildingId;
+      if (buildingId) {
+        return this.buildings.find((b) => b.config.id === buildingId) ?? null;
+      }
+      current = current.parent as THREE.Object3D;
+    }
+    return null;
+  }
+
   private animate = (): void => {
     this.animationId = requestAnimationFrame(this.animate);
-    
-    // Rotação suave da câmera (opcional)
-    // this.camera.position.x = Math.sin(Date.now() * 0.0001) * 40;
-    // this.camera.position.z = Math.cos(Date.now() * 0.0001) * 40;
-    // this.camera.lookAt(0, 0, 0);
-    
     this.renderer.render(this.scene, this.camera);
-  }
+  };
 
-  /**
-   * Resize handler
-   */
   public resize(width: number, height: number): void {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
 
-  /**
-   * Cleanup
-   */
   public dispose(): void {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
     }
-    
+
+    this.clearBuildings();
+
+    const canvas = this.renderer.domElement;
+    canvas.removeEventListener('mousemove', this.mouseMoveHandler);
+    canvas.removeEventListener('click', this.clickHandler);
+
     this.renderer.dispose();
-    
-    // Remove canvas do DOM
-    if (this.renderer.domElement.parentElement) {
-      this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
+    if (canvas.parentElement) {
+      canvas.parentElement.removeChild(canvas);
     }
-    
+
     console.log('[VillageScene3D] Disposed');
   }
 }

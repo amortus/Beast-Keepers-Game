@@ -72,6 +72,8 @@ import {
   emitWorked,
   emitBattleWon
 } from './systems/game-events';
+import { VILLAGE_BLUEPRINT } from './data/village-layout';
+import type { VillageBuildingConfig } from './types/village';
 
 // Elements
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -1388,51 +1390,40 @@ function closeTemple() {
 function openVillage() {
   if (!gameState) return;
 
-  // Hide 3D viewer when opening village
   if (gameUI) {
     gameUI.hide3DViewer();
     console.log('[Main] Village opened - 3D viewer hidden');
   }
 
-  // Create village 3D UI if doesn't exist
+  const buildings: VillageBuildingConfig[] = VILLAGE_BLUEPRINT.map((blueprint) => {
+    const npc = blueprint.npcId ? NPCS[blueprint.npcId] : undefined;
+    const kind = blueprint.facilityId ? 'facility' : 'npc';
+
+    return {
+      id: blueprint.id,
+      icon: blueprint.icon,
+      variant: blueprint.variant,
+      position: blueprint.position,
+      rotation: blueprint.rotation,
+      color: blueprint.color,
+      label: blueprint.label,
+      kind,
+      npcId: blueprint.npcId,
+      facilityId: blueprint.facilityId,
+      isLocked: kind === 'npc' ? !(npc?.unlocked ?? false) : false,
+      highlightColor: kind === 'facility' ? 0xffffff : undefined,
+    } satisfies VillageBuildingConfig;
+  });
+
   if (!village3DUI) {
     village3DUI = new Village3DUI();
-    
-    // Connect callbacks to open different functionalities
-    village3DUI.onOpenShop = () => {
-      openShop();
+    village3DUI.onOpenNPC = (npcId: string) => {
+      openDialogueWith(npcId);
     };
-    
-    village3DUI.onOpenTemple = () => {
-      openTemple();
-    };
-    
-    village3DUI.onOpenCraft = () => {
-      openCraft();
-    };
-    
-    village3DUI.onOpenInventory = () => {
-      openInventory();
-    };
-    
-    village3DUI.onOpenQuests = () => {
-      openQuests();
-    };
-    
-    village3DUI.onOpenAchievements = () => {
-      openAchievements();
-    };
-    
-    village3DUI.onOpenExploration = () => {
-      startExploration();
-    };
-    
-    village3DUI.onOpenDungeons = () => {
-      openDungeon();
-    };
-    
+    village3DUI.onOpenShop = () => openShop();
+    village3DUI.onOpenTemple = () => openTemple();
+    village3DUI.onOpenCraft = () => openCraft();
     village3DUI.onOpenRanch = () => {
-      // Close village and show ranch 3D viewer
       if (village3DUI) {
         village3DUI.hide();
       }
@@ -1440,10 +1431,11 @@ function openVillage() {
         gameUI.show3DViewer();
       }
     };
-    
+
     console.log('[Main] Village 3D UI created');
   }
-  
+
+  village3DUI.setBuildings(buildings);
   village3DUI.show();
 }
 
@@ -3594,7 +3586,7 @@ function startTournament() {
         return;
       }
       
-      // Continue com o torneio
+      // Continue with the tournament
       startTournamentBattle(rank);
     },
     onCancel: () => {

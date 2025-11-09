@@ -3,23 +3,21 @@
  * Wrapper para a cena 3D da vila interativa
  */
 
-import { VillageScene3D, type BuildingType } from '../3d/scenes/VillageScene3D';
+import { VillageScene3D } from '../3d/scenes/VillageScene3D';
+import type { VillageBuildingConfig } from '../types/village';
 import { COLORS } from './colors';
 
 export class Village3DUI {
   private container: HTMLDivElement;
   private villageScene: VillageScene3D | null = null;
   private labelElement: HTMLDivElement;
+  private currentBuildings: VillageBuildingConfig[] = [];
   
   // Callbacks para abrir diferentes funcionalidades
+  public onOpenNPC?: (npcId: string) => void;
   public onOpenShop?: () => void;
   public onOpenTemple?: () => void;
   public onOpenCraft?: () => void;
-  public onOpenInventory?: () => void;
-  public onOpenQuests?: () => void;
-  public onOpenAchievements?: () => void;
-  public onOpenExploration?: () => void;
-  public onOpenDungeons?: () => void;
   public onOpenRanch?: () => void;
 
   constructor() {
@@ -116,10 +114,16 @@ export class Village3DUI {
    * Mostra a vila 3D
    */
   public show(): void {
+    if (this.currentBuildings.length === 0) {
+      console.warn('[Village3DUI] Nenhuma configuração de construção definida.');
+    }
+
     this.container.style.display = 'block';
     
     if (!this.villageScene) {
       this.createVillageScene();
+    } else {
+      this.villageScene.setBuildings(this.currentBuildings);
     }
     
     console.log('[Village3DUI] Showing village');
@@ -133,6 +137,13 @@ export class Village3DUI {
     console.log('[Village3DUI] Hidden');
   }
 
+  public setBuildings(buildings: VillageBuildingConfig[]): void {
+    this.currentBuildings = buildings;
+    if (this.villageScene) {
+      this.villageScene.setBuildings(buildings);
+    }
+  }
+
   /**
    * Cria a cena 3D da vila
    */
@@ -140,17 +151,18 @@ export class Village3DUI {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     
-    this.villageScene = new VillageScene3D(this.container, width, height);
+    this.villageScene = new VillageScene3D(this.container, width, height, this.currentBuildings);
     
     // Callback para cliques em edificações
-    this.villageScene.onBuildingClick = (type: BuildingType) => {
-      this.handleBuildingClick(type);
+    this.villageScene.onBuildingClick = (building) => {
+      this.handleBuildingClick(building);
     };
     
     // Callback para hover
-    this.villageScene.onBuildingHover = (type: BuildingType | null, name: string) => {
-      if (type) {
-        this.labelElement.textContent = name;
+    this.villageScene.onBuildingHover = (building) => {
+      if (building) {
+        const lockedSuffix = building.isLocked ? ' (Bloqueado)' : '';
+        this.labelElement.textContent = `${building.icon} ${building.label}${lockedSuffix}`;
         this.labelElement.style.opacity = '1';
       } else {
         this.labelElement.style.opacity = '0';
@@ -166,40 +178,37 @@ export class Village3DUI {
   /**
    * Handle building click
    */
-  private handleBuildingClick(type: BuildingType): void {
-    console.log(`[Village3DUI] Opening: ${type}`);
-    
+  private handleBuildingClick(building: VillageBuildingConfig): void {
+    if (building.isLocked) {
+      return;
+    }
+
     // Esconder vila
     this.hide();
     
     // Abrir funcionalidade correspondente
-    switch (type) {
+    if (building.kind === 'npc') {
+      if (building.npcId && this.onOpenNPC) {
+        this.onOpenNPC(building.npcId);
+      }
+      return;
+    }
+
+    switch (building.facilityId) {
       case 'shop':
-        if (this.onOpenShop) this.onOpenShop();
+        this.onOpenShop?.();
         break;
       case 'temple':
-        if (this.onOpenTemple) this.onOpenTemple();
+        this.onOpenTemple?.();
         break;
-      case 'craft':
-        if (this.onOpenCraft) this.onOpenCraft();
-        break;
-      case 'inventory':
-        if (this.onOpenInventory) this.onOpenInventory();
-        break;
-      case 'quests':
-        if (this.onOpenQuests) this.onOpenQuests();
-        break;
-      case 'achievements':
-        if (this.onOpenAchievements) this.onOpenAchievements();
-        break;
-      case 'exploration':
-        if (this.onOpenExploration) this.onOpenExploration();
-        break;
-      case 'dungeons':
-        if (this.onOpenDungeons) this.onOpenDungeons();
+      case 'blacksmith':
+        this.onOpenCraft?.();
         break;
       case 'ranch':
-        if (this.onOpenRanch) this.onOpenRanch();
+        this.onOpenRanch?.();
+        break;
+      default:
+        // Outros casos podem ser adicionados futuramente
         break;
     }
   }
