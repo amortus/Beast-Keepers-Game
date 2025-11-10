@@ -136,7 +136,7 @@ interface Obstacle {
   radius: number;
 }
 
-const WORLD_Y_OFFSET = -0.8;
+const WORLD_Y_OFFSET = -1.0;
 
 const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0.2, -6.8], obstacleRadius: 2.6 },
@@ -407,7 +407,7 @@ export class RanchScene3D {
     border.receiveShadow = true;
     this.addDecoration(border);
 
-    const centerGeometry = new THREE.CircleGeometry(5.6, 64);
+    const centerGeometry = new THREE.CircleGeometry(8.0, 64);
     const centerMaterial = new THREE.MeshStandardMaterial({
       color: this.skin.ground.centerPatchColor,
       roughness: 0.78,
@@ -435,7 +435,7 @@ export class RanchScene3D {
     const waterMesh = this.water.getMesh();
     waterMesh.position.set(
       this.layout.pond.position[0],
-      this.layout.pond.position[1] + WORLD_Y_OFFSET + 0.05,
+      this.layout.pond.position[1] + WORLD_Y_OFFSET + 0.08,
       this.layout.pond.position[2],
     );
     pondGroup.add(waterMesh);
