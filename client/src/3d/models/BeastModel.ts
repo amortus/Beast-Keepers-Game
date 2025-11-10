@@ -51,34 +51,34 @@ export class BeastModel {
     // Create low-poly model based on beast line
     switch (beastLine) {
       case 'olgrim':
-        this.createOlgrim();
+        this.loadOlgrimModel();
         break;
       case 'terravox':
         this.loadTerravoxModel();
         break;
       case 'feralis':
-        this.createFeralis();
+        this.loadFeralisModel();
         break;
       case 'brontis':
-        this.createBrontis();
+        this.loadBrontisModel();
         break;
       case 'zephyra':
-        this.createZephyra();
+        this.loadZephyraModel();
         break;
       case 'ignar':
-        this.createIgnar();
+        this.loadIgnarModel();
         break;
       case 'mirella':
         this.loadMirellaModel();
         break;
       case 'umbrix':
-        this.createUmbrix();
+        this.loadUmbrixModel();
         break;
       case 'sylphid':
-        this.createSylphid();
+        this.loadSylphidModel();
         break;
       case 'raukor':
-        this.createRaukor();
+        this.loadRaukorModel();
         break;
       default:
         this.createDefaultBeast();
@@ -87,6 +87,7 @@ export class BeastModel {
 
   // Olgrim - Olho flutuante com tentáculos
   private createOlgrim() {
+    this.isImportedModel = false;
     // Main eye body (sphere)
     const eyeGeometry = new THREE.SphereGeometry(0.8, 8, 6);
     const eyeMaterial = new THREE.MeshPhongMaterial({ 
@@ -133,6 +134,7 @@ export class BeastModel {
   // Terravox - Golem de pedra
   private createTerravox() {
     this.isImportedModel = false;
+    this.isImportedModel = false;
     // Body (cube with rough texture)
     const bodyGeometry = new THREE.BoxGeometry(1.2, 1.5, 1);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -175,6 +177,7 @@ export class BeastModel {
 
   // Feralis - Felino ágil
   private createFeralis() {
+    this.isImportedModel = false;
     // Body (elongated box)
     const bodyGeometry = new THREE.BoxGeometry(0.6, 0.5, 1.2);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -227,6 +230,7 @@ export class BeastModel {
 
   // Brontis - Réptil bípede robusto
   private createBrontis() {
+    this.isImportedModel = false;
     // Body (large box)
     const bodyGeometry = new THREE.BoxGeometry(1, 1.2, 1.5);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -275,6 +279,7 @@ export class BeastModel {
 
   // Zephyra - Ave veloz
   private createZephyra() {
+    this.isImportedModel = false;
     // Body (small)
     const bodyGeometry = new THREE.SphereGeometry(0.4, 6, 5);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -325,6 +330,7 @@ export class BeastModel {
 
   // Ignar - Fera elemental de fogo
   private createIgnar() {
+    this.isImportedModel = false;
     // Body (aggressive shape)
     const bodyGeometry = new THREE.BoxGeometry(1.1, 0.9, 1.4);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -388,6 +394,7 @@ export class BeastModel {
 
   // Raukor - Fera lupina (lobo)
   private createRaukor() {
+    this.isImportedModel = false;
     // Body
     const bodyGeometry = new THREE.BoxGeometry(0.7, 0.6, 1.3);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -549,6 +556,137 @@ export class BeastModel {
     });
   }
 
+  private loadBrontisModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Brontis/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createBrontis(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_Axe_Spin_Attack_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.8,
+    });
+  }
+
+  private loadFeralisModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Feralis/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createFeralis(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_4_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_mage_soell_cast_4_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.2,
+    });
+  }
+
+  private loadIgnarModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Ignar/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createIgnar(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_3_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_mage_soell_cast_3_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.4,
+    });
+  }
+
+  private loadOlgrimModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Olgrim/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createOlgrim(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_6_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_mage_soell_cast_6_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.2,
+    });
+  }
+
+  private loadRaukorModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Raukor/',
+      idleFile: 'Animation_Running_withSkin.glb',
+      fallback: () => this.createRaukor(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_4_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.4,
+    });
+  }
+
+  private loadSylphidModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Sylphid/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createSylphid(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.3,
+    });
+  }
+
+  private loadUmbrixModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Umbrix/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createUmbrix(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_Skill_01_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_mage_soell_cast_4_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.3,
+    });
+  }
+
+  private loadZephyraModel() {
+    this.loadImportedModel({
+      basePath: '/assets/3d/beasts/Zephyra/',
+      idleFile: 'Animation_Idle_withSkin.glb',
+      fallback: () => this.createZephyra(),
+      animations: [
+        { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+      ],
+      targetHeight: 2.4,
+    });
+  }
+
   private prepareImportedScene(root: THREE.Object3D, targetHeight: number = 2.4) {
     root.traverse((child) => {
       if (child instanceof THREE.Light || child instanceof THREE.Camera) {
@@ -704,6 +842,7 @@ export class BeastModel {
 
   // Umbrix - Besta das sombras
   private createUmbrix() {
+    this.isImportedModel = false;
     // Body (elongated, serpentine)
     const bodyGeometry = new THREE.BoxGeometry(0.6, 0.6, 1.5);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
@@ -774,6 +913,7 @@ export class BeastModel {
 
   // Sylphid - Espírito etéreo
   private createSylphid() {
+    this.isImportedModel = false;
     // Core (glowing orb)
     const coreGeometry = new THREE.SphereGeometry(0.5, 6, 5);
     const coreMaterial = new THREE.MeshPhongMaterial({ 
