@@ -201,7 +201,7 @@ export class Village3DUI {
       case 'temple':
         this.onOpenTemple?.();
         break;
-      case 'blacksmith':
+      case 'alchemy':
         this.onOpenCraft?.();
         break;
       case 'ranch':

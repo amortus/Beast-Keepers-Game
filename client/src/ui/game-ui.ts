@@ -396,7 +396,7 @@ export class GameUI {
       { id: 'ranch', label: '🏠 Rancho', color: COLORS.primary.green, action: () => this.onNavigate('ranch') },
       { id: 'village', label: '🏘️ Vila', color: COLORS.primary.blue, action: () => this.onOpenVillage() },
       { id: 'inventory', label: '🎒 Inventário', color: COLORS.primary.purple, action: () => this.onOpenInventory() },
-      { id: 'craft', label: '⚗️ Craft', color: COLORS.primary.green, action: () => this.onOpenCraft() },
+      { id: 'arena', label: '🥊 Arena PVP', color: COLORS.primary.red, action: () => this.onOpenArenaPvp() },
       { id: 'exploration', label: '🗺️ Explorar', color: COLORS.primary.blue, action: () => this.onOpenExploration() },
       { id: 'dungeons', label: '⚔️ Dungeons', color: COLORS.primary.purple, action: () => this.onOpenDungeons() },
       { id: 'quests', label: '📜 Missões', color: COLORS.primary.gold, action: () => this.onOpenQuests() },
@@ -1117,6 +1117,7 @@ export class GameUI {
   public onOpenVillage: () => void = () => {};
   public onOpenInventory: () => void = () => {};
   public onOpenCraft: () => void = () => {};
+  public onOpenArenaPvp: () => void = () => {};
   public onOpenDungeons: () => void = () => {};
   public onOpenQuests: () => void = () => {};
   public onOpenAchievements: () => void = () => {};

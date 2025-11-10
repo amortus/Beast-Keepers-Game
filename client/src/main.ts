@@ -1085,6 +1085,10 @@ async function setupGame() {
       openCraft();
     };
 
+    gameUI.onOpenArenaPvp = () => {
+      openArenaPvp();
+    };
+
     // Setup quests callback
     gameUI.onOpenQuests = () => {
       openQuests();
@@ -1859,6 +1863,15 @@ function closeCraft() {
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
   }
+}
+
+function openArenaPvp() {
+  closeAllOverlays();
+
+  showMessage(
+    'O modo Arena PvP está em desenvolvimento. Em breve você poderá desafiar outros guardiões em batalhas estratégicas!',
+    '🥊 Arena PvP',
+  );
 }
 
 // ===== QUESTS SYSTEM =====

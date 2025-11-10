@@ -7,7 +7,7 @@
 export type VillageBuildingVariant =
   | 'house'
   | 'shop'
-  | 'blacksmith'
+  | 'alchemy'
   | 'temple'
   | 'tavern'
   | 'guild';
@@ -17,7 +17,7 @@ export type VillageBuildingKind = 'npc' | 'facility';
 export type VillageFacilityId =
   | 'shop'
   | 'temple'
-  | 'blacksmith'
+  | 'alchemy'
   | 'quests'
   | 'exploration'
   | 'dungeons'

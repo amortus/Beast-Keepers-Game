@@ -146,40 +146,64 @@ export class VillageScene3D {
   }
 
   private createGround(): void {
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(90, 90),
-      new THREE.MeshStandardMaterial({ color: 0x62b357, roughness: 0.8 }),
+    const groundGroup = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.PlaneGeometry(120, 120),
+      new THREE.MeshStandardMaterial({ color: 0x5b9b59, roughness: 0.85 }),
     );
-    plane.rotation.x = -Math.PI / 2;
-    plane.receiveShadow = true;
-    this.scene.add(plane);
+    base.rotation.x = -Math.PI / 2;
+    base.receiveShadow = true;
+    groundGroup.add(base);
+
+    const lushGrass = new THREE.Mesh(
+      new THREE.CircleGeometry(26, 64),
+      new THREE.MeshStandardMaterial({ color: 0x6ecf72, roughness: 0.82 }),
+    );
+    lushGrass.rotation.x = -Math.PI / 2;
+    lushGrass.position.y = 0.01;
+    lushGrass.receiveShadow = true;
+    groundGroup.add(lushGrass);
 
     const plaza = new THREE.Mesh(
-      new THREE.CircleGeometry(13, 40),
-      new THREE.MeshStandardMaterial({ color: 0xd6b183, roughness: 0.9 }),
+      new THREE.CircleGeometry(14.5, 60),
+      new THREE.MeshStandardMaterial({ color: 0xdcc9a5, roughness: 0.88 }),
     );
     plaza.rotation.x = -Math.PI / 2;
-    plaza.position.y = 0.01;
+    plaza.position.y = 0.015;
     plaza.receiveShadow = true;
-    this.scene.add(plaza);
+    groundGroup.add(plaza);
 
-    const paths = new THREE.Mesh(
-      new THREE.RingGeometry(13.5, 17, 40, 1),
-      new THREE.MeshStandardMaterial({ color: 0xe3c49c, roughness: 0.8 }),
+    const plazaRing = new THREE.Mesh(
+      new THREE.RingGeometry(15, 19.5, 60, 1),
+      new THREE.MeshStandardMaterial({ color: 0xe8d8b8, roughness: 0.78 }),
     );
-    paths.rotation.x = -Math.PI / 2;
-    paths.position.y = 0.01;
-    paths.receiveShadow = true;
-    this.scene.add(paths);
+    plazaRing.rotation.x = -Math.PI / 2;
+    plazaRing.position.y = 0.012;
+    plazaRing.receiveShadow = true;
+    groundGroup.add(plazaRing);
 
-    const centralPath = new THREE.Mesh(
-      new THREE.BoxGeometry(6, 0.1, 20),
-      new THREE.MeshStandardMaterial({ color: 0xe3c49c, roughness: 0.85 }),
-    );
-    centralPath.position.set(0, 0, 8);
-    centralPath.rotation.y = Math.PI / 4;
-    centralPath.receiveShadow = true;
-    this.scene.add(centralPath);
+    const pathMaterial = new THREE.MeshStandardMaterial({ color: 0xe4cfa8, roughness: 0.78 });
+
+    const radialPaths: Array<{ size: [number, number, number]; position: [number, number, number]; rotation?: number }> = [
+      { size: [4, 0.12, 18], position: [0, 0.04, 9] }, // templo
+      { size: [12, 0.12, 3], position: [-12, 0.04, 4], rotation: Math.PI / 18 },
+      { size: [12, 0.12, 3], position: [12, 0.04, 4], rotation: -Math.PI / 18 },
+      { size: [4, 0.12, 14], position: [-8, 0.04, -9], rotation: -Math.PI / 12 },
+      { size: [4, 0.12, 14], position: [8, 0.04, -9], rotation: Math.PI / 12 },
+    ];
+
+    for (const path of radialPaths) {
+      const walkway = new THREE.Mesh(new THREE.BoxGeometry(...path.size), pathMaterial);
+      walkway.position.set(...path.position);
+      if (path.rotation) {
+        walkway.rotation.y = path.rotation;
+      }
+      walkway.receiveShadow = true;
+      groundGroup.add(walkway);
+    }
+
+    this.scene.add(groundGroup);
   }
 
   private createDecoration(): void {
@@ -187,19 +211,45 @@ export class VillageScene3D {
     fountain.position.set(0, 0, 0);
     this.scene.add(fountain);
 
-    const treePositions = [
-      [-26, -12],
-      [24, -12],
-      [-24, 12],
-      [22, 12],
-      [-10, 22],
-      [12, 22],
+    const treePositions: Array<[number, number]> = [
+      [-30, -16],
+      [30, -16],
+      [-32, 18],
+      [32, 18],
+      [-12, 26],
+      [12, 26],
     ];
 
     for (const [x, z] of treePositions) {
       const tree = this.createTree();
       tree.position.set(x, 0, z);
       this.scene.add(tree);
+    }
+
+    const lampPositions: Array<[number, number]> = [
+      [-9, 7],
+      [9, 7],
+      [-6, -6],
+      [6, -6],
+    ];
+
+    for (const [x, z] of lampPositions) {
+      const lamp = this.createLampPost();
+      lamp.position.set(x, 0, z);
+      this.scene.add(lamp);
+    }
+
+    const flowerPositions: Array<[number, number]> = [
+      [-4, 11],
+      [4, 11],
+      [-11, -2],
+      [11, -2],
+    ];
+
+    for (const [x, z] of flowerPositions) {
+      const flowerBed = this.createFlowerBed();
+      flowerBed.position.set(x, 0, z);
+      this.scene.add(flowerBed);
     }
   }
 
@@ -261,6 +311,88 @@ export class VillageScene3D {
     return tree;
   }
 
+  private createLampPost(): THREE.Group {
+    const lamp = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.35, 0.4, 10),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a21, roughness: 0.7 }),
+    );
+    base.position.y = 0.2;
+    base.castShadow = true;
+    lamp.add(base);
+
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.12, 3.4, 12),
+      new THREE.MeshStandardMaterial({ color: 0x4a3a31, roughness: 0.6 }),
+    );
+    pole.position.y = 2.0;
+    pole.castShadow = true;
+    lamp.add(pole);
+
+    const cap = new THREE.Mesh(
+      new THREE.ConeGeometry(0.4, 0.4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2d2019, roughness: 0.5 }),
+    );
+    cap.position.y = 3.5;
+    lamp.add(cap);
+
+    const globeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xfff3c4,
+      emissive: 0xffdf9a,
+      emissiveIntensity: 1.1,
+      transparent: true,
+      opacity: 0.85,
+      roughness: 0.2,
+    });
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), globeMaterial);
+    globe.position.y = 3.2;
+    lamp.add(globe);
+
+    const light = new THREE.PointLight(0xffe4a0, 1.2, 10, 2);
+    light.position.y = 3.3;
+    lamp.add(light);
+
+    return lamp;
+  }
+
+  private createFlowerBed(): THREE.Group {
+    const group = new THREE.Group();
+
+    const rim = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.6, 1.6, 0.3, 16),
+      new THREE.MeshStandardMaterial({ color: 0xd4b08c, roughness: 0.75 }),
+    );
+    rim.position.y = 0.15;
+    rim.receiveShadow = true;
+    group.add(rim);
+
+    const soil = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.3, 1.3, 0.2, 16),
+      new THREE.MeshStandardMaterial({ color: 0x4d3725, roughness: 0.9 }),
+    );
+    soil.position.y = 0.3;
+    group.add(soil);
+
+    const flowerColors = [0xff8f8f, 0xffd75e, 0x8ce3ff, 0xc99bff];
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const radius = 0.9 + Math.random() * 0.2;
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22 + Math.random() * 0.08, 10, 10),
+        new THREE.MeshStandardMaterial({
+          color: flowerColors[i % flowerColors.length],
+          roughness: 0.4,
+        }),
+      );
+      flower.position.set(Math.cos(angle) * radius, 0.55 + Math.random() * 0.1, Math.sin(angle) * radius);
+      flower.castShadow = true;
+      group.add(flower);
+    }
+
+    return group;
+  }
+
   private createHighlightCircle(config: VillageBuildingConfig): THREE.Mesh {
     const highlightColor = config.highlightColor ?? 0xffd257;
     const geometry = new THREE.CircleGeometry(2.4, 40);
@@ -278,8 +410,8 @@ export class VillageScene3D {
     switch (config.variant) {
       case 'shop':
         return this.createShop(config);
-      case 'blacksmith':
-        return this.createBlacksmith(config);
+      case 'alchemy':
+        return this.createAlchemySanctum(config);
       case 'temple':
         return this.createTemple(config);
       case 'tavern':
@@ -365,47 +497,163 @@ export class VillageScene3D {
     return shop;
   }
 
-  private createBlacksmith(config: VillageBuildingConfig): THREE.Group {
-    const smith = this.createHouse(config);
+  private createAlchemySanctum(config: VillageBuildingConfig): THREE.Group {
+    const lab = new THREE.Group();
 
-    const chimney = new THREE.Mesh(
-      new THREE.BoxGeometry(0.7, 1.5, 0.7),
-      new THREE.MeshStandardMaterial({ color: 0x5c4b3b, roughness: 0.9 }),
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(3.8, 2.6, 3.8),
+      new THREE.MeshStandardMaterial({ color: config.color, roughness: 0.6, metalness: 0.08 }),
     );
-    chimney.position.set(-1.4, 3.2, -0.9);
-    smith.add(chimney);
+    base.position.y = 1.3;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    lab.add(base);
 
-    const smoke = new THREE.Mesh(
-      new THREE.SphereGeometry(0.35, 8, 8),
-      new THREE.MeshStandardMaterial({ color: 0xccc9c3, transparent: true, opacity: 0.65 }),
+    const trim = new THREE.Mesh(
+      new THREE.BoxGeometry(4.1, 0.25, 4.1),
+      new THREE.MeshStandardMaterial({ color: 0x6c58c9, roughness: 0.6 }),
     );
-    smoke.position.set(-1.4, 4.2, -0.9);
-    smith.add(smoke);
+    trim.position.y = 2.4;
+    trim.castShadow = true;
+    lab.add(trim);
 
-    const anvil = new THREE.Mesh(
-      new THREE.BoxGeometry(1.2, 0.35, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x35363a, roughness: 0.4, metalness: 0.8 }),
+    const roof = new THREE.Mesh(
+      new THREE.CylinderGeometry(0, 3.4, 2.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0x503d92, roughness: 0.7 }),
     );
-    anvil.position.set(1.7, 0.45, 1.2);
-    smith.add(anvil);
+    roof.position.y = 3.4;
+    roof.castShadow = true;
+    lab.add(roof);
 
-    const hammerHandle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6),
-      new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.7 }),
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2, 20, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0x7de8ff,
+        roughness: 0.08,
+        metalness: 0.2,
+        transparent: true,
+        opacity: 0.55,
+      }),
     );
-    hammerHandle.position.set(1.9, 0.95, 1.5);
-    hammerHandle.rotation.z = Math.PI / 4;
-    smith.add(hammerHandle);
+    dome.position.y = 4.5;
+    dome.castShadow = true;
+    lab.add(dome);
 
-    const hammerHead = new THREE.Mesh(
-      new THREE.BoxGeometry(0.35, 0.25, 0.25),
-      new THREE.MeshStandardMaterial({ color: 0x474a4f, roughness: 0.4, metalness: 0.9 }),
+    const focusCrystal = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.5),
+      new THREE.MeshStandardMaterial({
+        color: 0xb7fffb,
+        emissive: 0x4af7ff,
+        emissiveIntensity: 1.2,
+        roughness: 0.1,
+        metalness: 0.4,
+      }),
     );
-    hammerHead.position.set(2.1, 1.2, 1.7);
-    hammerHead.rotation.z = Math.PI / 4;
-    smith.add(hammerHead);
+    focusCrystal.position.y = 5.6;
+    lab.add(focusCrystal);
 
-    return smith;
+    const doorFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 2.0, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0xd7ccff, roughness: 0.4 }),
+    );
+    doorFrame.position.set(0, 1.0, 1.95);
+    lab.add(doorFrame);
+
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 1.8, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x3a2d4f, roughness: 0.6 }),
+    );
+    door.position.set(0, 0.95, 1.96);
+    lab.add(door);
+
+    const signBoard = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 0.55, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x2f214a, roughness: 0.6 }),
+    );
+    signBoard.position.set(0, 2.7, 1.9);
+    lab.add(signBoard);
+
+    const signIcon = this.createBillboardText(config.icon, 0.42);
+    signIcon.position.set(0, 2.7, 2.05);
+    lab.add(signIcon);
+
+    const cauldron = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.1, 0.9, 16, 1, false),
+      new THREE.MeshStandardMaterial({ color: 0x2d334a, roughness: 0.45, metalness: 0.35 }),
+    );
+    cauldron.position.set(1.7, 0.45, 1.2);
+    cauldron.castShadow = true;
+    lab.add(cauldron);
+
+    const cauldronRim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.08, 12, 24),
+      new THREE.MeshStandardMaterial({ color: 0x575f7d, roughness: 0.4 }),
+    );
+    cauldronRim.position.set(1.7, 0.9, 1.2);
+    cauldronRim.rotation.x = Math.PI / 2;
+    lab.add(cauldronRim);
+
+    const brew = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.75, 0.75, 0.22, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0x71ffe0,
+        emissive: 0x49ffd1,
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.9,
+      }),
+    );
+    brew.position.set(1.7, 0.95, 1.2);
+    lab.add(brew);
+
+    const bubbleMaterial = new THREE.MeshStandardMaterial({
+      color: 0xaefcff,
+      emissive: 0x6ef9ff,
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.8,
+    });
+    for (let i = 0; i < 3; i++) {
+      const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.18 + i * 0.05, 10, 10), bubbleMaterial);
+      bubble.position.set(1.7 + (i - 1) * 0.18, 1.1 + i * 0.15, 1.2 + (i % 2 === 0 ? 0.12 : -0.1));
+      lab.add(bubble);
+    }
+
+    const vialMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.6,
+      roughness: 0.1,
+      metalness: 0.3,
+    });
+    const contents = [0xff7ebd, 0x7bffb4, 0xfff37a];
+    for (let i = 0; i < 3; i++) {
+      const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.2, 12), vialMaterial);
+      vial.position.set(-1.8 + i * 0.8, 1.0, 1.5);
+      lab.add(vial);
+
+      const stopper = new THREE.Mesh(
+        new THREE.ConeGeometry(0.18, 0.25, 10),
+        new THREE.MeshStandardMaterial({ color: 0x4d3b2c, roughness: 0.7 }),
+      );
+      stopper.position.set(-1.8 + i * 0.8, 1.7, 1.5);
+      lab.add(stopper);
+
+      const liquid = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.16, 0.2, 0.65, 12),
+        new THREE.MeshStandardMaterial({
+          color: contents[i],
+          emissive: contents[i],
+          emissiveIntensity: 0.35,
+          transparent: true,
+          opacity: 0.9,
+        }),
+      );
+      liquid.position.set(-1.8 + i * 0.8, 0.75, 1.5);
+      lab.add(liquid);
+    }
+
+    return lab;
   }
 
   private createTemple(config: VillageBuildingConfig): THREE.Group {
