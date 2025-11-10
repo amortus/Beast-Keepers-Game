@@ -18,26 +18,21 @@ interface TreePlacement {
   position: Vec2;
   rotation?: number;
   scale?: number;
-  obstacleRadius?: number;
 }
 
 interface HayBalePlacement {
   position: Vec3;
   rotation?: number;
   scale?: number;
-  obstacleRadius?: number;
-  stacked?: boolean;
 }
 
 interface LampPlacement {
   position: Vec2;
-  obstacleRadius?: number;
 }
 
 interface RockPlacement {
   position: Vec3;
   scale?: number;
-  obstacleRadius?: number;
 }
 
 interface FlowerPlacement {
@@ -141,7 +136,7 @@ interface Obstacle {
   radius: number;
 }
 
-const WORLD_Y_OFFSET = -0.6;
+const WORLD_Y_OFFSET = -1.6;
 
 const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0, -6.8], obstacleRadius: 2.6 },
@@ -156,25 +151,25 @@ const DEFAULT_LAYOUT: RanchLayout = {
   walkableRadius: 7.3,
   grass: { count: 650, area: 16, seed: 1337 },
   trees: [
-    { position: [-4.6, -3.3], rotation: 0.4, scale: 1.05, obstacleRadius: 0.85 },
-    { position: [4.1, 1.4], rotation: -0.25, scale: 1.0, obstacleRadius: 0.85 },
-    { position: [-3.1, 3.2], rotation: 0.5, scale: 0.92, obstacleRadius: 0.8 },
-    { position: [3.5, -2.6], rotation: 0.18, scale: 0.9, obstacleRadius: 0.78 },
+    { position: [-4.6, -3.3], rotation: 0.4, scale: 1.05 },
+    { position: [4.1, 1.4], rotation: -0.25, scale: 1.0 },
+    { position: [-3.1, 3.2], rotation: 0.5, scale: 0.92 },
+    { position: [3.5, -2.6], rotation: 0.18, scale: 0.9 },
   ],
   hayBales: [
-    { position: [-2.4, 0.34, 1.6], rotation: 0.12, scale: 1.0, obstacleRadius: 0.6 },
-    { position: [-1.6, 0.34, 1.1], rotation: -0.3, scale: 1.0, obstacleRadius: 0.6 },
-    { position: [-1.6, 0.66, 1.1], rotation: -0.3, scale: 0.85, obstacleRadius: 0.55, stacked: true },
+    { position: [-2.4, 0.0, 1.6], rotation: 0.12, scale: 1.0 },
+    { position: [-1.6, 0.0, 1.1], rotation: -0.3, scale: 1.0 },
+    { position: [-1.6, 0.32, 1.1], rotation: -0.3, scale: 0.85 },
   ],
   lamps: [
-    { position: [-2.0, -1.8], obstacleRadius: 0.35 },
-    { position: [2.0, -1.8], obstacleRadius: 0.35 },
+    { position: [-2.0, -1.8] },
+    { position: [2.0, -1.8] },
   ],
   rocks: [
-    { position: [-1.9, 0.22, -3.6], scale: 1.05, obstacleRadius: 0.45 },
-    { position: [2.7, 0.22, -3.1], scale: 1.1, obstacleRadius: 0.45 },
-    { position: [-3.8, 0.22, 2.4], scale: 0.95, obstacleRadius: 0.4 },
-    { position: [4.4, 0.22, 1.3], scale: 0.9, obstacleRadius: 0.4 },
+    { position: [-1.9, 0.0, -3.6], scale: 1.05 },
+    { position: [2.7, 0.0, -3.1], scale: 1.1 },
+    { position: [-3.8, 0.0, 2.4], scale: 0.95 },
+    { position: [4.4, 0.0, 1.3], scale: 0.9 },
   ],
   flowers: [
     { position: [-1.2, 0, -1.2], colorIndex: 0 },
@@ -401,6 +396,7 @@ export class RanchScene3D {
     });
     const ground = new THREE.Mesh(groundGeometry, terrainMaterial);
     ground.rotation.x = -Math.PI / 2;
+    ground.position.y = WORLD_Y_OFFSET;
     ground.receiveShadow = true;
     this.addDecoration(ground);
 
@@ -412,7 +408,7 @@ export class RanchScene3D {
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
     border.rotation.x = -Math.PI / 2;
-    border.position.y = -0.03;
+    border.position.y = WORLD_Y_OFFSET - 0.02;
     border.receiveShadow = true;
     this.addDecoration(border);
 
@@ -424,7 +420,7 @@ export class RanchScene3D {
     });
     const center = new THREE.Mesh(centerGeometry, centerMaterial);
     center.rotation.x = -Math.PI / 2;
-    center.position.y = 0.015;
+    center.position.y = WORLD_Y_OFFSET + 0.01;
     center.receiveShadow = true;
     this.addDecoration(center);
 
@@ -444,7 +440,7 @@ export class RanchScene3D {
     const waterMesh = this.water.getMesh();
     waterMesh.position.set(
       this.layout.pond.position[0],
-      this.layout.pond.position[1] + 0.01,
+      this.layout.pond.position[1] + WORLD_Y_OFFSET,
       this.layout.pond.position[2],
     );
     pondGroup.add(waterMesh);
@@ -509,7 +505,7 @@ export class RanchScene3D {
         flowerGroup.add(petal);
       }
       
-      flowerGroup.position.set(...placement.position);
+      flowerGroup.position.set(placement.position[0], WORLD_Y_OFFSET, placement.position[2]);
       if (placement.rotation) {
         flowerGroup.rotation.y = placement.rotation;
       }
@@ -568,7 +564,7 @@ export class RanchScene3D {
     topBud.position.set(0.1, 3.45, -0.1);
     group.add(topBud);
 
-    group.position.set(placement.position[0], 0, placement.position[1]);
+    group.position.set(placement.position[0], WORLD_Y_OFFSET, placement.position[1]);
     group.rotation.y = placement.rotation ?? 0;
     group.scale.setScalar(placement.scale ?? 1);
 
@@ -595,7 +591,7 @@ export class RanchScene3D {
     for (const bale of this.layout.hayBales) {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.rotation.z = Math.PI / 2;
-      mesh.position.set(...bale.position);
+      mesh.position.set(bale.position[0], bale.position[1] + WORLD_Y_OFFSET, bale.position[2]);
       mesh.rotation.y = bale.rotation ?? 0;
       mesh.scale.setScalar(bale.scale ?? 1);
       mesh.castShadow = true;
@@ -618,7 +614,7 @@ export class RanchScene3D {
           metalness: 0.1,
         }),
       );
-      mesh.position.set(...rock.position);
+      mesh.position.set(rock.position[0], rock.position[1] + WORLD_Y_OFFSET, rock.position[2]);
       mesh.scale.setScalar(rock.scale ?? 1);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -673,7 +669,7 @@ export class RanchScene3D {
           metalness: 0.15,
         }),
       );
-      pole.position.set(lamp.position[0], 0.9, lamp.position[1]);
+      pole.position.set(lamp.position[0], WORLD_Y_OFFSET + 0.9, lamp.position[1]);
       pole.castShadow = true;
       pole.receiveShadow = true;
       group.add(pole);
@@ -686,7 +682,7 @@ export class RanchScene3D {
           metalness: 0.2,
         }),
       );
-      cap.position.set(lamp.position[0], 1.85, lamp.position[1]);
+      cap.position.set(lamp.position[0], WORLD_Y_OFFSET + 1.85, lamp.position[1]);
       cap.castShadow = true;
       group.add(cap);
 
@@ -702,11 +698,11 @@ export class RanchScene3D {
           opacity: 0.85,
         }),
       );
-      glass.position.set(lamp.position[0], 1.62, lamp.position[1]);
+      glass.position.set(lamp.position[0], WORLD_Y_OFFSET + 1.62, lamp.position[1]);
       group.add(glass);
 
       const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.7, 6, 2);
-      light.position.set(lamp.position[0], 1.62, lamp.position[1]);
+      light.position.set(lamp.position[0], WORLD_Y_OFFSET + 1.62, lamp.position[1]);
       light.castShadow = false;
       group.add(light);
     }
@@ -723,7 +719,7 @@ export class RanchScene3D {
         flatShading: true,
       });
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(mountain.position[0], mountain.height / 2 - 0.5, mountain.position[2]);
+      mesh.position.set(mountain.position[0], WORLD_Y_OFFSET + mountain.height / 2 - 0.5, mountain.position[2]);
       mesh.rotation.y = mountain.rotation ?? 0;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -759,7 +755,7 @@ export class RanchScene3D {
         cluster.add(sphere);
       }
 
-      cluster.position.set(...cloud.position);
+      cluster.position.set(cloud.position[0], cloud.position[1] + WORLD_Y_OFFSET, cloud.position[2]);
       const scale = cloud.scale ?? 1;
       cluster.scale.setScalar(scale);
       group.add(cluster);
@@ -898,7 +894,11 @@ export class RanchScene3D {
     porchStep.receiveShadow = true;
     houseGroup.add(porchStep);
     
-    houseGroup.position.set(...this.layout.house.position);
+    houseGroup.position.set(
+      this.layout.house.position[0],
+      this.layout.house.position[1] + WORLD_Y_OFFSET,
+      this.layout.house.position[2],
+    );
     this.addDecoration(houseGroup);
   }
 
