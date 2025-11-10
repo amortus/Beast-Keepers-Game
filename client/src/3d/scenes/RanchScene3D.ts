@@ -156,22 +156,15 @@ const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0, -6.8], obstacleRadius: 2.6 },
   pond: {
     position: [1.6, 0, 3.4],
-    outerRadius: 1.95,
-    innerRadius: 1.65,
-    collisionRadius: 1.8,
-    waterSize: 1.5,
+    outerRadius: 1.6,
+    innerRadius: 1.5,
+    collisionRadius: 1.7,
+    waterSize: 1.55,
   },
   fence: { radius: 9, postCount: 24 },
   walkableRadius: 7.3,
   grass: { count: 650, area: 16, seed: 1337 },
-  walkway: [
-    { position: [0.0, 0.04, -5.2], rotation: 0.04, scale: 0.96 },
-    { position: [0.18, 0.04, -4.3], rotation: -0.02, scale: 1.0 },
-    { position: [0.24, 0.04, -3.5], rotation: 0.08, scale: 0.99 },
-    { position: [0.12, 0.04, -2.6], rotation: -0.05, scale: 0.98 },
-    { position: [0.02, 0.04, -1.8], rotation: 0.01, scale: 0.96 },
-    { position: [0.0, 0.04, -1.0], rotation: -0.03, scale: 0.95 },
-  ],
+  walkway: [],
   trees: [
     { position: [-4.6, -3.3], rotation: 0.4, scale: 1.05, obstacleRadius: 0.85 },
     { position: [4.1, 1.4], rotation: -0.25, scale: 1.0, obstacleRadius: 0.85 },
@@ -184,8 +177,8 @@ const DEFAULT_LAYOUT: RanchLayout = {
     { position: [-1.6, 0.66, 1.1], rotation: -0.3, scale: 0.85, obstacleRadius: 0.55, stacked: true },
   ],
   lamps: [
-    { position: [-2.2, -2.1], obstacleRadius: 0.35 },
-    { position: [2.3, -2.0], obstacleRadius: 0.35 },
+    { position: [-2.0, -1.8], obstacleRadius: 0.35 },
+    { position: [2.0, -1.8], obstacleRadius: 0.35 },
   ],
   rocks: [
     { position: [-1.9, 0.22, -3.6], scale: 1.05, obstacleRadius: 0.45 },
@@ -194,12 +187,10 @@ const DEFAULT_LAYOUT: RanchLayout = {
     { position: [4.4, 0.22, 1.3], scale: 0.9, obstacleRadius: 0.4 },
   ],
   flowers: [
-    { position: [-2.8, 0, 1.6], colorIndex: 0 },
-    { position: [-1.6, 0, 2.3], colorIndex: 1 },
-    { position: [-3.0, 0, -0.8], colorIndex: 3 },
-    { position: [-0.6, 0, -2.2], colorIndex: 0 },
-    { position: [1.8, 0, -2.4], colorIndex: 2 },
-    { position: [2.4, 0, -1.4], colorIndex: 4 },
+    { position: [-1.2, 0, -1.2], colorIndex: 0 },
+    { position: [-1.8, 0, -0.4], colorIndex: 1 },
+    { position: [1.2, 0, -1.0], colorIndex: 2 },
+    { position: [1.8, 0, -2.0], colorIndex: 4 },
   ],
   mountains: [
     { position: [0, 0, -10.6], radius: 4.8, height: 8.8, colorIndex: 0 },
@@ -255,8 +246,8 @@ const DEFAULT_SKIN: RanchSkin = {
     lightColor: 0xffcfa8,
   },
   pond: {
-    rimColor: 0x6d6053,
-    innerRimColor: 0x3f5c8f,
+    rimColor: 0x4f7652,
+    innerRimColor: 0x4f7652,
     waterColor: 0x3cc4ff,
   },
   hayBaleColor: 0xe5ca74,
@@ -467,6 +458,10 @@ export class RanchScene3D {
   }
 
   private createStonePath() {
+    if (this.layout.walkway.length === 0) {
+      return;
+    }
+
     const stoneGeometry = new THREE.CylinderGeometry(0.45, 0.5, 0.08, 12);
     const stoneMaterial = new THREE.MeshStandardMaterial({
       color: this.skin.ground.walkwayStoneColor,
@@ -492,29 +487,20 @@ export class RanchScene3D {
     const pondGroup = new THREE.Group();
 
     const rim = new THREE.Mesh(
-      new THREE.CylinderGeometry(this.layout.pond.outerRadius, this.layout.pond.outerRadius + 0.1, 0.18, 28),
+      new THREE.CylinderGeometry(this.layout.pond.outerRadius, this.layout.pond.outerRadius, 0.05, 32),
       new THREE.MeshStandardMaterial({
         color: this.skin.pond.rimColor,
-        roughness: 0.75,
-        metalness: 0.05,
+        roughness: 0.7,
+        metalness: 0.04,
       }),
     );
-    rim.position.set(...this.layout.pond.position);
-    rim.castShadow = true;
+    rim.position.set(
+      this.layout.pond.position[0],
+      this.layout.pond.position[1] + 0.015,
+      this.layout.pond.position[2],
+    );
     rim.receiveShadow = true;
     pondGroup.add(rim);
-
-    const innerRim = new THREE.Mesh(
-      new THREE.CylinderGeometry(this.layout.pond.innerRadius, this.layout.pond.innerRadius + 0.05, 0.08, 28),
-      new THREE.MeshStandardMaterial({
-        color: this.skin.pond.innerRimColor,
-        roughness: 0.6,
-        metalness: 0.08,
-      }),
-    );
-    innerRim.position.set(this.layout.pond.position[0], this.layout.pond.position[1] + 0.03, this.layout.pond.position[2]);
-    innerRim.receiveShadow = true;
-    pondGroup.add(innerRim);
 
     this.water = new PS1Water({
       size: this.layout.pond.waterSize,
@@ -526,7 +512,7 @@ export class RanchScene3D {
     const waterMesh = this.water.getMesh();
     waterMesh.position.set(
       this.layout.pond.position[0],
-      this.layout.pond.position[1] + 0.04,
+      this.layout.pond.position[1] + 0.02,
       this.layout.pond.position[2],
     );
     pondGroup.add(waterMesh);
@@ -1219,7 +1205,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = 0;
+    this.baseYPosition = -0.1;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
