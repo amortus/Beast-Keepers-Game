@@ -255,8 +255,10 @@ export class RanchScene3D {
   private critters: RanchCritters | null = null;
 
   private gltfLoader = new GLTFLoader();
+  private gltfCache = new Map<string, THREE.Group>();
   private houseModel: THREE.Group | null = null;
   private treeModel: THREE.Group | null = null;
+  private mountainModels: THREE.Group[] = [];
 
   private obstacles: Obstacle[] = [];
   private boundaryRadius: number = DEFAULT_LAYOUT.walkableRadius;
@@ -380,56 +382,66 @@ export class RanchScene3D {
       onLoaded?: (group: THREE.Group) => void;
     },
   ) {
+    const spawnFromTemplate = (template: THREE.Group) => {
+      if (!this.decorationsRoot) {
+        return;
+      }
+
+      const wrapper = new THREE.Group();
+      if (options.name) {
+        wrapper.name = options.name;
+      }
+
+      const root = template.clone(true);
+      root.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      wrapper.add(root);
+
+      const sizeVector = new THREE.Vector3();
+      const centerVector = new THREE.Vector3();
+      const box = new THREE.Box3().setFromObject(root);
+      box.getSize(sizeVector);
+
+      if (options.targetHeight && sizeVector.y > 0) {
+        const scaleTarget =
+          (options.targetHeight * (options.scaleMultiplier ?? 1)) / sizeVector.y;
+        root.scale.setScalar(scaleTarget);
+        box.setFromObject(root);
+        box.getSize(sizeVector);
+      }
+
+      box.getCenter(centerVector);
+      root.position.sub(centerVector);
+
+      wrapper.position.set(
+        options.position[0],
+        options.position[1] + WORLD_Y_OFFSET + sizeVector.y / 2,
+        options.position[2],
+      );
+
+      if (options.rotationY) {
+        wrapper.rotation.y = options.rotationY;
+      }
+
+      this.addDecoration(wrapper);
+      options.onLoaded?.(wrapper);
+    };
+
+    if (this.gltfCache.has(url)) {
+      spawnFromTemplate(this.gltfCache.get(url)!);
+      return;
+    }
+
     this.gltfLoader.load(
       url,
       (gltf) => {
-        if (!this.decorationsRoot) {
-          return;
-        }
-
-        const wrapper = new THREE.Group();
-        if (options.name) {
-          wrapper.name = options.name;
-        }
-
-        const root = gltf.scene;
-        root.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-
-        wrapper.add(root);
-
-        const sizeVector = new THREE.Vector3();
-        const centerVector = new THREE.Vector3();
-        const box = new THREE.Box3().setFromObject(root);
-        box.getSize(sizeVector);
-
-        if (options.targetHeight && sizeVector.y > 0) {
-          const scaleTarget =
-            (options.targetHeight * (options.scaleMultiplier ?? 1)) / sizeVector.y;
-          root.scale.setScalar(scaleTarget);
-          box.setFromObject(root);
-          box.getSize(sizeVector);
-        }
-
-        box.getCenter(centerVector);
-        root.position.sub(centerVector);
-
-        wrapper.position.set(
-          options.position[0],
-          options.position[1] + WORLD_Y_OFFSET + sizeVector.y / 2,
-          options.position[2],
-        );
-
-        if (options.rotationY) {
-          wrapper.rotation.y = options.rotationY;
-        }
-
-        this.addDecoration(wrapper);
-        options.onLoaded?.(wrapper);
+        this.gltfCache.set(url, gltf.scene);
+        spawnFromTemplate(gltf.scene);
       },
       undefined,
       (error) => {
@@ -711,21 +723,20 @@ export class RanchScene3D {
   }
 
   private createMountains() {
-    const group = new THREE.Group();
+    this.mountainModels = [];
+
     for (const mountain of this.layout.mountains) {
-      const geometry = new THREE.ConeGeometry(mountain.radius, mountain.height, 12);
-      const material = new THREE.MeshLambertMaterial({
-        color: this.skin.mountainColors[mountain.colorIndex % this.skin.mountainColors.length],
-        flatShading: true,
+      this.loadStaticModel('/assets/3d/Ranch/Mountain/Mountain1.glb', {
+        position: [mountain.position[0], 0, mountain.position[2]],
+        rotationY: mountain.rotation ?? 0,
+        targetHeight: mountain.height,
+        scaleMultiplier: mountain.radius / 4,
+        name: 'ranch-mountain',
+        onLoaded: (group) => {
+          this.mountainModels.push(group);
+        },
       });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(mountain.position[0], WORLD_Y_OFFSET + mountain.height / 2 - 0.5, mountain.position[2]);
-      mesh.rotation.y = mountain.rotation ?? 0;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      group.add(mesh);
     }
-    this.addDecoration(group);
   }
 
   private createClouds() {
