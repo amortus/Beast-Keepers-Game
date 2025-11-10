@@ -136,10 +136,10 @@ interface Obstacle {
   radius: number;
 }
 
-const WORLD_Y_OFFSET = -1.6;
+const WORLD_Y_OFFSET = -0.8;
 
 const DEFAULT_LAYOUT: RanchLayout = {
-  house: { position: [0, 0, -6.8], obstacleRadius: 2.6 },
+  house: { position: [0, 0.2, -6.8], obstacleRadius: 2.6 },
   pond: {
     position: [1.6, 0, 3.4],
     outerRadius: 1.5,
