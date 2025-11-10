@@ -156,11 +156,7 @@ const DEFAULT_LAYOUT: RanchLayout = {
     { position: [-3.1, 3.2], rotation: 0.5, scale: 0.92 },
     { position: [3.5, -2.6], rotation: 0.18, scale: 0.9 },
   ],
-  hayBales: [
-    { position: [-2.4, 0.0, 1.6], rotation: 0.12, scale: 1.0 },
-    { position: [-1.6, 0.0, 1.1], rotation: -0.3, scale: 1.0 },
-    { position: [-1.6, 0.32, 1.1], rotation: -0.3, scale: 0.85 },
-  ],
+  hayBales: [],
   lamps: [
     { position: [-2.0, -1.8] },
     { position: [2.0, -1.8] },
@@ -411,7 +407,7 @@ export class RanchScene3D {
     border.receiveShadow = true;
     this.addDecoration(border);
 
-    const centerGeometry = new THREE.CircleGeometry(4.2, 48);
+    const centerGeometry = new THREE.CircleGeometry(5.6, 64);
     const centerMaterial = new THREE.MeshStandardMaterial({
       color: this.skin.ground.centerPatchColor,
       roughness: 0.78,
@@ -439,7 +435,7 @@ export class RanchScene3D {
     const waterMesh = this.water.getMesh();
     waterMesh.position.set(
       this.layout.pond.position[0],
-      this.layout.pond.position[1] + WORLD_Y_OFFSET,
+      this.layout.pond.position[1] + WORLD_Y_OFFSET + 0.05,
       this.layout.pond.position[2],
     );
     pondGroup.add(waterMesh);
@@ -459,6 +455,7 @@ export class RanchScene3D {
       lakeRadius: this.layout.pond.collisionRadius,
       seed: this.layout.grass.seed,
       offsetY: WORLD_Y_OFFSET,
+      maxRadius: this.layout.walkableRadius - 0.2,
     });
     this.addDecoration(this.grass.getMesh());
   }
@@ -584,6 +581,10 @@ export class RanchScene3D {
   }
 
   private createHayBales() {
+    if (this.layout.hayBales.length === 0) {
+      return;
+    }
+
     const group = new THREE.Group();
     const geometry = new THREE.CylinderGeometry(0.6, 0.6, 1.4, 12);
     const material = new THREE.MeshStandardMaterial({
@@ -877,10 +878,9 @@ export class RanchScene3D {
 
     push(this.layout.pond.position[0], this.layout.pond.position[2], this.layout.pond.collisionRadius);
     push(this.layout.house.position[0], this.layout.house.position[2], this.layout.house.obstacleRadius);
-    this.layout.trees.forEach((tree) => push(tree.position[0], tree.position[1], tree.obstacleRadius ?? 0.8));
-    this.layout.hayBales.forEach((bale) => push(bale.position[0], bale.position[2], bale.obstacleRadius ?? 0.6));
-    this.layout.lamps.forEach((lamp) => push(lamp.position[0], lamp.position[1], lamp.obstacleRadius ?? 0.35));
-    this.layout.rocks.forEach((rock) => push(rock.position[0], rock.position[2], rock.obstacleRadius ?? 0.4));
+    this.layout.trees.forEach((tree) => push(tree.position[0], tree.position[1], 0.85));
+    this.layout.lamps.forEach((lamp) => push(lamp.position[0], lamp.position[1], 0.35));
+    this.layout.rocks.forEach((rock) => push(rock.position[0], rock.position[2], 0.4));
 
     const fencePoints = 16;
     for (let i = 0; i < fencePoints; i++) {

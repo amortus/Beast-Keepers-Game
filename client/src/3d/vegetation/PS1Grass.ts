@@ -16,6 +16,7 @@ export interface PS1GrassOptions {
   lakeRadius?: number; // Raio do lago
   seed?: number; // Seed para layout determinístico
   offsetY?: number; // Offset vertical para alinhar ao cenário
+  maxRadius?: number; // Limitar distribuição em raio circular
 }
 
 const UINT32_MAX = 0xffffffff;
@@ -57,6 +58,7 @@ export class PS1Grass {
       lakeRadius = 0,
       seed,
       offsetY = 0,
+      maxRadius,
     } = options;
     
     this.windSpeed = windSpeed;
@@ -91,6 +93,14 @@ export class PS1Grass {
     while (successfulPlacements < count && attempts < maxAttempts) {
       const x = (random() - 0.5) * area;
       const z = (random() - 0.5) * area;
+
+      if (maxRadius) {
+        const distFromCenter = Math.sqrt(x * x + z * z);
+        if (distFromCenter > maxRadius) {
+          attempts++;
+          continue;
+        }
+      }
       
       // Verificar colisão com lago
       let isValidPosition = true;
