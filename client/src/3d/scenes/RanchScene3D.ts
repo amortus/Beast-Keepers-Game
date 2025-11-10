@@ -276,7 +276,7 @@ export class RanchScene3D {
   private setupRanchEnvironment() {
     const scene = this.threeScene.getScene();
     const camera = this.threeScene.getCamera() as THREE.PerspectiveCamera;
-
+    
     camera.fov = 46;
     camera.position.set(0, 5.2, 9.6);
     camera.lookAt(0, WORLD_Y_OFFSET + 1.0, 0);
@@ -629,7 +629,7 @@ export class RanchScene3D {
 
     const group = new THREE.Group();
     const geometry = new THREE.CylinderGeometry(0.6, 0.6, 1.4, 12);
-    const material = new THREE.MeshStandardMaterial({
+      const material = new THREE.MeshStandardMaterial({ 
       color: this.skin.hayBaleColor,
       roughness: 0.6,
       metalness: 0.1,
@@ -705,7 +705,7 @@ export class RanchScene3D {
           emissive: this.skin.lamp.emissiveColor,
           emissiveIntensity: 0.8,
           roughness: 0.2,
-      metalness: 0.1,
+          metalness: 0.1,
           transparent: true,
           opacity: 0.85,
         }),
@@ -726,12 +726,12 @@ export class RanchScene3D {
     this.mountainModels = [];
 
     for (const mountain of this.layout.mountains) {
-      this.loadStaticModel('/assets/3d/Ranch/Mountain/Mountain1.glb', {
-        position: [mountain.position[0], 0, mountain.position[2]],
-        rotationY: mountain.rotation ?? 0,
-        targetHeight: mountain.height,
-        scaleMultiplier: mountain.radius / 4,
-        name: 'ranch-mountain',
+    this.loadStaticModel('/assets/3d/Ranch/Mountain/Mountain1.glb', {
+      position: [mountain.position[0], 0, mountain.position[2]],
+      rotationY: mountain.rotation ?? 0,
+      targetHeight: mountain.height,
+      scaleMultiplier: (mountain.radius + 1) / 4,
+      name: 'ranch-mountain',
         onLoaded: (group) => {
           this.mountainModels.push(group);
         },
