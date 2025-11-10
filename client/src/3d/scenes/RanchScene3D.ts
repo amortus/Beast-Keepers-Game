@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
@@ -30,6 +31,9 @@ export class RanchScene3D {
   private mountains: THREE.Group | null = null; // Colinas distantes
   private clouds: THREE.Group | null = null; // Nuvens
   private critters: RanchCritters | null = null; // Bichinhos aleatórios
+  private environmentGroup: THREE.Group | null = null;
+  private environmentLoader = new GLTFLoader();
+  private usingLegacyEnvironment = false;
   
   // Sistema de movimento
   private obstacles: Obstacle[] = [];
@@ -40,67 +44,139 @@ export class RanchScene3D {
 
   constructor(canvas: HTMLCanvasElement) {
     this.threeScene = new ThreeScene(canvas);
-    this.setupRanchEnvironment();
+    void this.setupRanchEnvironment();
   }
 
-  private setupRanchEnvironment() {
+  private async setupRanchEnvironment(): Promise<void> {
     const scene = this.threeScene.getScene();
     const camera = this.threeScene.getCamera() as THREE.PerspectiveCamera;
     
-    // Câmera estilo Pokémon (ângulo isométrico levemente alto)
-    camera.fov = 50;
-    camera.position.set(0, 5, 8);
-    camera.lookAt(0, 0, 0);
+    camera.fov = 47;
+    camera.position.set(0, 5.8, 9.6);
+    camera.lookAt(0, 1.3, 0);
     camera.updateProjectionMatrix();
     
-    // Skybox simples - céu azul claro vibrante
-    scene.background = new THREE.Color(0x87ceeb); // Azul céu brilhante
-    scene.fog = new THREE.Fog(0xa0d8ef, 15, 35); // Fog leve e claro
+    scene.background = new THREE.Color(0x101828);
+    scene.fog = new THREE.Fog(0x101828, 25, 65);
+
+    const environmentLoaded = await this.loadEnvironmentModel();
+
+    if (!environmentLoaded) {
+      console.warn('[RanchScene3D] Falha ao carregar o cenário GLB. Usando fallback procedural.');
+      this.usingLegacyEnvironment = true;
+      this.createLegacyEnvironment();
+    } else {
+      this.usingLegacyEnvironment = false;
+    }
     
-    // Colinas VISÍVEIS no horizonte (mais próximas)
-    this.createVisibleHills();
-    
-    // Nuvens VISÍVEIS no céu (mais próximas e maiores)
-    this.createVisibleClouds();
-    
-    // Chão plano - verde natural (menos saturado)
-    this.createPokemonGround();
-    
-    // Lago/bebedouro ANIMADO com ondas
-    this.createAnimatedLake();
-    
-    // Grama blade real (PS1Grass)
-    this.createRealGrass();
-    
-    // Flores elaboradas com pétalas
-    this.createElaborateFlowers();
-    
-    // Árvores cartoon arredondadas (longe do lago)
-    this.createPokemonTree(-4, 0, -3); // Árvore esquerda-trás
-    this.createPokemonTree(4, 0, 1); // Árvore direita - MOVIDA MAIS PARA BAIXO (Z: -3 → 1)
-    
-    // Pedras decorativas
-    this.createRocks();
-    
-    // Casa 3D melhorada
-    this.createImprovedHouse();
-    
-    // Cerca de fundo separando rancho das terras selvagens
-    this.createBackgroundFence();
-    
-    // Food bowl colorido
-    const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 8);
-    const foodBowl = new THREE.Mesh(bowlGeometry, new THREE.MeshToonMaterial({ 
-      color: 0xff6b6b, // Vermelho vibrante
-    }));
-    foodBowl.position.set(-3, 0.15, 3);
-    scene.add(foodBowl);
-    
-    // Definir obstáculos para pathfinding
     this.setupObstacles();
     
     // Iniciar sistema de bichinhos aleatórios
     this.critters = new RanchCritters(scene);
+  }
+
+  private async loadEnvironmentModel(): Promise<boolean> {
+    try {
+      this.disposeEnvironment();
+
+      const gltf = await this.environmentLoader.loadAsync('/assets/3d/Ranch/Ranch_1109231823_texture.glb');
+      if (!gltf.scene) {
+        console.warn('[RanchScene3D] GLB do rancho não possui cena. Fallback será utilizado.');
+        return false;
+      }
+
+      this.prepareEnvironmentScene(gltf.scene);
+      this.environmentGroup = gltf.scene;
+      this.threeScene.addObject(gltf.scene);
+      return true;
+    } catch (error) {
+      console.error('[RanchScene3D] Erro ao carregar cenário GLB do rancho:', error);
+      return false;
+    }
+  }
+
+  private prepareEnvironmentScene(root: THREE.Object3D) {
+    root.traverse((child) => {
+      if (child instanceof THREE.Light || child instanceof THREE.Camera) {
+        child.parent?.remove(child);
+        return;
+      }
+
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          if (!material) {
+            return;
+          }
+
+          if ('map' in material && material.map) {
+            material.map.encoding = THREE.sRGBEncoding;
+          }
+          if ('emissiveMap' in material && material.emissiveMap) {
+            material.emissiveMap.encoding = THREE.sRGBEncoding;
+          }
+          if ('metalnessMap' in material && material.metalnessMap) {
+            material.metalnessMap.encoding = THREE.sRGBEncoding;
+          }
+
+          material.needsUpdate = true;
+        });
+      }
+    });
+
+    root.updateMatrixWorld(true);
+    let bounds = new THREE.Box3().setFromObject(root);
+    if (!bounds.isEmpty()) {
+      const size = bounds.getSize(new THREE.Vector3());
+      const maxExtent = Math.max(size.x, size.z);
+      if (maxExtent > 0) {
+        const targetExtent = 18;
+        const scale = targetExtent / maxExtent;
+        root.scale.setScalar(scale);
+        root.updateMatrixWorld(true);
+        bounds = new THREE.Box3().setFromObject(root);
+      }
+
+      const center = bounds.getCenter(new THREE.Vector3());
+      const minY = bounds.min.y;
+
+      root.position.x -= center.x;
+      root.position.z -= center.z;
+      root.position.y -= minY;
+    }
+  }
+
+  private createLegacyEnvironment() {
+    const scene = this.threeScene.getScene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0xa0d8ef, 15, 35);
+
+    this.createVisibleHills();
+    this.createVisibleClouds();
+    this.createPokemonGround();
+    this.createAnimatedLake();
+    this.createRealGrass();
+    this.createElaborateFlowers();
+    this.createPokemonTree(-4, 0, -3);
+    this.createPokemonTree(4, 0, 1);
+    this.createRocks();
+    this.createImprovedHouse();
+    this.createBackgroundFence();
+
+    const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 12);
+    const bowlMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff6b6b,
+      roughness: 0.55,
+      metalness: 0.1,
+    });
+    const foodBowl = new THREE.Mesh(bowlGeometry, bowlMaterial);
+    foodBowl.castShadow = true;
+    foodBowl.receiveShadow = true;
+    foodBowl.position.set(-3, 0.15, 3);
+    scene.add(foodBowl);
   }
   
   /**
@@ -1008,6 +1084,42 @@ export class RanchScene3D {
     }
   }
 
+  private disposeEnvironment() {
+    if (!this.environmentGroup) {
+      return;
+    }
+
+    this.threeScene.removeObject(this.environmentGroup);
+    this.environmentGroup.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          if (!material) {
+            return;
+          }
+
+          if ('map' in material && material.map) {
+            material.map.dispose();
+          }
+          if ('metalnessMap' in material && material.metalnessMap) {
+            material.metalnessMap.dispose();
+          }
+          if ('roughnessMap' in material && material.roughnessMap) {
+            material.roughnessMap.dispose();
+          }
+          if ('normalMap' in material && material.normalMap) {
+            material.normalMap.dispose();
+          }
+
+          material.dispose();
+        });
+      }
+    });
+
+    this.environmentGroup = null;
+  }
+
   private fitBeastToRanch(group: THREE.Group): boolean {
     const box = new THREE.Box3().setFromObject(group);
     if (box.isEmpty()) {
@@ -1045,6 +1157,9 @@ export class RanchScene3D {
   public dispose() {
     // Dispose beast model
     this.beastModel?.dispose();
+    
+    // Dispose ambiente GLB
+    this.disposeEnvironment();
     
     // Dispose grass
     this.grass?.dispose();
