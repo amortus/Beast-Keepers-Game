@@ -1088,7 +1088,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = WORLD_Y_OFFSET - 0.3;
+    this.baseYPosition = WORLD_Y_OFFSET - 0.5;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
