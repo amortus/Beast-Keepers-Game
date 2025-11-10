@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
@@ -150,12 +151,7 @@ const DEFAULT_LAYOUT: RanchLayout = {
   fence: { radius: 9, postCount: 24 },
   walkableRadius: 7.3,
   grass: { count: 650, area: 16, seed: 1337 },
-  trees: [
-    { position: [-4.6, -3.3], rotation: 0.4, scale: 1.05 },
-    { position: [4.1, 1.4], rotation: -0.25, scale: 1.0 },
-    { position: [-3.1, 3.2], rotation: 0.5, scale: 0.92 },
-    { position: [3.5, -2.6], rotation: 0.18, scale: 0.9 },
-  ],
+  trees: [{ position: [-4.2, -3.4], rotation: 0.32, scale: 1.0 }],
   hayBales: [],
   lamps: [
     { position: [-2.0, -1.8] },
@@ -258,6 +254,10 @@ export class RanchScene3D {
   private water: PS1Water | null = null;
   private critters: RanchCritters | null = null;
 
+  private gltfLoader = new GLTFLoader();
+  private houseModel: THREE.Group | null = null;
+  private treeModel: THREE.Group | null = null;
+
   private obstacles: Obstacle[] = [];
   private boundaryRadius: number = DEFAULT_LAYOUT.walkableRadius;
 
@@ -343,6 +343,9 @@ export class RanchScene3D {
       this.threeScene.removeObject(this.decorationsRoot);
       this.decorationsRoot = null;
     }
+
+    this.houseModel = null;
+    this.treeModel = null;
   }
 
   private disposeObject(object: THREE.Object3D) {
@@ -364,6 +367,75 @@ export class RanchScene3D {
       throw new Error('Decoration root not initialised');
     }
     this.decorationsRoot.add(object);
+  }
+
+  private loadStaticModel(
+    url: string,
+    options: {
+      position: Vec3;
+      rotationY?: number;
+      targetHeight?: number;
+      scaleMultiplier?: number;
+      name?: string;
+      onLoaded?: (group: THREE.Group) => void;
+    },
+  ) {
+    this.gltfLoader.load(
+      url,
+      (gltf) => {
+        if (!this.decorationsRoot) {
+          return;
+        }
+
+        const wrapper = new THREE.Group();
+        if (options.name) {
+          wrapper.name = options.name;
+        }
+
+        const root = gltf.scene;
+        root.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        wrapper.add(root);
+
+        const sizeVector = new THREE.Vector3();
+        const centerVector = new THREE.Vector3();
+        const box = new THREE.Box3().setFromObject(root);
+        box.getSize(sizeVector);
+
+        if (options.targetHeight && sizeVector.y > 0) {
+          const scaleTarget =
+            (options.targetHeight * (options.scaleMultiplier ?? 1)) / sizeVector.y;
+          root.scale.setScalar(scaleTarget);
+          box.setFromObject(root);
+          box.getSize(sizeVector);
+        }
+
+        box.getCenter(centerVector);
+        root.position.sub(centerVector);
+
+        wrapper.position.set(
+          options.position[0],
+          options.position[1] + WORLD_Y_OFFSET + sizeVector.y / 2,
+          options.position[2],
+        );
+
+        if (options.rotationY) {
+          wrapper.rotation.y = options.rotationY;
+        }
+
+        this.addDecoration(wrapper);
+        options.onLoaded?.(wrapper);
+      },
+      undefined,
+      (error) => {
+        console.error(`[RanchScene3D] Failed to load model '${url}'`, error);
+      },
+    );
   }
 
   private createGround() {
@@ -518,66 +590,24 @@ export class RanchScene3D {
     }
   }
 
-  private buildTree(placement: TreePlacement): THREE.Group {
-    const group = new THREE.Group();
-
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.3, 0.38, 2.0, 12, 1, false),
-      new THREE.MeshStandardMaterial({
-        color: this.skin.tree.trunkColor,
-      roughness: 0.78,
-      metalness: 0.08,
-      }),
-    );
-    trunk.castShadow = true;
-    trunk.receiveShadow = true;
-    trunk.position.y = 1.0;
-    group.add(trunk);
-
-    const foliageMaterial = new THREE.MeshStandardMaterial({ 
-      color: this.skin.tree.foliagePrimaryColor,
-      roughness: 0.55,
-      metalness: 0.05,
-    });
-    const foliageMaterialSecondary = new THREE.MeshStandardMaterial({
-      color: this.skin.tree.foliageSecondaryColor,
-      roughness: 0.55,
-      metalness: 0.05,
-    });
-    
-    const foliage1 = new THREE.Mesh(new THREE.SphereGeometry(1.05, 20, 16), foliageMaterial);
-    foliage1.castShadow = true;
-    foliage1.position.y = 2.6;
-    group.add(foliage1);
-    
-    const foliage2 = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 14), foliageMaterialSecondary);
-    foliage2.castShadow = true;
-    foliage2.position.set(-0.45, 3.0, 0.15);
-    group.add(foliage2);
-    
-    const foliage3 = new THREE.Mesh(new THREE.SphereGeometry(0.7, 18, 14), foliageMaterial);
-    foliage3.castShadow = true;
-    foliage3.position.set(0.55, 2.85, -0.25);
-    group.add(foliage3);
-
-    const topBud = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), foliageMaterialSecondary);
-    topBud.castShadow = true;
-    topBud.position.set(0.1, 3.45, -0.1);
-    group.add(topBud);
-
-    group.position.set(placement.position[0], WORLD_Y_OFFSET, placement.position[1]);
-    group.rotation.y = placement.rotation ?? 0;
-    group.scale.setScalar(placement.scale ?? 1);
-
-    return group;
-  }
-
   private createTrees() {
-    const group = new THREE.Group();
-    for (const tree of this.layout.trees) {
-      group.add(this.buildTree(tree));
+    this.treeModel = null;
+
+    if (this.layout.trees.length === 0) {
+      return;
     }
-    this.addDecoration(group);
+
+    const tree = this.layout.trees[0];
+    this.loadStaticModel('/assets/3d/Ranch/Tree/Tree1.glb', {
+      position: [tree.position[0], 0, tree.position[1]],
+      rotationY: tree.rotation ?? 0,
+      targetHeight: 6,
+      scaleMultiplier: tree.scale ?? 1,
+      name: 'ranch-tree',
+      onLoaded: (group) => {
+        this.treeModel = group;
+      },
+    });
   }
 
   private createHayBales() {
@@ -734,142 +764,17 @@ export class RanchScene3D {
   }
 
   private createHouse() {
-    const houseGroup = new THREE.Group();
-    
-    const foundation = new THREE.Mesh(
-      new THREE.BoxGeometry(4.4, 0.35, 3.8),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.foundationColor, roughness: 0.5, metalness: 0.1 }),
-    );
-    foundation.castShadow = true;
-    foundation.receiveShadow = true;
-    foundation.position.y = 0.18;
-    houseGroup.add(foundation);
-    
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(3.8, 2.4, 3.2),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.bodyColor, roughness: 0.55, metalness: 0.12 }),
-    );
-    body.castShadow = true;
-    body.receiveShadow = true;
-    body.position.y = 1.6;
-    houseGroup.add(body);
+    this.houseModel = null;
 
-    const beamMaterial = new THREE.MeshStandardMaterial({ color: this.skin.house.trimColor, roughness: 0.65, metalness: 0.05 });
-    const beamGeometry = new THREE.BoxGeometry(0.18, 2.4, 0.2);
-    const beamLeft = new THREE.Mesh(beamGeometry, beamMaterial);
-    beamLeft.castShadow = true;
-    beamLeft.receiveShadow = true;
-    beamLeft.position.set(-1.9, 1.6, 1.55);
-    houseGroup.add(beamLeft);
-    const beamRight = beamLeft.clone();
-    beamRight.position.x = 1.9;
-    houseGroup.add(beamRight);
-    
-    const roofGroup = new THREE.Group();
-    const roofFrontGeometry = new THREE.BoxGeometry(4.6, 0.18, 2.2);
-    const roofMaterial = new THREE.MeshStandardMaterial({ color: this.skin.house.roofColor, roughness: 0.48, metalness: 0.08 });
-    const roofFront = new THREE.Mesh(roofFrontGeometry, roofMaterial);
-    roofFront.position.set(0, 0, 0.7);
-    roofFront.rotation.x = -Math.PI / 6;
-    roofFront.castShadow = true;
-    roofGroup.add(roofFront);
-    const roofBack = roofFront.clone();
-    roofBack.position.z = -0.7;
-    roofBack.rotation.x = Math.PI / 6;
-    roofGroup.add(roofBack);
-    const ridge = new THREE.Mesh(
-      new THREE.BoxGeometry(4.7, 0.24, 0.35),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.ridgeColor, roughness: 0.45 }),
-    );
-    ridge.position.y = 0.28;
-    ridge.castShadow = true;
-    roofGroup.add(ridge);
-    roofGroup.position.y = 3.0;
-    houseGroup.add(roofGroup);
-    
-    const doorFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(1.0, 1.5, 0.16),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.trimColor, roughness: 0.6, metalness: 0.1 }),
-    );
-    doorFrame.castShadow = true;
-    doorFrame.position.set(0, 0.85, 1.63);
-    houseGroup.add(doorFrame);
-    
-    const door = new THREE.Mesh(
-      new THREE.BoxGeometry(0.82, 1.32, 0.12),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.doorColor, roughness: 0.5, metalness: 0.2 }),
-    );
-    door.castShadow = true;
-    door.position.set(0, 0.8, 1.69);
-    houseGroup.add(door);
-    
-    const knob = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 16, 16),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.knobColor, roughness: 0.25, metalness: 0.8 }),
-    );
-    knob.position.set(0.34, 0.82, 1.76);
-    knob.castShadow = true;
-    houseGroup.add(knob);
-    
-    const createWindow = (x: number, y: number, z: number) => {
-      const frame = new THREE.Mesh(
-        new THREE.BoxGeometry(0.58, 0.55, 0.14),
-        new THREE.MeshStandardMaterial({ color: this.skin.house.windowFrameColor, roughness: 0.35, metalness: 0.05 }),
-      );
-      frame.position.set(x, y, z);
-      frame.castShadow = true;
-      houseGroup.add(frame);
-      
-      const glass = new THREE.Mesh(
-        new THREE.BoxGeometry(0.44, 0.42, 0.09),
-        new THREE.MeshStandardMaterial({
-          color: this.skin.house.windowGlassColor,
-        roughness: 0.1,
-          metalness: 0,
-        transparent: true,
-        opacity: 0.75,
-        emissive: 0x26405f,
-        emissiveIntensity: 0.12,
-        }),
-      );
-      glass.position.set(x, y, z + 0.03);
-      houseGroup.add(glass);
-    };
-    
-    createWindow(-1.15, 1.45, 1.58);
-    createWindow(1.15, 1.45, 1.58);
-    
-    const chimney = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 1.3, 0.45),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.chimneyColor, roughness: 0.55, metalness: 0.08 }),
-    );
-    chimney.castShadow = true;
-    chimney.position.set(-1.35, 3.6, -0.85);
-    houseGroup.add(chimney);
-    
-    const chimneyTop = new THREE.Mesh(
-      new THREE.BoxGeometry(0.55, 0.24, 0.55),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.chimneyTopColor, roughness: 0.5 }),
-    );
-    chimneyTop.position.set(-1.35, 4.26, -0.85);
-    chimneyTop.castShadow = true;
-    houseGroup.add(chimneyTop);
-
-    const porchStep = new THREE.Mesh(
-      new THREE.BoxGeometry(1.6, 0.2, 0.9),
-      new THREE.MeshStandardMaterial({ color: this.skin.house.porchColor, roughness: 0.62, metalness: 0.1 }),
-    );
-    porchStep.position.set(0, 0.1, 2.05);
-    porchStep.castShadow = true;
-    porchStep.receiveShadow = true;
-    houseGroup.add(porchStep);
-    
-    houseGroup.position.set(
-      this.layout.house.position[0],
-      this.layout.house.position[1] + WORLD_Y_OFFSET,
-      this.layout.house.position[2],
-    );
-    this.addDecoration(houseGroup);
+    this.loadStaticModel('/assets/3d/Ranch/House/House1.glb', {
+      position: this.layout.house.position,
+      rotationY: 0,
+      targetHeight: 5,
+      name: 'ranch-house',
+      onLoaded: (group) => {
+        this.houseModel = group;
+      },
+    });
   }
 
   private setupObstacles() {
@@ -878,7 +783,7 @@ export class RanchScene3D {
 
     push(this.layout.pond.position[0], this.layout.pond.position[2], this.layout.pond.collisionRadius);
     push(this.layout.house.position[0], this.layout.house.position[2], this.layout.house.obstacleRadius);
-    this.layout.trees.forEach((tree) => push(tree.position[0], tree.position[1], 0.85));
+    this.layout.trees.forEach((tree) => push(tree.position[0], tree.position[1], 1.25));
     this.layout.lamps.forEach((lamp) => push(lamp.position[0], lamp.position[1], 0.35));
     this.layout.rocks.forEach((rock) => push(rock.position[0], rock.position[2], 0.4));
 
