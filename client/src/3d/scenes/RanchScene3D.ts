@@ -170,13 +170,13 @@ const DEFAULT_LAYOUT: RanchLayout = {
     { position: [1.8, 0, -2.0], colorIndex: 4 },
   ],
   mountains: [
-    { position: [0, 0, -10.6], radius: 4.8, height: 8.8, colorIndex: 0 },
-    { position: [6.8, 0, -8.4], radius: 4.2, height: 7.3, colorIndex: 1, rotation: 0.4 },
-    { position: [-6.6, 0, -8.2], radius: 4.1, height: 7.6, colorIndex: 2, rotation: -0.5 },
-    { position: [9.4, 0, -3.6], radius: 3.9, height: 6.8, colorIndex: 1 },
-    { position: [-9.2, 0, -3.8], radius: 3.9, height: 6.6, colorIndex: 3 },
-    { position: [7.2, 0, 0.8], radius: 3.5, height: 5.4, colorIndex: 0 },
-    { position: [-7.4, 0, 0.6], radius: 3.4, height: 5.3, colorIndex: 2 },
+    { position: [0, 0, -13.6], radius: 4.8, height: 8.8, colorIndex: 0 },
+    { position: [6.8, 0, -11.4], radius: 4.2, height: 7.3, colorIndex: 1, rotation: 0.4 },
+    { position: [-6.6, 0, -11.2], radius: 4.1, height: 7.6, colorIndex: 2, rotation: -0.5 },
+    { position: [9.4, 0, -6.6], radius: 3.9, height: 6.8, colorIndex: 1 },
+    { position: [-9.2, 0, -6.8], radius: 3.9, height: 6.6, colorIndex: 3 },
+    { position: [7.2, 0, -2.2], radius: 3.5, height: 5.4, colorIndex: 0 },
+    { position: [-7.4, 0, -2.4], radius: 3.4, height: 5.3, colorIndex: 2 },
   ],
   clouds: [
     { position: [-5.8, 6.2, -5.6], scale: 1.2 },
@@ -730,7 +730,7 @@ export class RanchScene3D {
       position: [mountain.position[0], 0, mountain.position[2]],
       rotationY: mountain.rotation ?? 0,
       targetHeight: mountain.height,
-      scaleMultiplier: (mountain.radius + 1) / 4,
+      scaleMultiplier: mountain.radius / 4,
       name: 'ranch-mountain',
         onLoaded: (group) => {
           this.mountainModels.push(group);
