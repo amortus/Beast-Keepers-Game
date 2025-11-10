@@ -41,13 +41,8 @@ export class ThreeScene {
     // ✅ Usa tamanho REAL do CSS, não o lógico do canvas
     const rect = canvas.getBoundingClientRect();
     this.renderer.setSize(rect.width, rect.height, false); // false = não atualiza style
-    const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    this.renderer.setPixelRatio(pixelRatio);
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setPixelRatio(1.0);     // Resolução normal (PS1 smooth, não Minecraft)
+    this.renderer.shadowMap.enabled = false; // Disable shadows for performance
     
     // Add basic lighting
     this.setupLighting();
@@ -56,24 +51,20 @@ export class ThreeScene {
   private setupLighting() {
     // Lighting estilo Pokémon (clara, vibrante e alegre)
     
-    const ambient = new THREE.HemisphereLight(0xffffff, 0x3d2f1d, 0.65);
+    // Ambient light (iluminação base muito clara)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambient);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
-    keyLight.position.set(8, 12, 6);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.camera.near = 1;
-    keyLight.shadow.camera.far = 60;
-    keyLight.shadow.camera.left = -20;
-    keyLight.shadow.camera.right = 20;
-    keyLight.shadow.camera.top = 20;
-    keyLight.shadow.camera.bottom = -20;
-    this.scene.add(keyLight);
+    // Main directional light (sol vibrante)
+    const directional = new THREE.DirectionalLight(0xffffff, 1.0);
+    directional.position.set(5, 10, 5);
+    directional.castShadow = false;
+    this.scene.add(directional);
 
-    const rimLight = new THREE.DirectionalLight(0xfff1c4, 0.35);
-    rimLight.position.set(-6, 6, -4);
-    this.scene.add(rimLight);
+    // Fill light (azul céu suave)
+    const fill = new THREE.DirectionalLight(0xbbdefb, 0.4);
+    fill.position.set(-5, 5, -5);
+    this.scene.add(fill);
   }
 
   public addObject(object: THREE.Object3D) {
