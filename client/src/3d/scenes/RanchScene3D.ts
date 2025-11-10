@@ -136,7 +136,7 @@ interface Obstacle {
   radius: number;
 }
 
-const WORLD_Y_OFFSET = -1.0;
+const WORLD_Y_OFFSET = -1.2;
 
 const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0.2, -6.8], obstacleRadius: 2.6 },
@@ -1088,7 +1088,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = WORLD_Y_OFFSET - 0.1;
+    this.baseYPosition = WORLD_Y_OFFSET - 0.05;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
