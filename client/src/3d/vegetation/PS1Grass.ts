@@ -14,6 +14,26 @@ export interface PS1GrassOptions {
   windStrength?: number;
   lakePosition?: { x: number; z: number }; // Posição do lago para evitar colisão
   lakeRadius?: number; // Raio do lago
+  seed?: number; // Seed para layout determinístico
+}
+
+const UINT32_MAX = 0xffffffff;
+
+function createRandomGenerator(seed?: number): () => number {
+  if (seed === undefined) {
+    return Math.random;
+  }
+
+  let state = seed >>> 0;
+
+  return () => {
+    // Mulberry32
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), 1 | t);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / (UINT32_MAX + 1);
+  };
 }
 
 export class PS1Grass {
@@ -34,11 +54,14 @@ export class PS1Grass {
       windStrength = 0.02,
       lakePosition = null,
       lakeRadius = 0,
+      seed,
     } = options;
     
     this.windSpeed = windSpeed;
     this.windStrength = windStrength;
     this.dummy = new THREE.Object3D();
+
+    const random = createRandomGenerator(seed);
     
     // Simple grass blade geometry (flat triangle)
     const geometry = new THREE.PlaneGeometry(0.08, height, 1, 2);
@@ -63,8 +86,8 @@ export class PS1Grass {
     const maxAttempts = count * 10; // Tentar até 10x mais para encontrar posições válidas
     
     while (successfulPlacements < count && attempts < maxAttempts) {
-      const x = (Math.random() - 0.5) * area;
-      const z = (Math.random() - 0.5) * area;
+      const x = (random() - 0.5) * area;
+      const z = (random() - 0.5) * area;
       
       // Verificar colisão com lago
       let isValidPosition = true;
@@ -92,8 +115,8 @@ export class PS1Grass {
       this.positions[successfulPlacements * 3 + 2] = z;
       
       this.dummy.position.set(x, 0, z);
-      this.dummy.rotation.y = Math.random() * Math.PI * 2;
-      this.dummy.scale.setScalar(0.7 + Math.random() * 0.6);
+      this.dummy.rotation.y = random() * Math.PI * 2;
+      this.dummy.scale.setScalar(0.7 + random() * 0.6);
       
       this.dummy.updateMatrix();
       this.instancedMesh.setMatrixAt(successfulPlacements, this.dummy.matrix);
