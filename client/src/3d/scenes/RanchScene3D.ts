@@ -141,6 +141,8 @@ interface Obstacle {
   radius: number;
 }
 
+const WORLD_Y_OFFSET = -0.6;
+
 const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0, -6.8], obstacleRadius: 2.6 },
   pond: {
@@ -253,7 +255,7 @@ export class RanchScene3D {
   private beastModel: BeastModel | null = null;
   private beastGroup: THREE.Group | null = null;
   private idleAnimation: (() => void) | null = null;
-  private baseYPosition = 0;
+  private baseYPosition = WORLD_Y_OFFSET;
   private activeRigAnimation: 'idle' | 'walk' | null = null;
   private needsFit = false;
 
@@ -303,6 +305,7 @@ export class RanchScene3D {
     this.clearDecorations();
 
     this.decorationsRoot = new THREE.Group();
+    this.decorationsRoot.position.y = WORLD_Y_OFFSET;
     this.threeScene.addObject(this.decorationsRoot);
 
     this.createGround();
@@ -960,7 +963,7 @@ export class RanchScene3D {
           x = (Math.random() - 0.5) * 12;
           z = (Math.random() - 0.5) * 12;
         }
-      } else {
+    } else {
         x = (Math.random() - 0.5) * 12;
         z = (Math.random() - 0.5) * 12;
       }
@@ -1116,7 +1119,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = -0.4;
+    this.baseYPosition = WORLD_Y_OFFSET;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
@@ -1222,5 +1225,6 @@ export class RanchScene3D {
     return true;
   }
 }
+
 
 
