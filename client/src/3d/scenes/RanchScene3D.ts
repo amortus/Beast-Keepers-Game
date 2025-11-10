@@ -435,7 +435,7 @@ export class RanchScene3D {
     const waterMesh = this.water.getMesh();
     waterMesh.position.set(
       this.layout.pond.position[0],
-      this.layout.pond.position[1] + WORLD_Y_OFFSET + 0.08,
+      this.layout.pond.position[1] + WORLD_Y_OFFSET + 0.12,
       this.layout.pond.position[2],
     );
     pondGroup.add(waterMesh);
@@ -1088,7 +1088,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = WORLD_Y_OFFSET;
+    this.baseYPosition = WORLD_Y_OFFSET - 0.1;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
