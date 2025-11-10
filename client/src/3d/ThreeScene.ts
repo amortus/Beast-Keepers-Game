@@ -41,8 +41,13 @@ export class ThreeScene {
     // ✅ Usa tamanho REAL do CSS, não o lógico do canvas
     const rect = canvas.getBoundingClientRect();
     this.renderer.setSize(rect.width, rect.height, false); // false = não atualiza style
-    this.renderer.setPixelRatio(1.0);     // Resolução normal (PS1 smooth, não Minecraft)
-    this.renderer.shadowMap.enabled = false; // Disable shadows for performance
+    const pixelRatio = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 1.8) : 1;
+    this.renderer.setPixelRatio(pixelRatio);
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
     // Add basic lighting
     this.setupLighting();
@@ -51,20 +56,24 @@ export class ThreeScene {
   private setupLighting() {
     // Lighting estilo Pokémon (clara, vibrante e alegre)
     
-    // Ambient light (iluminação base muito clara)
-    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+    const ambient = new THREE.HemisphereLight(0xf0f6ff, 0x2c1e13, 0.7);
     this.scene.add(ambient);
 
-    // Main directional light (sol vibrante)
-    const directional = new THREE.DirectionalLight(0xffffff, 1.0);
-    directional.position.set(5, 10, 5);
-    directional.castShadow = false;
-    this.scene.add(directional);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.15);
+    keyLight.position.set(8, 12, 6);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 60;
+    keyLight.shadow.camera.left = -20;
+    keyLight.shadow.camera.right = 20;
+    keyLight.shadow.camera.top = 20;
+    keyLight.shadow.camera.bottom = -20;
+    this.scene.add(keyLight);
 
-    // Fill light (azul céu suave)
-    const fill = new THREE.DirectionalLight(0xbbdefb, 0.4);
-    fill.position.set(-5, 5, -5);
-    this.scene.add(fill);
+    const rimLight = new THREE.DirectionalLight(0xfff4d2, 0.35);
+    rimLight.position.set(-6, 5, -4);
+    this.scene.add(rimLight);
   }
 
   public addObject(object: THREE.Object3D) {

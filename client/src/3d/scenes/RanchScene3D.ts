@@ -48,14 +48,14 @@ export class RanchScene3D {
     const camera = this.threeScene.getCamera() as THREE.PerspectiveCamera;
     
     // Câmera estilo Pokémon (ângulo isométrico levemente alto)
-    camera.fov = 50;
-    camera.position.set(0, 5, 8);
-    camera.lookAt(0, 0, 0);
+    camera.fov = 47;
+    camera.position.set(0, 5.6, 9.2);
+    camera.lookAt(0, 1.2, 0);
     camera.updateProjectionMatrix();
     
-    // Skybox simples - céu azul claro vibrante
-    scene.background = new THREE.Color(0x87ceeb); // Azul céu brilhante
-    scene.fog = new THREE.Fog(0xa0d8ef, 15, 35); // Fog leve e claro
+    // Céu azul profundo com leve névoa cinematográfica
+    scene.background = new THREE.Color(0x0f1b2e);
+    scene.fog = new THREE.Fog(0x0f1b2e, 22, 60);
     
     // Colinas VISÍVEIS no horizonte (mais próximas)
     this.createVisibleHills();
@@ -63,8 +63,9 @@ export class RanchScene3D {
     // Nuvens VISÍVEIS no céu (mais próximas e maiores)
     this.createVisibleClouds();
     
-    // Chão plano - verde natural (menos saturado)
+    // Chão estilizado com relevo suave e materiais PBR
     this.createPokemonGround();
+    this.createStonePath();
     
     // Lago/bebedouro ANIMADO com ondas
     this.createAnimatedLake();
@@ -87,13 +88,21 @@ export class RanchScene3D {
     
     // Cerca de fundo separando rancho das terras selvagens
     this.createBackgroundFence();
+    this.createLanterns();
     
     // Food bowl colorido
-    const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.3, 8);
-    const foodBowl = new THREE.Mesh(bowlGeometry, new THREE.MeshToonMaterial({ 
-      color: 0xff6b6b, // Vermelho vibrante
-    }));
-    foodBowl.position.set(-3, 0.15, 3);
+    const bowlGeometry = new THREE.CylinderGeometry(0.4, 0.35, 0.26, 24);
+    const foodBowl = new THREE.Mesh(
+      bowlGeometry,
+      new THREE.MeshStandardMaterial({
+        color: 0xff6b6b,
+        roughness: 0.45,
+        metalness: 0.15,
+      }),
+    );
+    foodBowl.castShadow = true;
+    foodBowl.receiveShadow = true;
+    foodBowl.position.set(-3, 0.14, 3);
     scene.add(foodBowl);
     
     // Definir obstáculos para pathfinding
@@ -126,6 +135,10 @@ export class RanchScene3D {
       { x: 3, z: -3.5, radius: 0.4 },
       { x: -4, z: 2, radius: 0.4 },
       { x: 4.5, z: 1, radius: 0.4 },
+      // Lanternas decorativas
+      { x: -2.2, z: -2.2, radius: 0.35 },
+      { x: 2.3, z: -2.0, radius: 0.35 },
+      { x: -2.6, z: 2.6, radius: 0.35 },
       
       // Cerca de fundo (evitar área externa)
       // Múltiplos pontos ao redor da cerca
@@ -224,30 +237,94 @@ export class RanchScene3D {
   }
   
   /**
-   * Chão plano - verde natural
+   * Chão estilizado com leve relevo e materiais PBR
    */
   private createPokemonGround() {
     const scene = this.threeScene.getScene();
-    
-    // Chão verde NATURAL (menos saturado)
-    const groundGeometry = new THREE.PlaneGeometry(20, 20);
-    const groundMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x6b9b6b, // Verde grama NATURAL (menos saturado)
+
+    const groundGeometry = new THREE.PlaneGeometry(26, 26, 80, 80);
+    const positions = groundGeometry.attributes.position as THREE.BufferAttribute;
+
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const z = positions.getZ(i);
+      const radialFalloff = 1 - Math.min(1, Math.sqrt(x * x + z * z) / 13);
+      const noise =
+        Math.sin(x * 0.28) * 0.12 +
+        Math.cos(z * 0.24) * 0.08 +
+        Math.sin((x + z) * 0.18) * 0.05;
+
+      positions.setY(i, noise * radialFalloff);
+    }
+    positions.needsUpdate = true;
+    groundGeometry.computeVertexNormals();
+
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4f7652,
+      roughness: 0.82,
+      metalness: 0.05,
     });
+
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = 0;
+    ground.receiveShadow = true;
     scene.add(ground);
-    
-    // Borda do chão (marrom terra)
-    const borderGeometry = new THREE.PlaneGeometry(22, 22);
-    const borderMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x8b7355, // Marrom terra
+
+    const borderGeometry = new THREE.RingGeometry(13.4, 14.6, 64);
+    const borderMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3c291d,
+      roughness: 0.92,
+      metalness: 0.03,
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
     border.rotation.x = -Math.PI / 2;
-    border.position.y = -0.05;
+    border.position.y = -0.03;
+    border.receiveShadow = true;
     scene.add(border);
+
+    const centerGeometry = new THREE.CircleGeometry(4.2, 48);
+    const centerMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5e8f64,
+      roughness: 0.78,
+      metalness: 0.04,
+    });
+    const centerPatch = new THREE.Mesh(centerGeometry, centerMaterial);
+    centerPatch.rotation.x = -Math.PI / 2;
+    centerPatch.position.y = 0.015;
+    centerPatch.receiveShadow = true;
+    scene.add(centerPatch);
+  }
+
+  /**
+   * Passarela de pedras entre a casa e o centro do rancho
+   */
+  private createStonePath() {
+    const scene = this.threeScene.getScene();
+    const pathGroup = new THREE.Group();
+
+    const stoneGeometry = new THREE.CylinderGeometry(0.45, 0.5, 0.08, 12);
+    const stoneMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb9a98c,
+      roughness: 0.68,
+      metalness: 0.04,
+    });
+
+    const steps = 9;
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const z = THREE.MathUtils.lerp(-5.5, 1.2, t) + Math.sin(t * Math.PI) * 0.3;
+      const x = Math.sin(t * Math.PI * 0.5) * 0.4;
+
+      const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+      stone.castShadow = true;
+      stone.receiveShadow = true;
+      stone.position.set(x + (Math.random() - 0.5) * 0.2, 0.04, z + (Math.random() - 0.5) * 0.2);
+      stone.rotation.y = Math.random() * Math.PI;
+      stone.scale.setScalar(0.9 + Math.random() * 0.15);
+      pathGroup.add(stone);
+    }
+
+    scene.add(pathGroup);
   }
   
   /**
@@ -257,14 +334,14 @@ export class RanchScene3D {
     const scene = this.threeScene.getScene();
     
     this.grass = new PS1Grass({
-      count: 500, // Muita grama
-      area: 15,
-      color: 0x4a7c4a, // Verde grama natural
-      height: 0.25,
-      windSpeed: 0.3,
-      windStrength: 0.015,
-      lakePosition: { x: 1.5, z: 3.5 }, // Posição do lago
-      lakeRadius: 1.7, // Raio do lago
+      count: 650,
+      area: 16,
+      color: 0x3f6d3f,
+      height: 0.28,
+      windSpeed: 0.32,
+      windStrength: 0.014,
+      lakePosition: { x: 1.5, z: 3.5 },
+      lakeRadius: 1.8,
     });
     scene.add(this.grass.getMesh());
   }
@@ -275,11 +352,11 @@ export class RanchScene3D {
   private createElaborateFlowers() {
     const scene = this.threeScene.getScene();
     const flowerColors = [
-      0xff6b9d, // Rosa
-      0xffd93d, // Amarelo
-      0xff8c42, // Laranja
-      0xc44569, // Roxo
-      0xff4757, // Vermelho
+      0xffa0c0, // Rosa
+      0xffd65c, // Amarelo
+      0xff9159, // Laranja
+      0xb074ff, // Roxo
+      0xff6d7a, // Vermelho
     ];
     
     // Espalhar flores LONGE DO LAGO (evitar área do lago: x=1.5, z=3.5, raio=1.7)
@@ -308,35 +385,45 @@ export class RanchScene3D {
       const flowerGroup = new THREE.Group();
       
       // Caule (haste verde)
-      const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.2, 4);
-      const stemMaterial = new THREE.MeshToonMaterial({ color: 0x2d5016 });
+      const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.22, 6);
+      const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x2f4a21, roughness: 0.8 });
       const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-      stem.position.y = 0.1;
+      stem.castShadow = true;
+      stem.position.y = 0.11;
       flowerGroup.add(stem);
       
       // Centro da flor (amarelo)
-      const centerGeometry = new THREE.SphereGeometry(0.05, 6, 6);
-      const centerMaterial = new THREE.MeshToonMaterial({ color: 0xffd700 });
+      const centerGeometry = new THREE.SphereGeometry(0.05, 12, 12);
+      const centerMaterial = new THREE.MeshStandardMaterial({ color: 0xffe27a, roughness: 0.4, metalness: 0.1, emissive: 0x70531a });
       const center = new THREE.Mesh(centerGeometry, centerMaterial);
-      center.position.y = 0.2;
+      center.castShadow = true;
+      center.position.y = 0.23;
       flowerGroup.add(center);
       
       // Pétalas (5 pétalas ao redor)
-      const petalMaterial = new THREE.MeshToonMaterial({ color });
+      const petalMaterial = new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.55,
+        metalness: 0.0,
+        emissive: 0x111111,
+        emissiveIntensity: 0.15,
+      });
       for (let p = 0; p < 5; p++) {
         const angle = (p / 5) * Math.PI * 2;
-        const petalGeometry = new THREE.SphereGeometry(0.06, 6, 6);
+        const petalGeometry = new THREE.SphereGeometry(0.06, 12, 12);
         const petal = new THREE.Mesh(petalGeometry, petalMaterial);
         petal.position.set(
           Math.cos(angle) * 0.08,
           0.2,
           Math.sin(angle) * 0.08
         );
-        petal.scale.set(1, 0.5, 0.8); // Achatar para parecer pétala
+        petal.scale.set(1.2, 0.45, 0.8);
+        petal.castShadow = true;
         flowerGroup.add(petal);
       }
       
       flowerGroup.position.set(x, 0, z);
+      flowerGroup.rotation.y = Math.random() * Math.PI;
       scene.add(flowerGroup);
     }
   }
@@ -349,33 +436,48 @@ export class RanchScene3D {
     const treeGroup = new THREE.Group();
 
     // Tronco - marrom cartoon
-    const trunkGeometry = new THREE.CylinderGeometry(0.25, 0.3, 1.8, 8);
-    const trunkMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x8b6f47, // Marrom médio
+    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.38, 2.0, 12, 1, false);
+    const trunkMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x76532d,
+      roughness: 0.78,
+      metalness: 0.08,
     });
     const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunk.position.y = 0.9;
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    trunk.position.y = 1.0;
     treeGroup.add(trunk);
 
     // Folhagem - esferas sobrepostas (estilo Pokémon)
-    const foliageMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x4db85f, // Verde vibrante
+    const foliageMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x56b072,
+      roughness: 0.55,
+      metalness: 0.05,
     });
     
     // 3 esferas para folhagem volumosa
-    const foliage1 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 8, 8), foliageMaterial);
-    foliage1.position.y = 2.2;
+    const foliage1 = new THREE.Mesh(new THREE.SphereGeometry(1.05, 20, 16), foliageMaterial);
+    foliage1.castShadow = true;
+    foliage1.position.y = 2.6;
     treeGroup.add(foliage1);
     
-    const foliage2 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), foliageMaterial);
-    foliage2.position.set(-0.4, 2.5, 0);
+    const foliage2 = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 14), foliageMaterial);
+    foliage2.castShadow = true;
+    foliage2.position.set(-0.45, 3.0, 0.15);
     treeGroup.add(foliage2);
     
-    const foliage3 = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), foliageMaterial);
-    foliage3.position.set(0.4, 2.5, 0);
+    const foliage3 = new THREE.Mesh(new THREE.SphereGeometry(0.7, 18, 14), foliageMaterial);
+    foliage3.castShadow = true;
+    foliage3.position.set(0.55, 2.85, -0.25);
     treeGroup.add(foliage3);
+
+    const topBud = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), foliageMaterial);
+    topBud.castShadow = true;
+    topBud.position.set(0.1, 3.45, -0.1);
+    treeGroup.add(topBud);
     
     treeGroup.position.set(x, y, z);
+    treeGroup.rotation.y = Math.random() * Math.PI;
     scene.add(treeGroup);
   }
   
@@ -384,7 +486,11 @@ export class RanchScene3D {
    */
   private createRocks() {
     const scene = this.threeScene.getScene();
-    const rockMaterial = new THREE.MeshToonMaterial({ color: 0x9e9e9e });
+    const rockMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8c8f95,
+      roughness: 0.85,
+      metalness: 0.1,
+    });
     
     // Pedras espalhadas
     const rockPositions = [
@@ -395,9 +501,11 @@ export class RanchScene3D {
     ];
     
     rockPositions.forEach(([x, y, z]) => {
-      const rockGeometry = new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.2, 0);
+      const rockGeometry = new THREE.DodecahedronGeometry(0.32 + Math.random() * 0.25, 1);
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-      rock.position.set(x, 0.2, z);
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      rock.position.set(x, 0.23, z);
       rock.rotation.set(
         Math.random() * Math.PI,
         Math.random() * Math.PI,
@@ -413,25 +521,38 @@ export class RanchScene3D {
   private createAnimatedLake() {
     const scene = this.threeScene.getScene();
     
-    // Borda do lago (azul mais escuro) - estática
-    const borderGeometry = new THREE.CircleGeometry(1.7, 16);
-    const borderMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x2196f3, // Azul mais escuro
+    const stoneRimGeometry = new THREE.CylinderGeometry(1.85, 1.95, 0.18, 28);
+    const stoneRimMaterial = new THREE.MeshStandardMaterial({
+      color: 0x6d6053,
+      roughness: 0.75,
+      metalness: 0.05,
     });
-    const border = new THREE.Mesh(borderGeometry, borderMaterial);
-    border.rotation.x = -Math.PI / 2;
-    border.position.set(1.5, 0.01, 3.5);
-    scene.add(border);
-    
+    const stoneRim = new THREE.Mesh(stoneRimGeometry, stoneRimMaterial);
+    stoneRim.position.set(1.5, 0.08, 3.5);
+    stoneRim.castShadow = true;
+    stoneRim.receiveShadow = true;
+    scene.add(stoneRim);
+
+    const innerBorderGeometry = new THREE.CylinderGeometry(1.65, 1.7, 0.08, 28);
+    const innerBorderMaterial = new THREE.MeshStandardMaterial({
+      color: 0x3f5c8f,
+      roughness: 0.6,
+      metalness: 0.1,
+    });
+    const innerBorder = new THREE.Mesh(innerBorderGeometry, innerBorderMaterial);
+    innerBorder.position.set(1.5, 0.04, 3.5);
+    innerBorder.receiveShadow = true;
+    scene.add(innerBorder);
+
     // Água ANIMADA com shader de ondas
     this.water = new PS1Water({
       size: 1.5,
-      segments: 16, // Mais segmentos para ondas suaves
-      color: 0x4fc3f7, // Azul água Pokémon vibrante
-      waveSpeed: 0.8,
-      waveHeight: 0.08, // Ondas visíveis mas sutis
+      segments: 28,
+      color: 0x3cc4ff,
+      waveSpeed: 0.6,
+      waveHeight: 0.06,
     });
-    this.water.getMesh().position.set(1.5, 0.02, 3.5);
+    this.water.getMesh().position.set(1.5, 0.05, 3.5);
     scene.add(this.water.getMesh());
   }
   
@@ -443,100 +564,140 @@ export class RanchScene3D {
     const houseGroup = new THREE.Group();
     
     // BASE/FUNDAÇÃO - cinza escuro
-    const foundationGeometry = new THREE.BoxGeometry(4, 0.3, 3.5);
-    const foundationMaterial = new THREE.MeshToonMaterial({ color: 0x555555 });
+    const foundationGeometry = new THREE.BoxGeometry(4.4, 0.35, 3.8);
+    const foundationMaterial = new THREE.MeshStandardMaterial({ color: 0x4c4f62, roughness: 0.5, metalness: 0.1 });
     const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
-    foundation.position.y = 0.15;
+    foundation.castShadow = true;
+    foundation.receiveShadow = true;
+    foundation.position.y = 0.18;
     houseGroup.add(foundation);
     
     // CORPO PRINCIPAL - vermelho com PROFUNDIDADE
-    const bodyGeometry = new THREE.BoxGeometry(3.5, 2.2, 3);
-    const bodyMaterial = new THREE.MeshToonMaterial({ color: 0xd64545 });
+    const bodyGeometry = new THREE.BoxGeometry(3.8, 2.4, 3.2);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xc23b3b, roughness: 0.55, metalness: 0.12 });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = 1.4;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.position.y = 1.6;
     houseGroup.add(body);
+
+    // Molduras verticais de madeira
+    const beamMaterial = new THREE.MeshStandardMaterial({ color: 0x6d3f20, roughness: 0.65, metalness: 0.05 });
+    const beamGeometry = new THREE.BoxGeometry(0.18, 2.4, 0.2);
+    const beamLeft = new THREE.Mesh(beamGeometry, beamMaterial);
+    beamLeft.castShadow = true;
+    beamLeft.receiveShadow = true;
+    beamLeft.position.set(-1.9, 1.6, 1.55);
+    houseGroup.add(beamLeft);
+    const beamRight = beamLeft.clone();
+    beamRight.castShadow = true;
+    beamRight.receiveShadow = true;
+    beamRight.position.x = 1.9;
+    houseGroup.add(beamRight);
     
     // TELHADO - formato mais 3D (não cone achatado)
     const roofGroup = new THREE.Group();
     
     // Parte frontal do telhado
-    const roofFrontGeometry = new THREE.BoxGeometry(4.2, 0.15, 2);
-    const roofMaterial = new THREE.MeshToonMaterial({ color: 0x8b4513 });
+    const roofFrontGeometry = new THREE.BoxGeometry(4.6, 0.18, 2.2);
+    const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4a27, roughness: 0.48, metalness: 0.08 });
     const roofFront = new THREE.Mesh(roofFrontGeometry, roofMaterial);
     roofFront.position.set(0, 0, 0.7);
     roofFront.rotation.x = -Math.PI / 6;
+    roofFront.castShadow = true;
     roofGroup.add(roofFront);
     
     // Parte traseira do telhado
     const roofBack = new THREE.Mesh(roofFrontGeometry, roofMaterial);
     roofBack.position.set(0, 0, -0.7);
     roofBack.rotation.x = Math.PI / 6;
+    roofBack.castShadow = true;
     roofGroup.add(roofBack);
     
     // Cumeeira (topo)
-    const ridgeGeometry = new THREE.BoxGeometry(4.3, 0.2, 0.3);
-    const ridge = new THREE.Mesh(ridgeGeometry, new THREE.MeshToonMaterial({ color: 0x6d3713 }));
-    ridge.position.y = 0.3;
+    const ridgeGeometry = new THREE.BoxGeometry(4.7, 0.24, 0.35);
+    const ridge = new THREE.Mesh(ridgeGeometry, new THREE.MeshStandardMaterial({ color: 0x6e3418, roughness: 0.45 }));
+    ridge.position.y = 0.28;
+    ridge.castShadow = true;
     roofGroup.add(ridge);
     
-    roofGroup.position.y = 2.6;
+    roofGroup.position.y = 3.0;
     houseGroup.add(roofGroup);
     
     // PORTA - com profundidade
-    const doorFrameGeometry = new THREE.BoxGeometry(0.9, 1.4, 0.15);
-    const doorFrameMaterial = new THREE.MeshToonMaterial({ color: 0x8b4513 });
+    const doorFrameGeometry = new THREE.BoxGeometry(1.0, 1.5, 0.16);
+    const doorFrameMaterial = new THREE.MeshStandardMaterial({ color: 0x6e3a1a, roughness: 0.6, metalness: 0.1 });
     const doorFrame = new THREE.Mesh(doorFrameGeometry, doorFrameMaterial);
-    doorFrame.position.set(0, 0.7, 1.58);
+    doorFrame.castShadow = true;
+    doorFrame.position.set(0, 0.85, 1.63);
     houseGroup.add(doorFrame);
     
-    const doorGeometry = new THREE.BoxGeometry(0.8, 1.3, 0.1);
-    const doorMaterial = new THREE.MeshToonMaterial({ color: 0xffa726 });
+    const doorGeometry = new THREE.BoxGeometry(0.82, 1.32, 0.12);
+    const doorMaterial = new THREE.MeshStandardMaterial({ color: 0xd7882f, roughness: 0.5, metalness: 0.2 });
     const door = new THREE.Mesh(doorGeometry, doorMaterial);
-    door.position.set(0, 0.65, 1.63);
+    door.castShadow = true;
+    door.position.set(0, 0.8, 1.69);
     houseGroup.add(door);
     
     // Maçaneta
-    const knobGeometry = new THREE.SphereGeometry(0.05, 6, 6);
-    const knob = new THREE.Mesh(knobGeometry, new THREE.MeshToonMaterial({ color: 0xffd700 }));
-    knob.position.set(0.3, 0.7, 1.68);
+    const knobGeometry = new THREE.SphereGeometry(0.06, 16, 16);
+    const knob = new THREE.Mesh(knobGeometry, new THREE.MeshStandardMaterial({ color: 0xf9cc4e, roughness: 0.25, metalness: 0.8 }));
+    knob.position.set(0.34, 0.82, 1.76);
+    knob.castShadow = true;
     houseGroup.add(knob);
     
     // JANELAS - com moldura 3D
     const createWindow = (x: number, y: number, z: number) => {
       // Moldura
-      const frameGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.12);
-      const frameMaterial = new THREE.MeshToonMaterial({ color: 0xffffff });
+      const frameGeometry = new THREE.BoxGeometry(0.58, 0.55, 0.14);
+      const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xf3f5ff, roughness: 0.35, metalness: 0.05 });
       const frame = new THREE.Mesh(frameGeometry, frameMaterial);
       frame.position.set(x, y, z);
+      frame.castShadow = true;
       houseGroup.add(frame);
       
       // Vidro
-      const glassGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.08);
-      const glassMaterial = new THREE.MeshToonMaterial({ 
-        color: 0x81d4fa,
+      const glassGeometry = new THREE.BoxGeometry(0.44, 0.42, 0.09);
+      const glassMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xb9e4ff,
+        roughness: 0.1,
+        metalness: 0.0,
         transparent: true,
-        opacity: 0.7
+        opacity: 0.75,
+        emissive: 0x26405f,
+        emissiveIntensity: 0.12,
       });
       const glass = new THREE.Mesh(glassGeometry, glassMaterial);
-      glass.position.set(x, y, z + 0.02);
+      glass.position.set(x, y, z + 0.03);
       houseGroup.add(glass);
     };
     
-    createWindow(-1, 1.3, 1.53);
-    createWindow(1, 1.3, 1.53);
+    createWindow(-1.15, 1.45, 1.58);
+    createWindow(1.15, 1.45, 1.58);
     
     // CHAMINÉ - para dar mais volume 3D
-    const chimneyGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.4);
-    const chimneyMaterial = new THREE.MeshToonMaterial({ color: 0x8b4513 });
+    const chimneyGeometry = new THREE.BoxGeometry(0.45, 1.3, 0.45);
+    const chimneyMaterial = new THREE.MeshStandardMaterial({ color: 0x7b4526, roughness: 0.55, metalness: 0.08 });
     const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
-    chimney.position.set(-1.3, 3.3, -0.8);
+    chimney.castShadow = true;
+    chimney.position.set(-1.35, 3.6, -0.85);
     houseGroup.add(chimney);
     
     // Topo da chaminé
-    const chimneyTopGeometry = new THREE.BoxGeometry(0.5, 0.2, 0.5);
-    const chimneyTop = new THREE.Mesh(chimneyTopGeometry, new THREE.MeshToonMaterial({ color: 0x6d3713 }));
-    chimneyTop.position.set(-1.3, 3.9, -0.8);
+    const chimneyTopGeometry = new THREE.BoxGeometry(0.55, 0.24, 0.55);
+    const chimneyTop = new THREE.Mesh(chimneyTopGeometry, new THREE.MeshStandardMaterial({ color: 0x5d2f18, roughness: 0.5 }));
+    chimneyTop.position.set(-1.35, 4.26, -0.85);
+    chimneyTop.castShadow = true;
     houseGroup.add(chimneyTop);
+
+    const porchStep = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 0.2, 0.9),
+      new THREE.MeshStandardMaterial({ color: 0x6d5240, roughness: 0.62, metalness: 0.1 }),
+    );
+    porchStep.position.set(0, 0.1, 2.05);
+    porchStep.castShadow = true;
+    porchStep.receiveShadow = true;
+    houseGroup.add(porchStep);
     
     houseGroup.position.set(0, 0, -7);
     scene.add(houseGroup);
@@ -596,9 +757,11 @@ export class RanchScene3D {
       const height = 6 + Math.random() * 4; // MUITO MAIS ALTAS (6-10)
       const width = 4 + Math.random() * 3; // MUITO MAIS LARGAS (4-7)
       
-      const geometry = new THREE.ConeGeometry(width, height, 8);
-      const material = new THREE.MeshToonMaterial({ 
+      const geometry = new THREE.ConeGeometry(width, height, 16, 1, true);
+      const material = new THREE.MeshStandardMaterial({ 
         color: hillColors[i % hillColors.length],
+        roughness: 0.9,
+        metalness: 0.02,
       });
       
       const hill = new THREE.Mesh(geometry, material);
@@ -624,10 +787,14 @@ export class RanchScene3D {
     const scene = this.threeScene.getScene();
     this.clouds = new THREE.Group();
     
-    const cloudMaterial = new THREE.MeshToonMaterial({
-      color: 0xffffff,
+    const cloudMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf5f7ff,
+      roughness: 0.6,
+      metalness: 0.0,
       transparent: true,
-      opacity: 0.85, // Levemente transparente
+      opacity: 0.82,
+      emissive: 0xe0e4ff,
+      emissiveIntensity: 0.05,
     });
     
     // Criar 4 nuvens ao FUNDO (não nos lados)
@@ -670,8 +837,10 @@ export class RanchScene3D {
    */
   private createBackgroundFence() {
     const scene = this.threeScene.getScene();
-    const fenceMaterial = new THREE.MeshToonMaterial({ 
-      color: 0x8b6f47, // Marrom madeira escura
+    const fenceMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x8c6239,
+      roughness: 0.65,
+      metalness: 0.05,
     });
     
     // Cerca circular ao redor (mais longe que a cerca frontal)
@@ -683,7 +852,7 @@ export class RanchScene3D {
       
       // Poste vertical
       const post = new THREE.Mesh(
-        new THREE.BoxGeometry(0.15, 1.2, 0.15),
+        new THREE.BoxGeometry(0.18, 1.25, 0.18),
         fenceMaterial
       );
       post.position.set(
@@ -691,6 +860,8 @@ export class RanchScene3D {
         0.6,
         Math.sin(angle) * fenceRadius
       );
+      post.castShadow = true;
+      post.receiveShadow = true;
       scene.add(post);
       
       // Travessa horizontal conectando postes
@@ -700,7 +871,7 @@ export class RanchScene3D {
         const midZ = (Math.sin(angle) + Math.sin(nextAngle)) * fenceRadius / 2;
         
         const rail = new THREE.Mesh(
-          new THREE.BoxGeometry(0.1, 0.12, 1.5),
+          new THREE.BoxGeometry(0.12, 0.14, 1.55),
           fenceMaterial
         );
         rail.position.set(midX, 0.8, midZ);
@@ -709,6 +880,8 @@ export class RanchScene3D {
           0.8,
           Math.sin(nextAngle) * fenceRadius
         );
+        rail.castShadow = true;
+        rail.receiveShadow = true;
         scene.add(rail);
       }
     }
@@ -719,17 +892,65 @@ export class RanchScene3D {
     const midX = (Math.cos(lastAngle) + Math.cos(firstAngle)) * fenceRadius / 2;
     const midZ = (Math.sin(lastAngle) + Math.sin(firstAngle)) * fenceRadius / 2;
     
-    const lastRail = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.12, 1.5),
-      fenceMaterial
-    );
+    const lastRail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 1.55), fenceMaterial);
     lastRail.position.set(midX, 0.8, midZ);
     lastRail.lookAt(
       Math.cos(firstAngle) * fenceRadius,
       0.8,
       Math.sin(firstAngle) * fenceRadius
     );
+    lastRail.castShadow = true;
+    lastRail.receiveShadow = true;
     scene.add(lastRail);
+  }
+
+  private createLanterns() {
+    const scene = this.threeScene.getScene();
+    const lanternPositions = [
+      new THREE.Vector3(-2.2, 0, -2.2),
+      new THREE.Vector3(2.3, 0, -2.0),
+      new THREE.Vector3(-2.6, 0, 2.6),
+    ];
+
+    lanternPositions.forEach((pos, index) => {
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.08, 0.1, 1.8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x53423a, roughness: 0.7, metalness: 0.15 }),
+      );
+      pole.position.set(pos.x, 0.9, pos.z);
+      pole.castShadow = true;
+      pole.receiveShadow = true;
+      scene.add(pole);
+
+      const cap = new THREE.Mesh(
+        new THREE.ConeGeometry(0.25, 0.3, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2c1f18, roughness: 0.6, metalness: 0.2 }),
+      );
+      cap.position.set(pos.x, 1.85, pos.z);
+      cap.castShadow = true;
+      scene.add(cap);
+
+      const lanternGlass = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 16, 12),
+        new THREE.MeshStandardMaterial({
+          color: 0xfff3c4,
+          emissive: 0xffe49a,
+          emissiveIntensity: 0.8,
+          roughness: 0.2,
+          metalness: 0.1,
+          transparent: true,
+          opacity: 0.85,
+        }),
+      );
+      lanternGlass.position.set(pos.x, 1.62, pos.z);
+      scene.add(lanternGlass);
+
+      const light = new THREE.PointLight(0xffcfa8, 0.7, 6, 2);
+      light.position.set(pos.x, 1.62, pos.z);
+      light.castShadow = false;
+      light.name = `lantern-light-${index}`;
+      scene.add(light);
+    });
   }
   
   public setBeast(beastLine: string) {
