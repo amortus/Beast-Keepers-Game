@@ -278,10 +278,10 @@ export class RanchScene3D {
   private setupRanchEnvironment() {
     const scene = this.threeScene.getScene();
     const camera = this.threeScene.getCamera() as THREE.PerspectiveCamera;
-    
+
     camera.fov = 46;
-    camera.position.set(0, 6.2, 10.4);
-    camera.lookAt(0, 1.3, 0);
+    camera.position.set(0, 5.2, 9.6);
+    camera.lookAt(0, WORLD_Y_OFFSET + 1.0, 0);
     camera.updateProjectionMatrix();
     
     scene.background = new THREE.Color(0x1d2b44);
@@ -310,7 +310,6 @@ export class RanchScene3D {
     this.createTrees();
     this.createHayBales();
     this.createRocks();
-    this.createFence();
     this.createLamps();
     this.createMountains();
     this.createClouds();
@@ -459,6 +458,7 @@ export class RanchScene3D {
       lakePosition: { x: this.layout.pond.position[0], z: this.layout.pond.position[2] },
       lakeRadius: this.layout.pond.collisionRadius,
       seed: this.layout.grass.seed,
+      offsetY: WORLD_Y_OFFSET,
     });
     this.addDecoration(this.grass.getMesh());
   }
@@ -505,7 +505,11 @@ export class RanchScene3D {
         flowerGroup.add(petal);
       }
       
-      flowerGroup.position.set(placement.position[0], WORLD_Y_OFFSET, placement.position[2]);
+      flowerGroup.position.set(
+        placement.position[0],
+        (placement.position[1] ?? 0) + WORLD_Y_OFFSET,
+        placement.position[2],
+      );
       if (placement.rotation) {
         flowerGroup.rotation.y = placement.rotation;
       }
@@ -621,41 +625,6 @@ export class RanchScene3D {
       group.add(mesh);
     }
     this.addDecoration(group);
-  }
-
-  private createFence() {
-    const fenceGroup = new THREE.Group();
-    const material = new THREE.MeshStandardMaterial({
-      color: this.skin.fenceColor,
-      roughness: 0.65,
-      metalness: 0.05,
-    });
-
-    const { radius, postCount } = this.layout.fence;
-    for (let i = 0; i < postCount; i++) {
-      const angle = (i / postCount) * Math.PI * 2;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 1.25, 0.18), material);
-      post.position.set(x, 0.62, z);
-      post.castShadow = true;
-      post.receiveShadow = true;
-      fenceGroup.add(post);
-
-      const nextAngle = ((i + 1) % postCount) * Math.PI * 2;
-      const midX = (Math.cos(angle) + Math.cos(nextAngle)) * radius * 0.5;
-      const midZ = (Math.sin(angle) + Math.sin(nextAngle)) * radius * 0.5;
-
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 1.55), material);
-      rail.position.set(midX, 0.85, midZ);
-      rail.lookAt(Math.cos(nextAngle) * radius, 0.85, Math.sin(nextAngle) * radius);
-      rail.castShadow = true;
-      rail.receiveShadow = true;
-      fenceGroup.add(rail);
-    }
-
-    this.addDecoration(fenceGroup);
   }
 
   private createLamps() {

@@ -15,6 +15,7 @@ export interface PS1GrassOptions {
   lakePosition?: { x: number; z: number }; // Posição do lago para evitar colisão
   lakeRadius?: number; // Raio do lago
   seed?: number; // Seed para layout determinístico
+  offsetY?: number; // Offset vertical para alinhar ao cenário
 }
 
 const UINT32_MAX = 0xffffffff;
@@ -55,6 +56,7 @@ export class PS1Grass {
       lakePosition = null,
       lakeRadius = 0,
       seed,
+      offsetY = 0,
     } = options;
     
     this.windSpeed = windSpeed;
@@ -76,6 +78,7 @@ export class PS1Grass {
     
     // Create instanced mesh for performance
     this.instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+    this.instancedMesh.position.y = offsetY;
     
     // Store positions for wind animation
     this.positions = new Float32Array(count * 3);
