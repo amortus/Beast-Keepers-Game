@@ -8,7 +8,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
-import { PS1Grass } from '../vegetation/PS1Grass';
 import { PS1Water } from '../water/PS1Water';
 import { RanchCritters } from '../events/RanchCritters';
 
@@ -250,7 +249,6 @@ export class RanchScene3D {
   private skin: RanchSkin = DEFAULT_SKIN;
 
   private decorationsRoot: THREE.Group | null = null;
-  private grass: PS1Grass | null = null;
   private water: PS1Water | null = null;
   private critters: RanchCritters | null = null;
 
@@ -288,7 +286,12 @@ export class RanchScene3D {
     Promise.all([
       this.preloadModel('/assets/3d/Ranch/House/House1.glb'),
       this.preloadModel('/assets/3d/Ranch/Tree/Tree1.glb'),
+      this.preloadModel('/assets/3d/Ranch/Tree/Tree2.glb'),
       this.preloadModel('/assets/3d/Ranch/Mountain/Mountain1.glb'),
+      this.preloadModel('/assets/3d/Ranch/Grass/Grass1.glb'),
+      this.preloadModel('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb'),
+      this.preloadModel('/assets/3d/Ranch/Lantern/Lantern1.glb'),
+      this.preloadModel('/assets/3d/Ranch/Rock/Stone1.glb'),
     ])
       .catch((error) => {
         console.error('[RanchScene3D] Failed to preload models', error);
@@ -332,14 +335,6 @@ export class RanchScene3D {
     if (this.critters) {
       this.critters.dispose();
       this.critters = null;
-    }
-
-    if (this.grass) {
-      if (this.decorationsRoot) {
-        this.decorationsRoot.remove(this.grass.getMesh());
-      }
-      this.grass.dispose();
-      this.grass = null;
     }
 
     if (this.water) {
@@ -558,77 +553,71 @@ export class RanchScene3D {
   }
 
   private createGrass() {
-    this.grass = new PS1Grass({
-      count: this.layout.grass.count,
-      area: this.layout.grass.area,
-      color: this.skin.grassColor,
-      height: 0.28,
-      windSpeed: 0.32,
-      windStrength: 0.014,
-      lakePosition: { x: this.layout.pond.position[0], z: this.layout.pond.position[2] },
-      lakeRadius: this.layout.pond.collisionRadius,
-      seed: this.layout.grass.seed,
-      offsetY: WORLD_Y_OFFSET,
-      maxRadius: this.layout.walkableRadius - 0.2,
-    });
-    this.addDecoration(this.grass.getMesh());
+    const desiredCount = Math.min(this.layout.grass.count, 220);
+    const rng = this.createSeededRandom(this.layout.grass.seed);
+    const maxRadius = Math.min(Math.sqrt(this.layout.grass.area) * 1.5, this.layout.walkableRadius - 0.4);
+    const pondRadius = this.layout.pond.collisionRadius + 0.6;
+
+    for (let i = 0; i < desiredCount; i++) {
+      let attempts = 0;
+      while (attempts < 6) {
+        const radius = Math.sqrt(rng()) * maxRadius;
+        const angle = rng() * Math.PI * 2;
+        const x = radius * Math.cos(angle);
+        const z = radius * Math.sin(angle);
+
+        const pondDx = x - this.layout.pond.position[0];
+        const pondDz = z - this.layout.pond.position[2];
+        if (Math.sqrt(pondDx * pondDx + pondDz * pondDz) < pondRadius) {
+          attempts += 1;
+          continue;
+        }
+
+        if (Math.sqrt(x * x + z * z) > this.layout.walkableRadius - 0.4) {
+          attempts += 1;
+          continue;
+        }
+
+        const scale = 0.7 + rng() * 0.6;
+        const rotation = rng() * Math.PI * 2;
+
+        this.loadStaticModel('/assets/3d/Ranch/Grass/Grass1.glb', {
+          position: [x, -0.08 + rng() * 0.05, z],
+          rotationY: rotation,
+          targetHeight: 0.55,
+          scaleMultiplier: scale,
+          name: 'ranch-grass',
+          onLoaded: (group) => {
+            group.traverse((child) => {
+              if (child instanceof THREE.Mesh) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach((mat) => {
+                  if (mat && 'color' in mat) {
+                    const meshMat = mat as THREE.MeshStandardMaterial;
+                    meshMat.color.setHex(this.skin.grassColor);
+                    meshMat.needsUpdate = true;
+                  }
+                });
+              }
+            });
+          },
+        });
+        break;
+      }
+    }
   }
 
   private createFlowers() {
     for (const placement of this.layout.flowers) {
-      const flowerGroup = new THREE.Group();
-      const color = this.skin.flowerColors[placement.colorIndex % this.skin.flowerColors.length];
-
-      const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.02, 0.02, 0.22, 6),
-        new THREE.MeshStandardMaterial({ color: 0x2f4a21, roughness: 0.8 }),
-      );
-      stem.castShadow = true;
-      stem.position.y = 0.11;
-      flowerGroup.add(stem);
-      
-      const center = new THREE.Mesh(
-        new THREE.SphereGeometry(0.05, 12, 12),
-        new THREE.MeshStandardMaterial({
-          color: 0xffe27a,
-          roughness: 0.4,
-          metalness: 0.1,
-          emissive: 0x70531a,
-        }),
-      );
-      center.castShadow = true;
-      center.position.y = 0.23;
-      flowerGroup.add(center);
-      
-      const petalMaterial = new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.55,
-        metalness: 0,
-        emissive: 0x111111,
-        emissiveIntensity: 0.12,
+      const rotation = placement.rotation ?? 0;
+      const scale = placement.scale ?? 1;
+      this.loadStaticModel('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb', {
+        position: [placement.position[0], (placement.position[1] ?? -0.02), placement.position[2]],
+        rotationY: rotation,
+        targetHeight: 0.55,
+        scaleMultiplier: scale,
+        name: 'ranch-flower',
       });
-      for (let p = 0; p < 5; p++) {
-        const angle = (p / 5) * Math.PI * 2;
-        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), petalMaterial);
-        petal.position.set(Math.cos(angle) * 0.08, 0.2, Math.sin(angle) * 0.08);
-        petal.scale.set(1.2, 0.45, 0.8);
-        petal.castShadow = true;
-        flowerGroup.add(petal);
-      }
-      
-      flowerGroup.position.set(
-        placement.position[0],
-        (placement.position[1] ?? 0) + WORLD_Y_OFFSET,
-        placement.position[2],
-      );
-      if (placement.rotation) {
-        flowerGroup.rotation.y = placement.rotation;
-      }
-      if (placement.scale) {
-        flowerGroup.scale.setScalar(placement.scale);
-      }
-
-      this.addDecoration(flowerGroup);
     }
   }
 
@@ -639,16 +628,24 @@ export class RanchScene3D {
       return;
     }
 
-    const tree = this.layout.trees[0];
-    this.loadStaticModel('/assets/3d/Ranch/Tree/Tree1.glb', {
-      position: [tree.position[0], 0, tree.position[1]],
-      rotationY: tree.rotation ?? 0,
-      targetHeight: 6,
-      scaleMultiplier: tree.scale ?? 1,
-      name: 'ranch-tree',
-      onLoaded: (group) => {
-        this.treeModel = group;
-      },
+    this.layout.trees.forEach((tree, index) => {
+      const urls = [
+        '/assets/3d/Ranch/Tree/Tree1.glb',
+        '/assets/3d/Ranch/Tree/Tree2.glb',
+      ];
+      const url = urls[index % urls.length];
+      this.loadStaticModel(url, {
+        position: [tree.position[0], 0, tree.position[1]],
+        rotationY: tree.rotation ?? 0,
+        targetHeight: 5.8,
+        scaleMultiplier: tree.scale ?? 1,
+        name: 'ranch-tree',
+        onLoaded: (group) => {
+          if (index === 0) {
+            this.treeModel = group;
+          }
+        },
+      });
     });
   }
 
@@ -659,12 +656,12 @@ export class RanchScene3D {
 
     const group = new THREE.Group();
     const geometry = new THREE.CylinderGeometry(0.6, 0.6, 1.4, 12);
-      const material = new THREE.MeshStandardMaterial({ 
+    const material = new THREE.MeshStandardMaterial({
       color: this.skin.hayBaleColor,
       roughness: 0.6,
       metalness: 0.1,
     });
-    
+
     for (const bale of this.layout.hayBales) {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.rotation.z = Math.PI / 2;
@@ -680,76 +677,32 @@ export class RanchScene3D {
   }
 
   private createRocks() {
-    const group = new THREE.Group();
+    const rng = this.createSeededRandom(42);
     for (const rock of this.layout.rocks) {
-      const geometry = new THREE.DodecahedronGeometry(0.32, 1);
-      const mesh = new THREE.Mesh(
-        geometry,
-        new THREE.MeshStandardMaterial({
-          color: this.skin.rockColor,
-          roughness: 0.85,
-          metalness: 0.1,
-        }),
-      );
-      mesh.position.set(rock.position[0], rock.position[1] + WORLD_Y_OFFSET, rock.position[2]);
-      mesh.scale.setScalar(rock.scale ?? 1);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      group.add(mesh);
+      this.loadStaticModel('/assets/3d/Ranch/Rock/Stone1.glb', {
+        position: [rock.position[0], (rock.position[1] ?? -0.05), rock.position[2]],
+        rotationY: rng() * Math.PI * 2,
+        targetHeight: 0.9,
+        scaleMultiplier: rock.scale ?? 1,
+        name: 'ranch-rock',
+      });
     }
-    this.addDecoration(group);
   }
 
   private createLamps() {
-    const group = new THREE.Group();
-    for (const lamp of this.layout.lamps) {
-      const pole = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.08, 0.1, 1.8, 8),
-        new THREE.MeshStandardMaterial({
-          color: this.skin.lamp.poleColor,
-          roughness: 0.7,
-          metalness: 0.15,
-        }),
-      );
-      pole.position.set(lamp.position[0], WORLD_Y_OFFSET + 0.9, lamp.position[1]);
-      pole.castShadow = true;
-      pole.receiveShadow = true;
-      group.add(pole);
-
-      const cap = new THREE.Mesh(
-        new THREE.ConeGeometry(0.25, 0.3, 8),
-        new THREE.MeshStandardMaterial({
-          color: this.skin.lamp.capColor,
-      roughness: 0.6,
-          metalness: 0.2,
-        }),
-      );
-      cap.position.set(lamp.position[0], WORLD_Y_OFFSET + 1.85, lamp.position[1]);
-      cap.castShadow = true;
-      group.add(cap);
-
-      const glass = new THREE.Mesh(
-        new THREE.SphereGeometry(0.18, 16, 12),
-        new THREE.MeshStandardMaterial({
-          color: this.skin.lamp.glassColor,
-          emissive: this.skin.lamp.emissiveColor,
-          emissiveIntensity: 0.8,
-          roughness: 0.2,
-          metalness: 0.1,
-          transparent: true,
-          opacity: 0.85,
-        }),
-      );
-      glass.position.set(lamp.position[0], WORLD_Y_OFFSET + 1.62, lamp.position[1]);
-      group.add(glass);
-
-      const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.7, 6, 2);
-      light.position.set(lamp.position[0], WORLD_Y_OFFSET + 1.62, lamp.position[1]);
-      light.castShadow = false;
-      group.add(light);
+    for (const [index, lamp] of this.layout.lamps.entries()) {
+      this.loadStaticModel('/assets/3d/Ranch/Lantern/Lantern1.glb', {
+        position: [lamp.position[0], 0, lamp.position[1]],
+        rotationY: index % 2 === 0 ? Math.PI / 12 : -Math.PI / 15,
+        targetHeight: 2.2,
+        name: 'ranch-lantern',
+        onLoaded: (group) => {
+          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.8, 7, 1.8);
+          light.position.set(0, 1.45, 0);
+          group.add(light);
+        },
+      });
     }
-
-    this.addDecoration(group);
   }
 
   private createMountains() {
@@ -775,13 +728,13 @@ export class RanchScene3D {
       const cluster = new THREE.Group();
       const material = new THREE.MeshStandardMaterial({
         color: this.skin.cloudColor,
-        transparent: true,
-        opacity: 0.85,
-        emissive: this.skin.cloudEmissive,
-        emissiveIntensity: 0.05,
         roughness: 0.6,
         metalness: 0,
       });
+      material.transparent = true;
+      material.opacity = 0.85;
+      material.emissive.setHex(this.skin.cloudEmissive);
+      material.emissiveIntensity = 0.05;
 
       const offsets: Vec3[] = [
         [-0.6, 0.05, 0],
@@ -1025,6 +978,16 @@ export class RanchScene3D {
     return null;
   }
 
+  private createSeededRandom(seed: number): () => number {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
   public setBeast(beastLine: string) {
     if (this.beastGroup) {
       this.threeScene.removeObject(this.beastGroup);
@@ -1061,10 +1024,6 @@ export class RanchScene3D {
 
     if (this.water) {
       this.water.update(delta);
-    }
-
-    if (this.grass) {
-      this.grass.update(delta);
     }
 
     if (this.critters) {
