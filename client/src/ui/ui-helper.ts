@@ -1,11 +1,167 @@
 /**
- * Helpers para desenhar UI
+ * Helpers para desenhar a nova UI em "vidro arcano"
  */
 
-import { COLORS, hexToRgba } from './colors';
+import { GLASS_THEME, GlassPanelVariant, withAlpha } from './theme';
+
+type ShadowConfig = {
+  color: string;
+  blur: number;
+  offsetX?: number;
+  offsetY?: number;
+};
+
+type PanelOptions = {
+  variant?: GlassPanelVariant;
+  bgColor?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  alpha?: number;
+  radius?: number;
+  shadow?: boolean | ShadowConfig;
+  highlightIntensity?: number;
+};
+
+type ButtonVariant = 'primary' | 'tab' | 'danger' | 'success' | 'ghost';
+
+type ButtonOptions = {
+  bgColor?: string;
+  hoverColor?: string;
+  textColor?: string;
+  isHovered?: boolean;
+  isDisabled?: boolean;
+  fontSize?: number;
+  variant?: ButtonVariant;
+  isActive?: boolean;
+};
+
+type BarOptions = {
+  bgColor?: string;
+  fillColor?: string;
+  borderColor?: string;
+  label?: string;
+};
+
+type RGBAColor = { r: number; g: number; b: number; a: number };
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const PANEL_VARIANTS: Record<GlassPanelVariant, { gradient: string[]; borderColor: string; radius: number; shadow: ShadowConfig; highlight: string }> = {
+  default: {
+    gradient: GLASS_THEME.palette.panel.gradient,
+    borderColor: GLASS_THEME.palette.panel.border,
+    radius: GLASS_THEME.radius.lg,
+    shadow: GLASS_THEME.shadow.soft,
+    highlight: 'rgba(255, 255, 255, 0.18)',
+  },
+  header: {
+    gradient: GLASS_THEME.palette.header.gradient,
+    borderColor: GLASS_THEME.palette.header.border,
+    radius: 0,
+    shadow: { color: 'rgba(3, 7, 18, 0.75)', blur: 32, offsetX: 0, offsetY: 20 },
+    highlight: 'rgba(255, 255, 255, 0.12)',
+  },
+  card: {
+    gradient: GLASS_THEME.palette.panel.gradient,
+    borderColor: GLASS_THEME.palette.panel.border,
+    radius: GLASS_THEME.radius.xl,
+    shadow: GLASS_THEME.shadow.soft,
+    highlight: 'rgba(255, 255, 255, 0.2)',
+  },
+  popup: {
+    gradient: GLASS_THEME.palette.popup.gradient,
+    borderColor: GLASS_THEME.palette.popup.border,
+    radius: GLASS_THEME.radius.xl,
+    shadow: GLASS_THEME.shadow.heavy,
+    highlight: 'rgba(255, 255, 255, 0.24)',
+  },
+  input: {
+    gradient: GLASS_THEME.palette.input.gradient,
+    borderColor: GLASS_THEME.palette.input.border,
+    radius: GLASS_THEME.radius.md,
+    shadow: { color: 'rgba(12, 32, 72, 0.45)', blur: 18, offsetX: 0, offsetY: 8 },
+    highlight: 'rgba(255, 255, 255, 0.26)',
+  },
+};
+
+function parseColor(color: string): RGBAColor {
+  if (color.startsWith('rgba')) {
+    const matches = color.match(/rgba\(([^)]+)\)/);
+    if (matches) {
+      const [r, g, b, a] = matches[1].split(',').map((part) => parseFloat(part.trim()));
+      return { r, g, b, a };
+    }
+  }
+
+  if (color.startsWith('rgb')) {
+    const matches = color.match(/rgb\(([^)]+)\)/);
+    if (matches) {
+      const [r, g, b] = matches[1].split(',').map((part) => parseFloat(part.trim()));
+      return { r, g, b, a: 1 };
+    }
+  }
+
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return { r, g, b, a: 1 };
+}
+
+function rgbaToString(color: RGBAColor): string {
+  return `rgba(${Math.round(color.r)}, ${Math.round(color.g)}, ${Math.round(color.b)}, ${clamp(color.a, 0, 1)})`;
+}
+
+function lightenColor(color: RGBAColor, factor: number): RGBAColor {
+  return {
+    r: clamp(color.r + (255 - color.r) * factor, 0, 255),
+    g: clamp(color.g + (255 - color.g) * factor, 0, 255),
+    b: clamp(color.b + (255 - color.b) * factor, 0, 255),
+    a: color.a,
+  };
+}
+
+function darkenColor(color: RGBAColor, factor: number): RGBAColor {
+  return {
+    r: clamp(color.r * (1 - factor), 0, 255),
+    g: clamp(color.g * (1 - factor), 0, 255),
+    b: clamp(color.b * (1 - factor), 0, 255),
+    a: color.a,
+  };
+}
+
+function multiplyAlpha(color: RGBAColor, multiplier: number): RGBAColor {
+  return { ...color, a: clamp(color.a * multiplier, 0, 1) };
+}
+
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function buildGradientStops(altGradient: string[] | undefined, alphaMultiplier?: number): string[] {
+  const stops = altGradient ?? GLASS_THEME.palette.panel.gradient;
+  if (alphaMultiplier === undefined) {
+    return stops;
+  }
+  return stops.map((stop) => {
+    const rgba = parseColor(stop);
+    return rgbaToString(multiplyAlpha(rgba, alphaMultiplier));
+  });
+}
 
 /**
- * Desenha um painel com borda
+ * Desenha um painel de vidro com gradiente, brilho e borda suave.
  */
 export function drawPanel(
   ctx: CanvasRenderingContext2D,
@@ -13,36 +169,66 @@ export function drawPanel(
   y: number,
   width: number,
   height: number,
-  options: {
-    bgColor?: string;
-    borderColor?: string;
-    borderWidth?: number;
-    alpha?: number;
-  } = {}
-) {
-  const {
-    bgColor = COLORS.bg.medium,
-    borderColor = COLORS.primary.purple,
-    borderWidth = 2,
-    alpha = 0.95,
-  } = options;
+  options: PanelOptions = {},
+): void {
+  const variant = options.variant ?? 'default';
+  const config = PANEL_VARIANTS[variant];
+  const radius = options.radius ?? config.radius;
+  const shadowConfig: ShadowConfig | undefined =
+    options.shadow === false ? undefined : typeof options.shadow === 'object' ? options.shadow : config.shadow;
 
-  // Fundo - se já é rgba, usar direto, senão aplicar alpha
-  if (bgColor.startsWith('rgba')) {
-    ctx.fillStyle = bgColor;
-  } else {
-    ctx.fillStyle = hexToRgba(bgColor, alpha);
+  const gradientStops = (() => {
+    if (options.bgColor) {
+      const base = parseColor(options.bgColor);
+      const top = rgbaToString(lightenColor(multiplyAlpha(base, options.alpha ?? 1), 0.28));
+      const bottom = rgbaToString(darkenColor(multiplyAlpha(base, options.alpha ?? 1), 0.32));
+      return [top, bottom];
+    }
+    if (options.alpha !== undefined) {
+    return buildGradientStops(config.gradient, options.alpha);
+    }
+    return config.gradient;
+  })();
+
+  const highlightColor = withAlpha(config.highlight, options.highlightIntensity ?? 1);
+
+  ctx.save();
+  if (shadowConfig) {
+    ctx.shadowColor = shadowConfig.color;
+    ctx.shadowBlur = shadowConfig.blur;
+    ctx.shadowOffsetX = shadowConfig.offsetX ?? 0;
+    ctx.shadowOffsetY = shadowConfig.offsetY ?? 10;
   }
-  ctx.fillRect(x, y, width, height);
+  const gradient = ctx.createLinearGradient(0, y, 0, y + height);
+  gradientStops.forEach((stop, index) => {
+    gradient.addColorStop(index === 0 ? 0 : 1, stop);
+  });
+  roundedRectPath(ctx, x, y, width, height, radius);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
 
-  // Borda
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = borderWidth;
-  ctx.strokeRect(x, y, width, height);
+  ctx.save();
+  roundedRectPath(ctx, x, y, width, height, radius);
+  ctx.clip();
+  const highlightHeight = Math.max(10, height * 0.25);
+  const highlight = ctx.createLinearGradient(0, y, 0, y + highlightHeight);
+  highlight.addColorStop(0, highlightColor);
+  highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = highlight;
+  ctx.fillRect(x, y, width, highlightHeight);
+  ctx.restore();
+
+  ctx.save();
+  roundedRectPath(ctx, x, y, width, height, radius);
+  ctx.lineWidth = options.borderWidth ?? 2;
+  ctx.strokeStyle = options.borderColor ?? config.borderColor;
+  ctx.stroke();
+  ctx.restore();
 }
 
 /**
- * Desenha texto com sombra
+ * Desenha texto com anisotropia e sombra suave para leitura sobre vidro.
  */
 export function drawText(
   ctx: CanvasRenderingContext2D,
@@ -55,10 +241,10 @@ export function drawText(
     align?: CanvasTextAlign;
     baseline?: CanvasTextBaseline;
     shadow?: boolean;
-  } = {}
-) {
+  } = {},
+): void {
   const {
-    color = COLORS.ui.text,
+    color = GLASS_THEME.palette.text.primary,
     font = '16px monospace',
     align = 'left',
     baseline = 'top',
@@ -70,10 +256,10 @@ export function drawText(
   ctx.textBaseline = baseline;
 
   if (shadow) {
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowColor = 'rgba(4, 12, 28, 0.55)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 3;
   }
 
   ctx.fillStyle = color;
@@ -87,7 +273,7 @@ export function drawText(
 }
 
 /**
- * Desenha uma barra (HP, Essência, etc)
+ * Barra de progresso/atributo com look líquid glass.
  */
 export function drawBar(
   ctx: CanvasRenderingContext2D,
@@ -97,47 +283,99 @@ export function drawBar(
   height: number,
   current: number,
   max: number,
-  options: {
-    bgColor?: string;
-    fillColor?: string;
-    borderColor?: string;
-    label?: string;
-  } = {}
-) {
-  const {
-    bgColor = COLORS.bg.dark,
-    fillColor = COLORS.primary.green,
-    borderColor = COLORS.ui.text,
-    label,
-  } = options;
+  options: BarOptions = {},
+): void {
+  const percentage = max === 0 ? 0 : clamp(current / max, 0, 1);
+  const radius = Math.min(GLASS_THEME.bar.radius, height / 2);
 
-  const percentage = Math.max(0, Math.min(1, current / max));
+  const baseBackground = options.bgColor ? parseColor(options.bgColor) : parseColor(GLASS_THEME.bar.background);
+  const fillBaseColor = options.fillColor ? parseColor(options.fillColor) : parseColor(GLASS_THEME.bar.gradient[0]);
+  const backgroundGradient = ctx.createLinearGradient(0, y, 0, y + height);
+  backgroundGradient.addColorStop(0, rgbaToString(lightenColor(baseBackground, 0.15)));
+  backgroundGradient.addColorStop(1, rgbaToString(darkenColor(baseBackground, 0.05)));
 
-  // Background
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(x, y, width, height);
+  ctx.save();
+  roundedRectPath(ctx, x, y, width, height, radius);
+  ctx.fillStyle = backgroundGradient;
+  ctx.fill();
+  ctx.restore();
 
-  // Fill
-  ctx.fillStyle = fillColor;
-  ctx.fillRect(x, y, width * percentage, height);
+  const fillWidth = width * percentage;
+  if (fillWidth > 0) {
+    const fillRadius = Math.min(radius, fillWidth / 2);
+    const gradient = ctx.createLinearGradient(0, y, 0, y + height);
+    const topColor = rgbaToString(lightenColor(fillBaseColor, 0.25));
+    const bottomColor = rgbaToString(darkenColor(fillBaseColor, 0.25));
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(1, bottomColor);
 
-  // Border
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, width, height);
+    ctx.save();
+    roundedRectPath(ctx, x, y, fillWidth, height, fillRadius);
+    ctx.fillStyle = gradient;
+    ctx.fill();
 
-  // Label
-  if (label) {
-    drawText(ctx, label, x + width / 2, y + height / 2, {
+    const highlight = ctx.createLinearGradient(0, y, 0, y + height * 0.6);
+    highlight.addColorStop(0, GLASS_THEME.bar.highlight);
+    highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = highlight;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  roundedRectPath(ctx, x, y, width, height, radius);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = options.borderColor ?? GLASS_THEME.bar.border;
+  ctx.stroke();
+  ctx.restore();
+
+  if (options.label) {
+    drawText(ctx, options.label, x + width / 2, y + height / 2, {
       align: 'center',
       baseline: 'middle',
       font: 'bold 14px monospace',
+      color: GLASS_THEME.palette.text.primary,
+      shadow: false,
     });
   }
 }
 
+function resolveButtonBaseColor(options: ButtonOptions): RGBAColor {
+  if (options.bgColor) {
+    return parseColor(options.bgColor);
+  }
+
+  switch (options.variant) {
+    case 'danger':
+      return parseColor(GLASS_THEME.palette.accent.danger);
+    case 'success':
+      return parseColor(GLASS_THEME.palette.accent.emerald);
+    case 'ghost':
+      return parseColor('rgba(120, 160, 220, 0.4)');
+    case 'tab':
+      return parseColor(GLASS_THEME.palette.accent.cyan);
+    default:
+      return parseColor(GLASS_THEME.palette.accent.cyan);
+  }
+}
+
+function resolveButtonBorder(options: ButtonOptions, isActive: boolean, isHovered: boolean): string {
+  if (options.isDisabled) {
+    return GLASS_THEME.button.border.disabled;
+  }
+
+  if (options.variant === 'tab') {
+    return isActive ? GLASS_THEME.tabs.border.active : GLASS_THEME.tabs.border.base;
+  }
+
+  if (isActive) return GLASS_THEME.button.border.active;
+  if (isHovered) return GLASS_THEME.button.border.hover;
+
+  return GLASS_THEME.button.border.base;
+}
+
 /**
- * Desenha um botão
+ * Botão estilizado com gradiente líquido.
  */
 export function drawButton(
   ctx: CanvasRenderingContext2D,
@@ -146,50 +384,110 @@ export function drawButton(
   width: number,
   height: number,
   text: string,
-  options: {
-    bgColor?: string;
-    hoverColor?: string;
-    textColor?: string;
-    isHovered?: boolean;
-    isDisabled?: boolean;
-    fontSize?: number; // ✅ Novo: tamanho customizável da fonte
-  } = {}
-) {
-  const {
-    bgColor = COLORS.primary.purple,
-    hoverColor = COLORS.primary.purpleDark,
-    textColor = COLORS.ui.text,
-    isHovered = false,
-    isDisabled = false,
-    fontSize = 14, // ✅ Padrão 14px
-  } = options;
+  options: ButtonOptions = {},
+): void {
+  const isHovered = options.isHovered ?? false;
+  const isActive = options.isActive ?? false;
+  const isDisabled = options.isDisabled ?? false;
+  const fontSize = options.fontSize ?? 14;
+  const variant = options.variant ?? 'primary';
+  const radius = variant === 'tab' ? GLASS_THEME.radius.pill : GLASS_THEME.radius.lg;
 
-  const color = isDisabled
-    ? COLORS.bg.light
-    : isHovered
-    ? hoverColor
-    : bgColor;
+  const baseColor = resolveButtonBaseColor(options);
+  const gradientTop = rgbaToString(
+    isDisabled
+      ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.1)
+      : lightenColor(baseColor, isActive ? 0.1 : isHovered ? 0.28 : 0.33),
+  );
+  const gradientBottom = rgbaToString(
+    isDisabled
+      ? parseColor('rgba(12, 24, 48, 0.25)')
+      : darkenColor(baseColor, isActive ? 0.32 : isHovered ? 0.22 : 0.18),
+  );
 
-  // Background
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, width, height);
+  ctx.save();
+  if (!isDisabled) {
+    const shadow = variant === 'tab'
+      ? { color: GLASS_THEME.tabs.glow, blur: isActive ? 28 : 18, offsetX: 0, offsetY: isActive ? 14 : 12 }
+      : GLASS_THEME.shadow.button;
+    ctx.shadowColor = withAlpha(shadow.color, isHovered ? 1 : 0.8);
+    ctx.shadowBlur = shadow.blur;
+    ctx.shadowOffsetX = shadow.offsetX ?? 0;
+    ctx.shadowOffsetY = shadow.offsetY ?? 10;
+  }
+  const gradient = ctx.createLinearGradient(0, y, 0, y + height);
+  gradient.addColorStop(0, gradientTop);
+  gradient.addColorStop(1, gradientBottom);
+  roundedRectPath(ctx, x, y, width, height, radius);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
 
-  // Border
-  ctx.strokeStyle = isDisabled ? COLORS.ui.textDim : COLORS.ui.text;
+  // Highlight droplet
+  if (!isDisabled) {
+    ctx.save();
+    roundedRectPath(ctx, x, y, width, height, radius);
+    ctx.clip();
+    const droplet = ctx.createRadialGradient(x + width * 0.25, y + height * 0.25, 0, x + width * 0.25, y + height * 0.25, Math.max(width, height) * 0.9);
+    droplet.addColorStop(0, GLASS_THEME.button.droplet);
+    droplet.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.globalAlpha = isActive ? 0.7 : 1;
+    ctx.fillStyle = droplet;
+    ctx.fillRect(x, y, width, height);
+    ctx.restore();
+  }
+
+  const borderColor = resolveButtonBorder(options, isActive, isHovered);
+
+  ctx.save();
+  roundedRectPath(ctx, x, y, width, height, radius);
   ctx.lineWidth = 2;
-  ctx.strokeRect(x, y, width, height);
+  ctx.strokeStyle = borderColor;
+  ctx.stroke();
+  ctx.restore();
 
-  // Text (com tamanho customizável)
+  // Underline for active tabs
+  if (variant === 'tab' && isActive) {
+    ctx.save();
+    ctx.strokeStyle = GLASS_THEME.tabs.underline;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + width * 0.2, y + height - 3);
+    ctx.lineTo(x + width * 0.8, y + height - 3);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   drawText(ctx, text, x + width / 2, y + height / 2, {
     align: 'center',
     baseline: 'middle',
     font: `bold ${fontSize}px monospace`,
-    color: isDisabled ? COLORS.ui.textDim : textColor,
+    color: isDisabled ? GLASS_THEME.button.text.disabled : options.textColor ?? GLASS_THEME.button.text.base,
+    shadow: false,
   });
 }
 
 /**
- * Verifica se o mouse está sobre um retângulo
+ * Fundo de overlay translúcido para popups.
+ */
+export function drawOverlay(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  alpha: number = 1,
+): void {
+  ctx.save();
+  const gradient = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.2, width / 2, height / 2, Math.max(width, height));
+  const base = parseColor(GLASS_THEME.overlay.color);
+  gradient.addColorStop(0, rgbaToString(multiplyAlpha(base, 0.9 * alpha)));
+  gradient.addColorStop(1, rgbaToString(multiplyAlpha(base, 0.5 * alpha)));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+}
+
+/**
+ * Verifica se o mouse está sobre um retângulo.
  */
 export function isMouseOver(
   mouseX: number,
@@ -197,18 +495,18 @@ export function isMouseOver(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
 ): boolean {
   return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
 }
 
 /**
- * Quebra texto em múltiplas linhas
+ * Quebra texto em múltiplas linhas respeitando largura máxima.
  */
 export function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
-  maxWidth: number
+  maxWidth: number,
 ): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
@@ -232,4 +530,3 @@ export function wrapText(
 
   return lines;
 }
-

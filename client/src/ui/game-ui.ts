@@ -4,6 +4,7 @@
 
 import type { GameState, Beast, WeeklyAction, BeastAction } from '../types';
 import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { getLifePhase, calculateBeastAge } from '../systems/beast';
 import { getBeastLineData } from '../data/beasts';
@@ -28,6 +29,7 @@ export class GameUI {
   // UI state
   private selectedAction: WeeklyAction | null = null;
   private actionCategory: 'train' | 'work' | 'rest' | 'tournament' | null = null;
+  private activeMenuItem: string = 'ranch';
   
   // Button positions
   private buttons: Map<string, { x: number; y: number; width: number; height: number; action?: () => void }> = new Map();
@@ -308,67 +310,44 @@ export class GameUI {
   }
 
   private drawHeader() {
-    const headerHeight = 80;
+    const headerHeight = 88;
     drawPanel(this.ctx, 0, 0, this.canvas.width, headerHeight, {
-      bgColor: 'rgba(10, 10, 25, 0.95)',
-      borderColor: COLORS.primary.purple,
-      borderWidth: 2,
+      variant: 'header',
+      highlightIntensity: 0.9,
+      borderWidth: 1.5,
     });
 
-    // Title
-    drawText(this.ctx, 'BEAST KEEPERS', 20, 18, {
-      font: 'bold 24px monospace',
-      color: COLORS.primary.gold,
+    drawText(this.ctx, 'BEAST KEEPERS', 24, 20, {
+      font: 'bold 26px monospace',
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
-    // Explorações (substituindo info do guardião)
     const beast = this.gameState.activeBeast;
     const explorationCount = beast?.explorationCount || 0;
-    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 280, 22, {
+    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 310, 26, {
       font: 'bold 16px monospace',
-      color: explorationCount >= 10 ? COLORS.ui.error : COLORS.primary.blue,
+      color: explorationCount >= 10 ? GLASS_THEME.palette.accent.danger : GLASS_THEME.palette.accent.cyan,
+      shadow: false,
     });
 
-    // Money (top right)
     const moneyX = this.canvas.width - 20;
-    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 22, {
+    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 26, {
       font: 'bold 16px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
       align: 'right',
+      shadow: false,
     });
 
-    // Settings button (gear icon) - ao lado do botão Sair
-    const settingsBtnWidth = 40;
-    const settingsBtnHeight = 26;
-    const settingsBtnX = this.canvas.width - 110 - settingsBtnWidth - 10;
-    const settingsBtnY = 52;
-    const isSettingsHovered = isMouseOver(this.mouseX, this.mouseY, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight);
-    
-    drawButton(this.ctx, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight, '⚙️', {
-      bgColor: '#4a90e2',
-      hoverColor: '#357abd',
-      isHovered: isSettingsHovered,
-    });
-
-    this.buttons.set('settings', {
-      x: settingsBtnX,
-      y: settingsBtnY,
-      width: settingsBtnWidth,
-      height: settingsBtnHeight,
-      action: () => this.onOpenSettings(),
-    });
-    
-    // Logout button (top right, below coronas)
-    const logoutBtnX = this.canvas.width - 110;
-    const logoutBtnY = 52;
-    const logoutBtnWidth = 100;
-    const logoutBtnHeight = 26;
+    const logoutBtnWidth = 110;
+    const logoutBtnHeight = 30;
+    const logoutBtnY = 54;
+    const logoutBtnX = this.canvas.width - logoutBtnWidth - 20;
     const isLogoutHovered = isMouseOver(this.mouseX, this.mouseY, logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight);
-    
+
     drawButton(this.ctx, logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight, '🚪 Sair', {
-      bgColor: '#e53e3e',
-      hoverColor: '#c53030',
+      variant: 'danger',
       isHovered: isLogoutHovered,
+      fontSize: 13,
     });
 
     this.buttons.set('logout', {
@@ -379,45 +358,65 @@ export class GameUI {
       action: () => this.onLogout(),
     });
 
-    // Menu de navegação global
+    const settingsBtnWidth = 46;
+    const settingsBtnHeight = 30;
+    const settingsBtnY = 54;
+    const settingsBtnX = logoutBtnX - settingsBtnWidth - 14;
+    const isSettingsHovered = isMouseOver(this.mouseX, this.mouseY, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight);
+
+    drawButton(this.ctx, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight, '⚙️', {
+      variant: 'ghost',
+      isHovered: isSettingsHovered,
+      fontSize: 18,
+    });
+
+    this.buttons.set('settings', {
+      x: settingsBtnX,
+      y: settingsBtnY,
+      width: settingsBtnWidth,
+      height: settingsBtnHeight,
+      action: () => this.onOpenSettings(),
+    });
+
     this.drawGlobalMenu();
   }
 
   private drawGlobalMenu() {
-    const menuY = 52;
-    const btnSpacing = 8; // Reduzido de 10 para 8
-    let currentX = 20; // Reduzido de 30 para 20
-    
-    // Espaço reservado para botão Sair + Settings (direita)
-    const rightButtonsWidth = 160; // Settings + Sair
+    const menuY = 54;
+    const btnSpacing = 8;
+    let currentX = 24;
+
+    const rightButtonsWidth = 160;
     const rightMargin = 20;
 
     const menuItems = [
-      { id: 'ranch', label: '🏠 Rancho', color: COLORS.primary.green, action: () => this.onNavigate('ranch') },
-      { id: 'village', label: '🏘️ Vila', color: COLORS.primary.blue, action: () => this.onOpenVillage() },
-      { id: 'inventory', label: '🎒 Inventário', color: COLORS.primary.purple, action: () => this.onOpenInventory() },
-      { id: 'arena', label: '🥊 Arena PVP', color: COLORS.primary.red, action: () => this.onOpenArenaPvp() },
-      { id: 'exploration', label: '🗺️ Explorar', color: COLORS.primary.blue, action: () => this.onOpenExploration() },
-      { id: 'dungeons', label: '⚔️ Dungeons', color: COLORS.primary.purple, action: () => this.onOpenDungeons() },
-      { id: 'quests', label: '📜 Missões', color: COLORS.primary.gold, action: () => this.onOpenQuests() },
-      { id: 'achievements', label: '🏆 Conquistas', color: COLORS.primary.gold, action: () => this.onOpenAchievements() },
-      { id: 'temple', label: '🏛️ Templo', color: COLORS.primary.purple, action: () => this.onOpenTemple() },
+      { id: 'ranch', label: '🏠 Rancho', accent: GLASS_THEME.palette.accent.cyan, action: () => this.onNavigate('ranch') },
+      { id: 'village', label: '🏘️ Vila', accent: GLASS_THEME.palette.accent.lilac, action: () => this.onOpenVillage() },
+      { id: 'inventory', label: '🎒 Inventário', accent: GLASS_THEME.palette.accent.purple, action: () => this.onOpenInventory() },
+      { id: 'arena', label: '🥊 Arena PVP', accent: GLASS_THEME.palette.accent.danger, action: () => this.onOpenArenaPvp() },
+      { id: 'exploration', label: '🗺️ Explorar', accent: GLASS_THEME.palette.accent.cyan, action: () => this.onOpenExploration() },
+      { id: 'dungeons', label: '⚔️ Dungeons', accent: GLASS_THEME.palette.accent.purple, action: () => this.onOpenDungeons() },
+      { id: 'quests', label: '📜 Missões', accent: GLASS_THEME.palette.accent.amber, action: () => this.onOpenQuests() },
+      { id: 'achievements', label: '🏆 Conquistas', accent: GLASS_THEME.palette.accent.amber, action: () => this.onOpenAchievements() },
+      { id: 'temple', label: '🏛️ Templo', accent: GLASS_THEME.palette.accent.lilac, action: () => this.onOpenTemple() },
     ];
 
-    // Calcular largura disponível (descontando botões da direita)
     const totalItems = menuItems.length;
     const totalSpacing = (totalItems - 1) * btnSpacing;
     const availableWidth = this.canvas.width - currentX - rightButtonsWidth - rightMargin;
-    const btnWidth = Math.max(90, Math.floor((availableWidth - totalSpacing) / totalItems)); // Mínimo 90px
-    const btnHeight = 26;
+    const btnWidth = Math.max(96, Math.floor((availableWidth - totalSpacing) / totalItems));
+    const btnHeight = 32;
 
     menuItems.forEach((item) => {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, currentX, menuY, btnWidth, btnHeight);
+      const isActive = this.activeMenuItem === item.id;
 
       drawButton(this.ctx, currentX, menuY, btnWidth, btnHeight, item.label, {
-        bgColor: item.color,
-        isHovered: isHovered,
-        fontSize: 11, // Reduzido de padrão para caber melhor
+        variant: 'tab',
+        bgColor: item.accent,
+        isHovered,
+        isActive,
+        fontSize: 12,
       });
 
       this.buttons.set(item.id, {
@@ -425,7 +424,10 @@ export class GameUI {
         y: menuY,
         width: btnWidth,
         height: btnHeight,
-        action: item.action,
+        action: () => {
+          this.activeMenuItem = item.id;
+          item.action();
+        },
       });
 
       currentX += btnWidth + btnSpacing;
@@ -436,7 +438,7 @@ export class GameUI {
     const beast = this.gameState.activeBeast!;
     
     // === 3D Ranch: preenche TODO o espaço disponível ===
-    const headerHeight = 80; // Mesmo valor do drawHeader()
+    const headerHeight = 88; // Mesmo valor do drawHeader()
     const scene3DX = 0;
     const scene3DY = headerHeight; // Começa LOGO APÓS o header
     const scene3DWidth = this.canvas.width - 510; // Até os painéis direitos
@@ -456,7 +458,7 @@ export class GameUI {
     // Don't create or update 3D viewer if it should be hidden
     if (!this.is3DViewerVisible) {
       // Just draw the border
-      this.ctx.strokeStyle = COLORS.primary.purple;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.lilac;
       this.ctx.lineWidth = 3;
       this.ctx.strokeRect(x, y, width, height);
       return;
@@ -543,7 +545,7 @@ export class GameUI {
     }
     
     // Draw border on canvas
-    this.ctx.strokeStyle = COLORS.primary.purple;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.lilac;
     this.ctx.lineWidth = 3;
     this.ctx.strokeRect(x, y, width, height);
   }
@@ -551,26 +553,26 @@ export class GameUI {
   private drawBeastFallback(x: number, y: number, width: number, height: number, beast: Beast) {
     // Placeholder: colored rectangle representing the beast
     const lineColors: Record<string, string> = {
-      olgrim: '#9f7aea',
-      terravox: '#8b7355',
-      feralis: '#48bb78',
-      brontis: '#38a169',
-      zephyra: '#63b3ed',
-      ignar: '#fc8181',
-      mirella: '#4299e1',
-      umbrix: '#2d3748',
-      sylphid: '#fbbf24',
-      raukor: '#a0aec0',
+      olgrim: '#C084FC',
+      terravox: '#8B7355',
+      feralis: '#34D399',
+      brontis: '#22C55E',
+      zephyra: '#38BDF8',
+      ignar: '#F87171',
+      mirella: '#7C3AED',
+      umbrix: '#1E293B',
+      sylphid: '#FACC15',
+      raukor: '#94A3C2',
     };
 
-    const color = lineColors[beast.line] || COLORS.primary.green;
+    const color = lineColors[beast.line] || GLASS_THEME.palette.accent.emerald;
 
     // Body
     this.ctx.fillStyle = color;
     this.ctx.fillRect(x, y, width, height);
 
     // Border
-    this.ctx.strokeStyle = COLORS.ui.text;
+    this.ctx.strokeStyle = GLASS_THEME.palette.text.primary;
     this.ctx.lineWidth = 3;
     this.ctx.strokeRect(x, y, width, height);
 
@@ -591,17 +593,17 @@ export class GameUI {
     const height = 430; // Aumentado de 350 → 430 (+80px para STATUS)
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(10, 10, 25, 0.88)',
-      borderColor: COLORS.primary.gold,
-      borderWidth: 2,
+      variant: 'card',
+      highlightIntensity: 1,
+      borderWidth: 1.5,
     });
 
     // Nome da besta (topo do painel)
     const lineData = getBeastLineData(beast.line);
     const formattedName = `${beast.name} - ${lineData.name}`;
-    drawText(this.ctx, formattedName, x + 10, y + 8, {
+    drawText(this.ctx, formattedName, x + 16, y + 10, {
       font: 'bold 18px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
     });
     
     // Info básica em linha
@@ -618,31 +620,35 @@ export class GameUI {
     const ageInDays = beast.ageInDays || 0;
     const ageWeeks = Math.floor(ageInDays / 7);
     
-    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias (${ageWeeks} sem)`, x + 10, y + 30, {
+    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias (${ageWeeks} sem)`, x + 16, y + 34, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
+      shadow: false,
     });
     
     // Barras HP, Essência, Fadiga (compactas)
-    let barY = y + 50;
-    drawBar(this.ctx, x + 10, barY, width - 20, 16, beast.currentHp, beast.maxHp, {
+    let barY = y + 60;
+    drawBar(this.ctx, x + 16, barY, width - 32, 18, beast.currentHp, beast.maxHp, {
+      bgColor: 'rgba(12, 28, 56, 0.35)',
       fillColor: COLORS.attributes.vitality,
-      label: `HP: ${beast.currentHp}/${beast.maxHp}`,
+      label: `HP ${beast.currentHp}/${beast.maxHp}`,
     });
-    
-    drawBar(this.ctx, x + 10, barY + 20, width - 20, 16, beast.essence, beast.maxEssence, {
-      fillColor: COLORS.primary.purple,
-      label: `Essência: ${beast.essence}/${beast.maxEssence}`,
+
+    drawBar(this.ctx, x + 16, barY + 24, width - 32, 18, beast.essence, beast.maxEssence, {
+      bgColor: 'rgba(12, 28, 56, 0.35)',
+      fillColor: GLASS_THEME.palette.accent.purple,
+      label: `Essência ${beast.essence}/${beast.maxEssence}`,
     });
-    
-    drawBar(this.ctx, x + 10, barY + 40, width - 20, 12, beast.secondaryStats.fatigue, 100, {
-      fillColor: COLORS.ui.warning,
-      label: `Fadiga: ${beast.secondaryStats.fatigue}`,
+
+    drawBar(this.ctx, x + 16, barY + 48, width - 32, 14, beast.secondaryStats.fatigue, 100, {
+      bgColor: 'rgba(12, 28, 56, 0.35)',
+      fillColor: GLASS_THEME.palette.accent.amber,
+      label: `Fadiga ${beast.secondaryStats.fatigue}`,
     });
     
     // Divisor
-    barY += 60;
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    barY += 72;
+    this.ctx.strokeStyle = 'rgba(164, 218, 255, 0.35)';
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.moveTo(x + 10, barY);
@@ -651,9 +657,10 @@ export class GameUI {
     
     // Título ATRIBUTOS
     barY += 15;
-    drawText(this.ctx, 'ATRIBUTOS', x + 10, barY, {
+    drawText(this.ctx, 'ATRIBUTOS', x + 16, barY, {
       font: 'bold 16px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
+      shadow: false,
     });
 
     const attrs = [
@@ -672,20 +679,22 @@ export class GameUI {
     attrs.forEach((attr) => {
       const value = beast.attributes[attr.key as keyof typeof beast.attributes];
       
-      drawText(this.ctx, attr.name, x + 10, yOffset, {
+      drawText(this.ctx, attr.name, x + 16, yOffset, {
         font: '13px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.secondary,
+        shadow: false,
       });
 
       drawBar(
         this.ctx,
-        x + labelWidth + 10,
-        yOffset - 3,
+        x + labelWidth + 18,
+        yOffset - 2,
         barWidth,
         16,
         value,
         150,
         {
+          bgColor: 'rgba(12, 28, 56, 0.32)',
           fillColor: attr.color,
           label: `${value}`,
         }
@@ -696,7 +705,7 @@ export class GameUI {
 
     // Divisor
     yOffset += 12;
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = 'rgba(164, 218, 255, 0.28)';
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.moveTo(x + 10, yOffset);
@@ -706,25 +715,28 @@ export class GameUI {
     // STATUS (mais compacto)
     yOffset += 18;
     
-    drawText(this.ctx, 'STATUS', x + 10, yOffset, {
+    drawText(this.ctx, 'STATUS', x + 16, yOffset, {
       font: 'bold 18px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
+      shadow: false,
     });
     
     yOffset += 30;
 
     // Grid de 2 colunas para stats
-    const col1X = x + 10;
-    const col2X = x + 240;
+    const col1X = x + 16;
+    const col2X = x + 260;
     
     drawText(this.ctx, `Stress: ${beast.secondaryStats.stress}`, col1X, yOffset, {
       font: '14px monospace',
-      color: beast.secondaryStats.stress > 70 ? COLORS.ui.error : COLORS.ui.text,
+      color: beast.secondaryStats.stress > 70 ? GLASS_THEME.palette.accent.danger : GLASS_THEME.palette.text.primary,
+      shadow: false,
     });
 
     drawText(this.ctx, `Lealdade: ${beast.secondaryStats.loyalty}`, col2X, yOffset, {
       font: '14px monospace',
-      color: COLORS.ui.info,
+      color: GLASS_THEME.palette.accent.cyan,
+      shadow: false,
     });
     
     yOffset += 25;
@@ -735,12 +747,14 @@ export class GameUI {
     
     drawText(this.ctx, `Vitórias: ${victories}`, col1X, yOffset, {
       font: '14px monospace',
-      color: COLORS.ui.success,
+      color: GLASS_THEME.palette.accent.emerald,
+      shadow: false,
     });
     
     drawText(this.ctx, `Derrotas: ${defeats}`, col2X, yOffset, {
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
+      shadow: false,
     });
   }
 
@@ -759,9 +773,9 @@ export class GameUI {
     const height = this.canvas.height - y; // ATÉ O FUNDO (sem Week Info)
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(10, 10, 25, 0.88)',
-      borderColor: COLORS.primary.gold,
-      borderWidth: 2,
+      variant: 'card',
+      highlightIntensity: 0.9,
+      borderWidth: 1.5,
     });
 
     // Se tem ação em progresso, verificar se já completou
@@ -781,9 +795,10 @@ export class GameUI {
     }
 
     // Se não tem ação, mostrar menu de ações
-    drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 10, y + 8, {
+    drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 16, y + 10, {
       font: 'bold 16px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
+      shadow: false,
     });
 
     // Category buttons (2x2 grid MENOR)
@@ -796,9 +811,9 @@ export class GameUI {
 
     // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [
-      { id: 'train', label: '🏋️ Treinar', row: 0, col: 0 },
-      { id: 'work', label: '💼 Trabalhar', row: 0, col: 1 },
-      { id: 'rest', label: '😴 Descansar', row: 1, col: 0 },
+      { id: 'train', label: '🏋️ Treinar', row: 0, col: 0, accent: GLASS_THEME.palette.accent.emerald },
+      { id: 'work', label: '💼 Trabalhar', row: 0, col: 1, accent: GLASS_THEME.palette.accent.amber },
+      { id: 'rest', label: '😴 Descansar', row: 1, col: 0, accent: GLASS_THEME.palette.accent.cyan },
     ];
 
     categories.forEach((cat) => {
@@ -808,8 +823,11 @@ export class GameUI {
       const isSelected = this.actionCategory === cat.id;
 
       drawButton(this.ctx, btnX, btnY, buttonWidth, buttonHeight, cat.label, {
-        bgColor: isSelected ? COLORS.primary.purpleDark : COLORS.primary.purple,
+        variant: 'primary',
+        bgColor: cat.accent,
         isHovered,
+        isActive: isSelected,
+        fontSize: 14,
       });
 
       this.buttons.set(`category_${cat.id}`, {
@@ -830,14 +848,16 @@ export class GameUI {
     
     drawText(this.ctx, '🏆 Torneio', devMsgX + buttonWidth / 2, devMsgY + 8, {
       font: 'bold 14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
       align: 'center',
+      shadow: false,
     });
     
     drawText(this.ctx, 'Em Desenvolvimento', devMsgX + buttonWidth / 2, devMsgY + 26, {
       font: '12px monospace',
-      color: COLORS.ui.warning,
+      color: GLASS_THEME.palette.accent.lilac,
       align: 'center',
+      shadow: false,
     });
 
     // Show actions for selected category
@@ -849,17 +869,17 @@ export class GameUI {
   private drawActionProgress(beast: Beast, serverTime: number, x: number, y: number, width: number, height: number) {
     // Se tem mensagem de completude, mostrar ela no lugar do progresso
     if (this.completionMessage) {
-      drawText(this.ctx, '✅ AÇÃO COMPLETA', x + 10, y + 10, {
+      drawText(this.ctx, '✅ AÇÃO COMPLETA', x + 16, y + 12, {
         font: 'bold 20px monospace',
-        color: COLORS.primary.green,
+        color: GLASS_THEME.palette.accent.emerald,
       });
       
       // Mensagem com quebra de linha automática
       const messageLines = this.completionMessage.split('\n');
       messageLines.forEach((line, index) => {
-        drawText(this.ctx, line, x + 10, y + 50 + (index * 25), {
+        drawText(this.ctx, line, x + 16, y + 52 + (index * 25), {
           font: 'bold 16px monospace',
-          color: COLORS.ui.text,
+          color: GLASS_THEME.palette.text.primary,
         });
       });
       
@@ -872,47 +892,34 @@ export class GameUI {
     const progress = getActionProgress(action, serverTime);
     const timeRemaining = Math.max(0, action.completesAt - serverTime);
     
-    drawText(this.ctx, '⏳ AÇÃO EM PROGRESSO', x + 10, y + 10, {
+    drawText(this.ctx, '⏳ AÇÃO EM PROGRESSO', x + 16, y + 12, {
       font: 'bold 20px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
     });
     
     // Nome da ação
-    drawText(this.ctx, getRealtimeActionName(action.type), x + 10, y + 45, {
+    drawText(this.ctx, getRealtimeActionName(action.type), x + 16, y + 46, {
       font: 'bold 18px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
     
     // Barra de progresso
-    const barX = x + 10;
-    const barY = y + 75;
-    const barWidth = width - 20;
-    const barHeight = 30;
-    
-    // Fundo da barra
-    this.ctx.fillStyle = COLORS.bg.dark;
-    this.ctx.fillRect(barX, barY, barWidth, barHeight);
-    
-    // Progresso
-    this.ctx.fillStyle = COLORS.primary.green;
-    this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
-    
-    // Borda
-    this.ctx.strokeStyle = COLORS.primary.gold;
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(barX, barY, barWidth, barHeight);
-    
-    // Texto de progresso
-    drawText(this.ctx, `${Math.floor(progress * 100)}%`, barX + barWidth / 2, barY + 18, {
-      align: 'center',
-      font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+    const barX = x + 16;
+    const barY = y + 78;
+    const barWidth = width - 32;
+    const barHeight = 32;
+
+    drawBar(this.ctx, barX, barY, barWidth, barHeight, progress, 1, {
+      bgColor: 'rgba(12, 28, 56, 0.35)',
+      fillColor: GLASS_THEME.palette.accent.cyan,
+      label: `${Math.floor(progress * 100)}%`,
     });
     
     // Tempo restante
-    drawText(this.ctx, `Tempo restante: ${formatTime(timeRemaining)}`, x + 10, y + 120, {
+    drawText(this.ctx, `Tempo restante: ${formatTime(timeRemaining)}`, x + 16, y + 124, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.info,
+      color: GLASS_THEME.palette.accent.lilac,
+      shadow: false,
     });
     
     // Botão cancelar
@@ -924,7 +931,7 @@ export class GameUI {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, cancelBtnX, cancelBtnY, cancelBtnWidth, cancelBtnHeight);
       
       drawButton(this.ctx, cancelBtnX, cancelBtnY, cancelBtnWidth, cancelBtnHeight, '❌ Cancelar Ação', {
-        bgColor: COLORS.ui.error,
+        variant: 'danger',
         isHovered,
       });
       
@@ -962,10 +969,12 @@ export class GameUI {
       const canStart = canStartAction(beast, action.id, serverTime);
 
       drawButton(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, action.label, {
-        bgColor: isSelected ? COLORS.ui.success : COLORS.bg.light,
+        variant: 'primary',
+        bgColor: isSelected ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.cyan,
         isHovered,
+        isActive: isSelected,
         isDisabled: !canStart.can,
-        fontSize: 13, // ✅ Aumentado de 12 → 13px (mais legível)
+        fontSize: 13,
       });
 
       this.buttons.set(`action_${action.id}`, {
@@ -988,7 +997,8 @@ export class GameUI {
         drawText(this.ctx, formatTime(canStart.timeRemaining), buttonX + buttonWidth / 2, buttonY + buttonHeight + 12, {
           align: 'center',
           font: '10px monospace',
-          color: COLORS.ui.error,
+          color: GLASS_THEME.palette.accent.danger,
+          shadow: false,
         });
       }
     });
@@ -1038,23 +1048,25 @@ export class GameUI {
     const height = 60;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: 'rgba(10, 10, 25, 0.88)',
-      borderColor: COLORS.primary.gold,
-      borderWidth: 2,
+      variant: 'card',
+      highlightIntensity: 0.9,
+      borderWidth: 1.5,
     });
 
     // Info em 2 linhas (mais legível)
     const ageInfo = calculateBeastAge(beast, serverTime);
     const explorationCount = beast.explorationCount || 0;
     
-    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 10, y + 10, {
+    drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 16, y + 12, {
       font: 'bold 14px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
+      shadow: false,
     });
     
-    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 10, y + 35, {
+    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 16, y + 36, {
       font: '13px monospace',
-      color: explorationCount >= 10 ? COLORS.ui.error : COLORS.ui.success,
+      color: explorationCount >= 10 ? GLASS_THEME.palette.accent.danger : GLASS_THEME.palette.accent.emerald,
+      shadow: false,
     });
     
     // Torneio removido - feature em desenvolvimento
@@ -1086,7 +1098,7 @@ export class GameUI {
     drawText(this.ctx, 'Nenhuma besta ativa!', this.canvas.width / 2, this.canvas.height / 2, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.ui.error,
+      color: GLASS_THEME.palette.accent.danger,
     });
   }
   

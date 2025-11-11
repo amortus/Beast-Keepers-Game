@@ -1,65 +1,65 @@
 /**
- * Paleta de cores do Beast Keepers
- * Estilo vibrante inspirado em PS1
+ * Paleta de cores do Beast Keepers (versão vidro arcano)
  */
 
 export const COLORS = {
-  // Background
+  // Backgrounds base usados para contrastes gerais
   bg: {
-    dark: '#0f1419',
-    medium: '#1a1a2e',
-    light: '#2d3748',
+    dark: '#030712',
+    medium: '#05091A',
+    light: '#0F172A',
   },
 
-  // Primárias
+  // Primárias / acentos principais
   primary: {
-    purple: '#667eea',
-    purpleDark: '#764ba2',
-    green: '#48bb78',
-    gold: '#fbbf24',
-    blue: '#4299e1',
+    purple: '#7C3AED',
+    purpleDark: '#5B21B6',
+    green: '#22C55E',
+    gold: '#FACC15',
+    blue: '#38BDF8',
+    red: '#F87171',
   },
 
-  // Atributos
+  // Atributos principais (mantidos para lógica de jogo)
   attributes: {
-    might: '#e53e3e',      // Vermelho (Força)
-    wit: '#9f7aea',        // Roxo (Astúcia)
-    focus: '#4299e1',      // Azul (Foco)
-    agility: '#48bb78',    // Verde (Agilidade)
-    ward: '#718096',       // Cinza (Resistência)
-    vitality: '#f56565',   // Rosa (Vitalidade)
+    might: '#F87171',      // Força
+    wit: '#A855F7',        // Astúcia
+    focus: '#38BDF8',      // Foco
+    agility: '#34D399',    // Agilidade
+    ward: '#64748B',       // Resistência
+    vitality: '#FB7185',   // Vitalidade
   },
 
-  // Elementos
+  // Elementos mágicos
   elements: {
-    fire: '#f56565',
-    water: '#4299e1',
-    earth: '#8b7355',
-    air: '#a0aec0',
-    shadow: '#2d3748',
-    light: '#fbbf24',
-    ether: '#9f7aea',
-    moon: '#cbd5e0',
-    blood: '#c53030',
+    fire: '#FB7185',
+    water: '#38BDF8',
+    earth: '#8B7355',
+    air: '#94A3B8',
+    shadow: '#1E293B',
+    light: '#FACC15',
+    ether: '#A855F7',
+    moon: '#C4B5FD',
+    blood: '#DC2626',
   },
 
-  // UI
+  // UI (alerts, texto, etc.)
   ui: {
-    success: '#48bb78',
-    warning: '#f6ad55',
-    error: '#fc8181',
-    info: '#63b3ed',
-    text: '#e2e8f0',
-    textDim: '#a0aec0',
+    success: '#22C55E',
+    warning: '#F97316',
+    error: '#F87171',
+    info: '#38BDF8',
+    text: '#F5F9FF',
+    textDim: '#9CA3C2',
   },
 
-  // Status
+  // Estados rápidos
   status: {
-    happy: '#48bb78',
-    neutral: '#a0aec0',
-    sad: '#4299e1',
-    angry: '#fc8181',
-    tired: '#f6ad55',
+    happy: '#34D399',
+    neutral: '#9CA3C2',
+    sad: '#60A5FA',
+    angry: '#F97316',
+    tired: '#FACC15',
   },
 };
 
@@ -67,9 +67,10 @@ export const COLORS = {
  * Converte hex para rgba
  */
 export function hexToRgba(hex: string, alpha: number = 1): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const normalized = hex.replace('#', '');
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 

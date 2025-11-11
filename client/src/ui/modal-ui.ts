@@ -3,8 +3,8 @@
  * Substitui alert() e prompt() do navegador
  */
 
-import { COLORS } from './colors';
-import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
+import { GLASS_THEME } from './theme';
+import { drawPanel, drawText, drawButton, isMouseOver, drawOverlay } from './ui-helper';
 
 export type ModalType = 'message' | 'input' | 'choice' | 'npc-selection';
 
@@ -98,8 +98,7 @@ export class ModalUI {
     this.buttons.clear();
 
     // Fundo escuro semi-transparente
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    drawOverlay(this.ctx, this.canvas.width, this.canvas.height);
 
     // Desenha modal baseado no tipo
     switch (this.currentModal.type) {
@@ -128,19 +127,19 @@ export class ModalUI {
 
     // Painel
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Título
     drawText(this.ctx, this.currentModal.title, x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Mensagem
-    this.drawWrappedText(this.currentModal.message, x + 20, y + 80, width - 40, 22, '16px monospace', COLORS.ui.text);
+    this.drawWrappedText(this.currentModal.message, x + 20, y + 80, width - 40, 22, '16px monospace', GLASS_THEME.palette.text.primary);
 
     // Botão OK
     const btnWidth = 150;
@@ -150,7 +149,8 @@ export class ModalUI {
     const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, 'OK', {
-      bgColor: COLORS.primary.green,
+      variant: 'primary',
+      bgColor: GLASS_THEME.palette.accent.emerald,
       isHovered,
     });
 
@@ -178,21 +178,21 @@ export class ModalUI {
 
     // Painel
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.purple,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Título
     drawText(this.ctx, this.currentModal.title, x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Mensagem
     drawText(this.ctx, this.currentModal.message, x + 20, y + 70, {
       font: '16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Campo de input
@@ -201,28 +201,27 @@ export class ModalUI {
     const inputWidth = width - 40;
     const inputHeight = 50;
 
-    // Fundo do input
-    this.ctx.fillStyle = COLORS.bg.dark;
-    this.ctx.fillRect(inputX, inputY, inputWidth, inputHeight);
-
-    // Borda (destacada se focado)
-    this.ctx.strokeStyle = this.inputFocused ? COLORS.primary.purple : COLORS.ui.text;
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(inputX, inputY, inputWidth, inputHeight);
+    drawPanel(this.ctx, inputX, inputY, inputWidth, inputHeight, {
+      variant: 'input',
+      borderColor: this.inputFocused ? GLASS_THEME.palette.accent.cyan : 'rgba(185, 210, 255, 0.65)',
+      borderWidth: this.inputFocused ? 2.2 : 1.6,
+      shadow: false,
+    });
 
     // Texto digitado
     const displayText = this.inputValue || this.currentModal.placeholder || '';
-    const textColor = this.inputValue ? COLORS.ui.text : COLORS.ui.textDim;
+    const textColor = this.inputValue ? GLASS_THEME.palette.text.primary : GLASS_THEME.palette.text.muted;
     
     drawText(this.ctx, displayText, inputX + 15, inputY + 32, {
       font: '18px monospace',
       color: textColor,
+      shadow: false,
     });
 
     // Cursor piscando
     if (this.inputFocused && Math.floor(Date.now() / 500) % 2 === 0) {
       const cursorX = inputX + 15 + this.ctx.measureText(this.inputValue).width;
-      this.ctx.fillStyle = COLORS.ui.text;
+      this.ctx.fillStyle = GLASS_THEME.palette.text.primary;
       this.ctx.fillRect(cursorX, inputY + 15, 2, 20);
     }
 
@@ -237,7 +236,7 @@ export class ModalUI {
     // Botão Cancelar
     const cancelIsHovered = isMouseOver(this.mouseX, this.mouseY, btnStartX, btnY, btnWidth, btnHeight);
     drawButton(this.ctx, btnStartX, btnY, btnWidth, btnHeight, 'Cancelar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: cancelIsHovered,
     });
 
@@ -253,7 +252,8 @@ export class ModalUI {
     const confirmX = btnStartX + btnWidth + btnSpacing;
     const confirmIsHovered = isMouseOver(this.mouseX, this.mouseY, confirmX, btnY, btnWidth, btnHeight);
     drawButton(this.ctx, confirmX, btnY, btnWidth, btnHeight, 'Confirmar', {
-      bgColor: COLORS.primary.green,
+      variant: 'primary',
+      bgColor: GLASS_THEME.palette.accent.cyan,
       isHovered: confirmIsHovered,
     });
 
@@ -277,20 +277,20 @@ export class ModalUI {
 
     // Painel
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.blue,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Título
     drawText(this.ctx, this.currentModal.title, x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.primary.blue,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Mensagem
     if (this.currentModal.message) {
-      this.drawWrappedText(this.currentModal.message, x + 20, y + 70, width - 40, 20, '14px monospace', COLORS.ui.textDim);
+      this.drawWrappedText(this.currentModal.message, x + 20, y + 70, width - 40, 20, '14px monospace', GLASS_THEME.palette.text.secondary);
     }
 
     // Opções
@@ -301,13 +301,13 @@ export class ModalUI {
     this.currentModal.choices.forEach((choice, index) => {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x + 30, btnY, btnWidth, btnHeight);
       
-      // Define cor do botão (vermelho para cancelar, azul para ações)
       const isCancel = choice.toLowerCase().includes('cancelar');
-      const btnColor = isCancel ? COLORS.ui.error : COLORS.primary.purple;
 
       drawButton(this.ctx, x + 30, btnY, btnWidth, btnHeight, `${index + 1}. ${choice}`, {
-        bgColor: btnColor,
+        variant: isCancel ? 'danger' : 'primary',
+        bgColor: isCancel ? undefined : GLASS_THEME.palette.accent.cyan,
         isHovered,
+        fontSize: 14,
       });
 
       this.buttons.set(`choice_${index}`, {
@@ -335,8 +335,8 @@ export class ModalUI {
     const backIsHovered = isMouseOver(this.mouseX, this.mouseY, backBtnX, btnY, backBtnWidth, backBtnHeight);
 
     drawButton(this.ctx, backBtnX, btnY, backBtnWidth, backBtnHeight, '← Voltar', {
-      bgColor: COLORS.ui.error,
-      hoverColor: '#c53030',
+      variant: 'ghost',
+      bgColor: GLASS_THEME.palette.accent.lilac,
       isHovered: backIsHovered,
     });
 
