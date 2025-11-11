@@ -157,7 +157,7 @@ const DEFAULT_LAYOUT: RanchLayout = {
   fence: { radius: 9, postCount: 24 },
   walkableRadius: 7.3,
   grass: { count: 650, area: 16, seed: 1337 },
-  trees: [{ position: [-4.2, -3.4], rotation: 0.32, scale: 1.0 }],
+  trees: [{ position: [-4.8, 1.8], rotation: 0.3, scale: 1.05 }],
   hayBales: [],
   lamps: [
     { position: [-2.0, -1.8] },
@@ -735,8 +735,8 @@ export class RanchScene3D {
         targetHeight: 2.2,
         name: 'ranch-lantern',
         onLoaded: (group) => {
-          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.9, 7, 1.8);
-          light.position.set(0, 1.45, 0);
+          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.95, 7, 1.8);
+          light.position.set(0, 1.1, 0);
           group.add(light);
 
           const innerGlow = new THREE.Mesh(
@@ -744,10 +744,10 @@ export class RanchScene3D {
             new THREE.MeshBasicMaterial({
               color: this.skin.lamp.emissiveColor,
               transparent: true,
-              opacity: 0.4,
+              opacity: 0.45,
             }),
           );
-          innerGlow.position.set(0, 1.45, 0);
+          innerGlow.position.set(0, 1.08, 0);
           group.add(innerGlow);
 
           const sprite = new THREE.Sprite(
@@ -755,13 +755,13 @@ export class RanchScene3D {
               map: this.getGlowTexture(),
               color: this.skin.lamp.lightColor,
               transparent: true,
-              opacity: 0.55,
+              opacity: 0.6,
               depthWrite: false,
               blending: THREE.AdditiveBlending,
             }),
           );
-          sprite.position.set(0, 1.45, 0);
-          sprite.scale.set(1.3, 1.3, 1.3);
+          sprite.position.set(0, 1.08, 0);
+          sprite.scale.set(1.4, 1.4, 1.4);
           group.add(sprite);
 
           this.lanternLights.push({
@@ -954,9 +954,9 @@ export class RanchScene3D {
     }
 
     this.smokeAccumulator += delta;
-    if (this.smokeAccumulator >= 0.35) {
+    if (this.smokeAccumulator >= 0.22) {
       this.smokeAccumulator = 0;
-      if (this.chimneySmokeParticles.length < 12) {
+      if (this.chimneySmokeParticles.length < 16) {
         this.spawnSmokeParticle();
       }
     }
@@ -967,9 +967,9 @@ export class RanchScene3D {
 
       particle.sprite.position.addScaledVector(particle.velocity, delta);
       const spriteMaterial = particle.sprite.material as THREE.SpriteMaterial;
-      spriteMaterial.opacity = Math.max(0, 0.4 * (1 - progress));
+      spriteMaterial.opacity = Math.max(0, 0.5 * (1 - progress));
 
-      const scale = 0.35 + progress * 0.4;
+      const scale = 0.4 + progress * 0.5;
       particle.sprite.scale.set(scale, scale, scale);
 
       if (particle.life >= particle.maxLife) {
@@ -994,17 +994,17 @@ export class RanchScene3D {
         map: this.getSmokeTexture(),
         color: 0xffffff,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.55,
         depthWrite: false,
         depthTest: true,
         blending: THREE.NormalBlending,
       }),
     );
-    sprite.position.set((Math.random() - 0.5) * 0.12, 0, (Math.random() - 0.5) * 0.12);
-    sprite.scale.set(0.35, 0.35, 0.35);
+    sprite.position.set((Math.random() - 0.5) * 0.1, 0, (Math.random() - 0.5) * 0.1);
+    sprite.scale.set(0.4, 0.4, 0.4);
 
-    const velocity = new THREE.Vector3((Math.random() - 0.5) * 0.03, 0.35 + Math.random() * 0.1, (Math.random() - 0.5) * 0.03);
-    const maxLife = 2.8 + Math.random() * 1.2;
+    const velocity = new THREE.Vector3((Math.random() - 0.5) * 0.025, 0.28 + Math.random() * 0.08, (Math.random() - 0.5) * 0.025);
+    const maxLife = 3.2 + Math.random() * 1.4;
 
     this.chimneySmokeGroup.add(sprite);
     this.chimneySmokeParticles.push({
