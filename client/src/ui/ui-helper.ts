@@ -459,18 +459,6 @@ export function drawButton(
   ctx.stroke();
   ctx.restore();
 
-  // Underline for active tabs
-  if (variant === 'tab' && isActive) {
-    ctx.save();
-    ctx.strokeStyle = GLASS_THEME.tabs.underline;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x + width * 0.2, y + height - 3);
-    ctx.lineTo(x + width * 0.8, y + height - 3);
-    ctx.stroke();
-    ctx.restore();
-  }
-
   drawText(ctx, text, x + width / 2, y + height / 2, {
     align: 'center',
     baseline: 'middle',
@@ -478,6 +466,18 @@ export function drawButton(
     color: options.textColor ?? (isDisabled ? GLASS_THEME.button.text.disabled : GLASS_THEME.button.text.base),
     shadow: false,
   });
+
+  if (variant === 'tab') {
+    ctx.save();
+    ctx.fillStyle = withAlpha(GLASS_THEME.button.droplet, 0.25);
+    ctx.fillRect(x, y + height - 5, width, 1);
+    const underline = ctx.createLinearGradient(x, y + height - 5, x, y + height);
+    underline.addColorStop(0, withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.9 : 0.35));
+    underline.addColorStop(1, withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.6 : 0));
+    ctx.fillStyle = underline;
+    ctx.fillRect(x, y + height - 4, width, 4);
+    ctx.restore();
+  }
 }
 
 /**
