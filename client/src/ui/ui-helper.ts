@@ -471,19 +471,11 @@ export function drawButton(
     ctx.restore();
   }
 
-  const defaultTextColor = (() => {
-    if (isDisabled) {
-      return GLASS_THEME.button.text.disabled;
-    }
-    const luminance = relativeLuminance(baseColor);
-    return luminance > 0.55 ? GLASS_THEME.button.text.dark : GLASS_THEME.button.text.base;
-  })();
-
   drawText(ctx, text, x + width / 2, y + height / 2, {
     align: 'center',
     baseline: 'middle',
     font: `bold ${fontSize}px monospace`,
-    color: options.textColor ?? defaultTextColor,
+    color: options.textColor ?? (isDisabled ? GLASS_THEME.button.text.disabled : GLASS_THEME.button.text.base),
     shadow: false,
   });
 }
