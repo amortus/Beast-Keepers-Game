@@ -52,35 +52,35 @@ const PANEL_VARIANTS: Record<GlassPanelVariant, { gradient: string[]; borderColo
     borderColor: GLASS_THEME.palette.panel.border,
     radius: GLASS_THEME.radius.lg,
     shadow: GLASS_THEME.shadow.soft,
-    highlight: 'rgba(255, 255, 255, 0.07)',
+    highlight: 'rgba(255, 255, 255, 0.018)',
   },
   header: {
     gradient: GLASS_THEME.palette.header.gradient,
     borderColor: GLASS_THEME.palette.header.border,
     radius: 0,
     shadow: { color: 'rgba(3, 7, 18, 0.75)', blur: 32, offsetX: 0, offsetY: 20 },
-    highlight: 'rgba(255, 255, 255, 0.045)',
+    highlight: 'rgba(255, 255, 255, 0.012)',
   },
   card: {
     gradient: GLASS_THEME.palette.panel.gradient,
     borderColor: GLASS_THEME.palette.panel.border,
     radius: GLASS_THEME.radius.xl,
     shadow: GLASS_THEME.shadow.soft,
-    highlight: 'rgba(255, 255, 255, 0.065)',
+    highlight: 'rgba(255, 255, 255, 0.016)',
   },
   popup: {
     gradient: GLASS_THEME.palette.popup.gradient,
     borderColor: GLASS_THEME.palette.popup.border,
     radius: GLASS_THEME.radius.xl,
     shadow: GLASS_THEME.shadow.heavy,
-    highlight: 'rgba(255, 255, 255, 0.075)',
+    highlight: 'rgba(255, 255, 255, 0.019)',
   },
   input: {
     gradient: GLASS_THEME.palette.input.gradient,
     borderColor: GLASS_THEME.palette.input.border,
     radius: GLASS_THEME.radius.md,
     shadow: { color: 'rgba(12, 32, 72, 0.45)', blur: 18, offsetX: 0, offsetY: 8 },
-    highlight: 'rgba(255, 255, 255, 0.09)',
+    highlight: 'rgba(255, 255, 255, 0.023)',
   },
 };
 
@@ -211,7 +211,7 @@ export function drawPanel(
   ctx.save();
   roundedRectPath(ctx, x, y, width, height, radius);
   ctx.clip();
-  const highlightHeight = Math.max(6, height * 0.12);
+  const highlightHeight = Math.max(4, height * 0.06);
   const highlight = ctx.createLinearGradient(0, y, 0, y + highlightHeight);
   highlight.addColorStop(0, highlightColor);
   highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');

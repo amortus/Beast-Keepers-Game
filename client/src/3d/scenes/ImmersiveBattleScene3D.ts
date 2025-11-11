@@ -25,7 +25,7 @@ interface BeastActor {
 }
 
 const RIGGED_ANIMATION_MAP: Record<BattleAnimation, { clip: string; loop: THREE.AnimationActionLoopStyles; clamp?: boolean; fallbackClip?: string }> = {
-  idle: { clip: 'idle', loop: THREE.LoopRepeat },
+  idle: { clip: 'idle_02', loop: THREE.LoopRepeat, fallbackClip: 'idle' },
   attack: { clip: 'skill', loop: THREE.LoopOnce, clamp: true },
   hit: { clip: 'hit', loop: THREE.LoopOnce, clamp: true },
   defend: { clip: 'walk', loop: THREE.LoopRepeat },
@@ -69,9 +69,9 @@ export class ImmersiveBattleScene3D {
     this.scene.fog = new THREE.Fog(0xa0d8ef, 20, 50);
     
     // Camera setup (estilo Pokémon)
-    this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-    this.cameraTargetPosition = new THREE.Vector3(0, 6, 12);
-    this.cameraTargetLookAt = new THREE.Vector3(0, 0, 0);
+    this.camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 120);
+    this.cameraTargetPosition = new THREE.Vector3(0, 7.5, 14);
+    this.cameraTargetLookAt = new THREE.Vector3(0, 1.2, 0);
     this.camera.position.copy(this.cameraTargetPosition);
     this.camera.lookAt(this.cameraTargetLookAt);
     
@@ -116,7 +116,7 @@ export class ImmersiveBattleScene3D {
 
   private createBattleArena() {
     // Chão de grama natural (igual rancho)
-    const groundGeometry = new THREE.CircleGeometry(15, 32);
+    const groundGeometry = new THREE.CircleGeometry(20, 48);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x5a8f4a, // Verde grama
       roughness: 0.9,
@@ -279,7 +279,7 @@ export class ImmersiveBattleScene3D {
 
   private createGrassField() {
     // Usar PS1Grass (igual rancho)
-    this.grass = new PS1Grass(this.scene, 15); // Radius 15 (toda a arena)
+    this.grass = new PS1Grass(this.scene, 20); // Radius expandido para preencher tela
   }
 
   private createClouds() {

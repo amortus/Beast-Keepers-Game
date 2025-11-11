@@ -325,8 +325,19 @@ export class GameUI {
     const logoutBtnWidth = 110;
     const logoutBtnHeight = 32;
     const logoutBtnX = this.canvas.width - logoutBtnWidth - 24;
-    const isLogoutHovered = isMouseOver(this.mouseX, this.mouseY, logoutBtnX, buttonY, logoutBtnWidth, logoutBtnHeight);
+    const settingsBtnWidth = 46;
+    const settingsBtnHeight = 32;
+    const settingsBtnX = logoutBtnX - settingsBtnWidth - 12;
 
+    const moneyX = settingsBtnX - 18;
+    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 30, {
+      font: 'bold 16px monospace',
+      color: GLASS_THEME.palette.accent.amber,
+      align: 'right',
+      shadow: false,
+    });
+
+    const isLogoutHovered = isMouseOver(this.mouseX, this.mouseY, logoutBtnX, buttonY, logoutBtnWidth, logoutBtnHeight);
     drawButton(this.ctx, logoutBtnX, buttonY, logoutBtnWidth, logoutBtnHeight, '🚪 Sair', {
       variant: 'danger',
       isHovered: isLogoutHovered,
@@ -341,11 +352,7 @@ export class GameUI {
       action: () => this.onLogout(),
     });
 
-    const settingsBtnWidth = 46;
-    const settingsBtnHeight = 32;
-    const settingsBtnX = logoutBtnX - settingsBtnWidth - 12;
     const isSettingsHovered = isMouseOver(this.mouseX, this.mouseY, settingsBtnX, buttonY, settingsBtnWidth, settingsBtnHeight);
-
     drawButton(this.ctx, settingsBtnX, buttonY, settingsBtnWidth, settingsBtnHeight, '⚙️', {
       variant: 'ghost',
       isHovered: isSettingsHovered,
@@ -358,14 +365,6 @@ export class GameUI {
       width: settingsBtnWidth,
       height: settingsBtnHeight,
       action: () => this.onOpenSettings(),
-    });
-
-    const moneyX = settingsBtnX - 20;
-    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 30, {
-      font: 'bold 16px monospace',
-      color: GLASS_THEME.palette.accent.amber,
-      align: 'right',
-      shadow: false,
     });
 
     drawText(this.ctx, 'BEAST KEEPERS', 24, 24, {
@@ -789,12 +788,12 @@ export class GameUI {
     });
 
     // Category buttons (2x2 grid MENOR)
-    const buttonWidth = 220;
-    const buttonHeight = 36; // Reduzido de 45 → 36px
-    const buttonStartX = x + 10;
-    const buttonStartY = y + 32; // Ajustado de 38 → 32px
-    const buttonSpacingX = 230;
-    const buttonSpacingY = 42; // Reduzido de 52 → 42px
+    const buttonWidth = 168;
+    const buttonHeight = 30;
+    const buttonStartX = x + 16;
+    const buttonStartY = y + 34;
+    const buttonSpacingX = 176;
+    const buttonSpacingY = 38;
 
     // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [

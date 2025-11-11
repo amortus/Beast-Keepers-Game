@@ -491,7 +491,8 @@ export class BeastModel {
         this.mixer = new THREE.AnimationMixer(scene);
 
         if (gltf.animations && gltf.animations.length > 0) {
-          this.registerAnimation(idleName, gltf.animations[0], {
+          const idleClip = gltf.animations[0];
+          this.registerAnimation(idleName, idleClip, {
             loop: idleDefaults.loop ?? THREE.LoopRepeat,
             clampWhenFinished: idleDefaults.clampWhenFinished ?? false,
             timeScale: idleDefaults.timeScale ?? 1,
@@ -502,6 +503,24 @@ export class BeastModel {
             fadeIn: 0.2,
             forceRestart: true,
           });
+
+          if (config.idleFile === 'Animation_Idle_02_withSkin.glb') {
+            const idleAction = this.animations.get(idleName);
+            if (idleAction) {
+              this.animations.set('idle_02', idleAction);
+              this.animationDefaults.set('idle_02', {
+                loop: idleDefaults.loop ?? THREE.LoopRepeat,
+                clampWhenFinished: idleDefaults.clampWhenFinished ?? false,
+                timeScale: idleDefaults.timeScale ?? 1,
+              });
+            }
+          } else {
+            this.loadAdditionalAnimation(
+              `${config.basePath}Animation_Idle_02_withSkin.glb`,
+              'idle_02',
+              { loop: THREE.LoopRepeat }
+            );
+          }
         }
 
         config.animations.forEach(({ name, file, defaults }) => {
@@ -674,7 +693,7 @@ export class BeastModel {
   private loadZephyraModel() {
     this.loadImportedModel({
       basePath: '/assets/3d/beasts/Zephyra/',
-      idleFile: 'Animation_Idle_withSkin.glb',
+      idleFile: 'Animation_Idle_02_withSkin.glb',
       fallback: () => this.createZephyra(),
       animations: [
         { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },

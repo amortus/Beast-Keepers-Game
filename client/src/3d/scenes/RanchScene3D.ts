@@ -658,14 +658,51 @@ export class RanchScene3D {
         },
       });
     });
+
+    const extendedGrassOffsets: Vec3[] = [
+      [1.6, 0, -1.2],
+      [1.9, 0, -0.6],
+      [-1.7, 0, -0.9],
+      [-1.9, 0, -0.2],
+    ];
+
+    extendedGrassOffsets.forEach((pos, index) => {
+      this.loadStaticModel('/assets/3d/Ranch/Grass/Grass1.glb', {
+        position: [pos[0], -0.05, pos[2]],
+        rotationY: (index / extendedGrassOffsets.length) * Math.PI * 2,
+        targetHeight: 0.48,
+        scaleMultiplier: 0.75,
+        name: 'ranch-grass-extended',
+        verticalOffset: -0.04,
+        onLoaded: (group) => {
+          group.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((mat) => {
+                if (mat && 'color' in mat) {
+                  const meshMat = mat as THREE.MeshStandardMaterial;
+                  meshMat.color.copy(finalGrassColor);
+                  meshMat.needsUpdate = true;
+                }
+              });
+            }
+          });
+        },
+      });
+    });
   }
 
   private createFlowers() {
-    for (const placement of this.layout.flowers) {
+    const colorOptions = this.skin.flowerColors.length
+      ? this.skin.flowerColors
+      : [0xffa0c0, 0xffd65c, 0xff9159, 0xb074ff];
+    for (const [index, placement] of this.layout.flowers.entries()) {
       const rotation = placement.rotation ?? 0;
       const scale = placement.scale ?? 1;
-      const colorOptions = this.skin.flowerColors;
-      const chosenColor = colorOptions[(placement.colorIndex ?? 0) % colorOptions.length] ?? 0xffa0c0;
+      const chosenColor =
+        placement.colorIndex !== undefined
+          ? colorOptions[placement.colorIndex % colorOptions.length]
+          : colorOptions[index % colorOptions.length];
       this.loadStaticModel('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb', {
         position: [placement.position[0], placement.position[1] ?? 0, placement.position[2]],
         rotationY: rotation,
@@ -768,8 +805,8 @@ export class RanchScene3D {
         targetHeight: 2.2,
         name: 'ranch-lantern',
         onLoaded: (group) => {
-          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.95, 7, 1.8);
-          light.position.set(0, 0.92, 0);
+          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.82, 6.5, 1.6);
+          light.position.set(0, 0.9, 0);
           group.add(light);
 
           const innerGlow = new THREE.Mesh(
@@ -777,10 +814,10 @@ export class RanchScene3D {
             new THREE.MeshBasicMaterial({
               color: this.skin.lamp.emissiveColor,
               transparent: true,
-              opacity: 0.45,
+              opacity: 0.34,
             }),
           );
-          innerGlow.position.set(0, 0.9, 0);
+          innerGlow.position.set(0, 0.88, 0);
           group.add(innerGlow);
 
           const sprite = new THREE.Sprite(
@@ -788,13 +825,13 @@ export class RanchScene3D {
               map: this.getGlowTexture(),
               color: this.skin.lamp.lightColor,
               transparent: true,
-              opacity: 0.6,
+              opacity: 0.45,
               depthWrite: false,
               blending: THREE.AdditiveBlending,
             }),
           );
-          sprite.position.set(0, 0.92, 0);
-          sprite.scale.set(1.35, 1.35, 1.35);
+          sprite.position.set(0, 0.9, 0);
+          sprite.scale.set(1.2, 1.2, 1.2);
           group.add(sprite);
 
           this.lanternLights.push({
@@ -811,13 +848,19 @@ export class RanchScene3D {
   private createMountains() {
     this.mountainModels = [];
 
-    for (const mountain of this.layout.mountains) {
-    this.loadStaticModel('/assets/3d/Ranch/Mountain/Mountain1.glb', {
-      position: [mountain.position[0], 0, mountain.position[2]],
-      rotationY: mountain.rotation ?? 0,
-      targetHeight: mountain.height,
-      scaleMultiplier: mountain.radius / 4,
-      name: 'ranch-mountain',
+    const extraBackMountains: MountainPlacement[] = [
+      { position: [0, 0, -24], radius: 5.2, height: 9.4, colorIndex: 1, rotation: 0.1 },
+      { position: [6.5, 0, -23.5], radius: 4.9, height: 9.0, colorIndex: 0, rotation: 0.3 },
+      { position: [-6.8, 0, -23.7], radius: 4.8, height: 9.1, colorIndex: 2, rotation: -0.2 },
+    ];
+
+    for (const mountain of [...this.layout.mountains, ...extraBackMountains]) {
+      this.loadStaticModel('/assets/3d/Ranch/Mountain/Mountain1.glb', {
+        position: [mountain.position[0], 0, mountain.position[2]],
+        rotationY: mountain.rotation ?? 0,
+        targetHeight: mountain.height,
+        scaleMultiplier: mountain.radius / 4,
+        name: 'ranch-mountain',
         onLoaded: (group) => {
           this.mountainModels.push(group);
         },
@@ -1249,7 +1292,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = WORLD_Y_OFFSET - 0.5;
+    this.baseYPosition = WORLD_Y_OFFSET - 0.35;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
