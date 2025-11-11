@@ -385,12 +385,6 @@ export class GameUI {
   }
 
   private drawGlobalMenu() {
-    const menuY = 78;
-    const btnSpacing = 6;
-    const btnWidth = 118;
-    const btnHeight = 34;
-    let currentX = 32;
-
     const menuItems = [
       { id: 'ranch', label: '🏠 Rancho', action: () => this.onNavigate('ranch') },
       { id: 'village', label: '🏘️ Vila', action: () => this.onOpenVillage() },
@@ -403,19 +397,22 @@ export class GameUI {
       { id: 'temple', label: '🏛️ Templo', action: () => this.onOpenTemple() },
     ];
 
-    menuItems.forEach((item) => {
-      const isHovered = isMouseOver(this.mouseX, this.mouseY, currentX, menuY, btnWidth, btnHeight);
+    const btnSpacing = 6;
+    const btnWidth = 126;
+    const btnHeight = 36;
+    const totalWidth = menuItems.length * (btnWidth + btnSpacing) - btnSpacing;
+    const startX = Math.max(24, (this.canvas.width - totalWidth) / 2);
+    const menuY = 76;
+
+    menuItems.forEach((item, index) => {
+      const x = startX + index * (btnWidth + btnSpacing);
+      const isHovered = isMouseOver(this.mouseX, this.mouseY, x, menuY, btnWidth, btnHeight);
       const isActive = this.activeMenuItem === item.id;
 
-      drawButton(this.ctx, currentX, menuY, btnWidth, btnHeight, item.label, {
-        variant: 'tab',
-        isHovered,
-        isActive,
-        fontSize: 13,
-      });
+      this.drawChatStyleTab(x, menuY, btnWidth, btnHeight, item.label, isActive, isHovered);
 
       this.buttons.set(item.id, {
-        x: currentX,
+        x,
         y: menuY,
         width: btnWidth,
         height: btnHeight,
@@ -424,8 +421,6 @@ export class GameUI {
           item.action();
         },
       });
-
-      currentX += btnWidth + btnSpacing;
     });
   }
 
@@ -1130,6 +1125,73 @@ export class GameUI {
 
   public updateGameState(gameState: GameState) {
     this.gameState = gameState;
+  }
+
+  private drawChatStyleTab(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    isActive: boolean,
+    isHovered: boolean,
+  ) {
+    const radius = 10;
+    const background = isActive
+      ? 'rgba(74, 85, 104, 0.92)'
+      : isHovered
+        ? 'rgba(60, 70, 92, 0.82)'
+        : 'rgba(45, 55, 72, 0.72)';
+    const border = isActive ? 'rgba(148, 163, 184, 0.9)' : 'rgba(120, 134, 156, 0.75)';
+
+    this.ctx.save();
+    this.ctx.shadowColor = isHovered || isActive ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.25)';
+    this.ctx.shadowBlur = isActive ? 22 : 14;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = isActive ? 8 : 5;
+
+    this.drawRoundedRectPath(x, y, width, height, radius);
+    this.ctx.fillStyle = background;
+    this.ctx.fill();
+    this.ctx.restore();
+
+    this.ctx.save();
+    this.drawRoundedRectPath(x, y, width, height, radius);
+    this.ctx.lineWidth = 1.5;
+    this.ctx.strokeStyle = border;
+    this.ctx.stroke();
+    this.ctx.restore();
+
+    if (isActive) {
+      this.ctx.save();
+      this.drawRoundedRectPath(x, y + height - 3, width, 3, radius);
+      this.ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+
+    drawText(this.ctx, label, x + width / 2, y + height / 2, {
+      align: 'center',
+      baseline: 'middle',
+      font: '12px monospace',
+      color: '#F7FAFF',
+      shadow: false,
+    });
+  }
+
+  private drawRoundedRectPath(x: number, y: number, width: number, height: number, radius: number) {
+    const r = Math.min(radius, width / 2, height / 2);
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + r, y);
+    this.ctx.lineTo(x + width - r, y);
+    this.ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    this.ctx.lineTo(x + width, y + height - r);
+    this.ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    this.ctx.lineTo(x + r, y + height);
+    this.ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    this.ctx.lineTo(x, y + r);
+    this.ctx.quadraticCurveTo(x, y, x + r, y);
+    this.ctx.closePath();
   }
 }
 

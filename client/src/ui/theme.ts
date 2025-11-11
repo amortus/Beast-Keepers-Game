@@ -8,8 +8,8 @@ export const GLASS_THEME = {
   palette: {
     background: '#040f1e',
     header: {
-      gradient: ['rgba(11, 30, 58, 0.98)', 'rgba(4, 15, 32, 0.95)'],
-      border: 'rgba(80, 165, 235, 0.38)',
+      gradient: ['rgba(15, 18, 32, 0.96)', 'rgba(10, 13, 24, 0.96)'],
+      border: 'rgba(74, 85, 104, 0.55)',
     },
     panel: {
       gradient: ['rgba(16, 52, 90, 0.96)', 'rgba(8, 26, 48, 0.97)'],
