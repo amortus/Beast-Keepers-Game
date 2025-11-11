@@ -278,19 +278,6 @@ export function drawText(
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
 
-  if (color === GLASS_THEME.button.text.base || color === GLASS_THEME.palette.text.primary || color === GLASS_THEME.palette.text.highlight) {
-    const textWidth = ctx.measureText(text).width;
-    const underlineY = baseline === 'middle' ? y + (ctx.measureText('M').actualBoundingBoxAscent ?? 0) + 2 : y + (ctx.measureText('M').actualBoundingBoxAscent ?? 0) + 2;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x - (align === 'center' ? textWidth / 2 : align === 'right' ? textWidth : 0), underlineY);
-    ctx.lineTo(x + (align === 'center' ? textWidth / 2 : align === 'right' ? 0 : textWidth), underlineY);
-    ctx.stroke();
-    ctx.restore();
-  }
-
   if (shadow) {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
@@ -420,16 +407,21 @@ export function drawButton(
   const radius = variant === 'tab' ? GLASS_THEME.radius.pill : GLASS_THEME.radius.lg;
 
   const baseColor = resolveButtonBaseColor(options);
-  const gradientTop = rgbaToString(
-    isDisabled
-      ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.1)
-      : lightenColor(baseColor, isActive ? 0.1 : isHovered ? 0.28 : 0.33),
-  );
-  const gradientBottom = rgbaToString(
-    isDisabled
-      ? parseColor('rgba(12, 24, 48, 0.25)')
-      : darkenColor(baseColor, isActive ? 0.32 : isHovered ? 0.22 : 0.18),
-  );
+  const [gradientTop, gradientBottom] =
+    variant === 'tab'
+      ? (isActive ? GLASS_THEME.tabs.gradient.active : GLASS_THEME.tabs.gradient.base)
+      : [
+          rgbaToString(
+            isDisabled
+              ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.1)
+              : lightenColor(baseColor, isActive ? 0.1 : isHovered ? 0.28 : 0.33),
+          ),
+          rgbaToString(
+            isDisabled
+              ? parseColor('rgba(12, 24, 48, 0.25)')
+              : darkenColor(baseColor, isActive ? 0.32 : isHovered ? 0.22 : 0.18),
+          ),
+        ];
 
   ctx.save();
   if (!isDisabled) {

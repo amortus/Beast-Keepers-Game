@@ -326,7 +326,7 @@ export class GameUI {
     const explorationCount = beast?.explorationCount || 0;
     drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 310, 26, {
       font: 'bold 16px monospace',
-      color: explorationCount >= 10 ? GLASS_THEME.palette.accent.danger : GLASS_THEME.palette.accent.cyan,
+      color: GLASS_THEME.palette.text.secondary,
       shadow: false,
     });
 
@@ -389,16 +389,17 @@ export class GameUI {
     const rightButtonsWidth = 160;
     const rightMargin = 20;
 
+    const tabColor = GLASS_THEME.palette.accent.cyan;
     const menuItems = [
-      { id: 'ranch', label: '🏠 Rancho', accent: GLASS_THEME.palette.accent.cyan, action: () => this.onNavigate('ranch') },
-      { id: 'village', label: '🏘️ Vila', accent: GLASS_THEME.palette.accent.lilac, action: () => this.onOpenVillage() },
-      { id: 'inventory', label: '🎒 Inventário', accent: GLASS_THEME.palette.accent.purple, action: () => this.onOpenInventory() },
-      { id: 'arena', label: '🥊 Arena PVP', accent: GLASS_THEME.palette.accent.danger, action: () => this.onOpenArenaPvp() },
-      { id: 'exploration', label: '🗺️ Explorar', accent: GLASS_THEME.palette.accent.cyan, action: () => this.onOpenExploration() },
-      { id: 'dungeons', label: '⚔️ Dungeons', accent: GLASS_THEME.palette.accent.purple, action: () => this.onOpenDungeons() },
-      { id: 'quests', label: '📜 Missões', accent: GLASS_THEME.palette.accent.amber, action: () => this.onOpenQuests() },
-      { id: 'achievements', label: '🏆 Conquistas', accent: GLASS_THEME.palette.accent.amber, action: () => this.onOpenAchievements() },
-      { id: 'temple', label: '🏛️ Templo', accent: GLASS_THEME.palette.accent.lilac, action: () => this.onOpenTemple() },
+      { id: 'ranch', label: '🏠 Rancho', accent: tabColor, action: () => this.onNavigate('ranch') },
+      { id: 'village', label: '🏘️ Vila', accent: tabColor, action: () => this.onOpenVillage() },
+      { id: 'inventory', label: '🎒 Inventário', accent: tabColor, action: () => this.onOpenInventory() },
+      { id: 'arena', label: '🥊 Arena PVP', accent: tabColor, action: () => this.onOpenArenaPvp() },
+      { id: 'exploration', label: '🗺️ Explorar', accent: tabColor, action: () => this.onOpenExploration() },
+      { id: 'dungeons', label: '⚔️ Dungeons', accent: tabColor, action: () => this.onOpenDungeons() },
+      { id: 'quests', label: '📜 Missões', accent: tabColor, action: () => this.onOpenQuests() },
+      { id: 'achievements', label: '🏆 Conquistas', accent: tabColor, action: () => this.onOpenAchievements() },
+      { id: 'temple', label: '🏛️ Templo', accent: tabColor, action: () => this.onOpenTemple() },
     ];
 
     const totalItems = menuItems.length;
@@ -811,9 +812,9 @@ export class GameUI {
 
     // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [
-      { id: 'train', label: '🏋️ Treinar', row: 0, col: 0, accent: GLASS_THEME.palette.accent.emerald },
-      { id: 'work', label: '💼 Trabalhar', row: 0, col: 1, accent: GLASS_THEME.palette.accent.amber },
-      { id: 'rest', label: '😴 Descansar', row: 1, col: 0, accent: GLASS_THEME.palette.accent.cyan },
+      { id: 'train', label: '🏋️ Treinar', row: 0, col: 0 },
+      { id: 'work', label: '💼 Trabalhar', row: 0, col: 1 },
+      { id: 'rest', label: '😴 Descansar', row: 1, col: 0 },
     ];
 
     categories.forEach((cat) => {
@@ -824,7 +825,7 @@ export class GameUI {
 
       drawButton(this.ctx, btnX, btnY, buttonWidth, buttonHeight, cat.label, {
         variant: 'primary',
-        bgColor: cat.accent,
+        bgColor: isSelected ? GLASS_THEME.palette.accent.cyan : GLASS_THEME.palette.accent.cyanSoft,
         isHovered,
         isActive: isSelected,
         fontSize: 14,
@@ -855,7 +856,7 @@ export class GameUI {
     
     drawText(this.ctx, 'Em Desenvolvimento', devMsgX + buttonWidth / 2, devMsgY + 26, {
       font: '12px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.muted,
       align: 'center',
       shadow: false,
     });
@@ -894,13 +895,13 @@ export class GameUI {
     
     drawText(this.ctx, '⏳ AÇÃO EM PROGRESSO', x + 16, y + 12, {
       font: 'bold 20px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
     });
     
     // Nome da ação
     drawText(this.ctx, getRealtimeActionName(action.type), x + 16, y + 46, {
       font: 'bold 18px monospace',
-      color: GLASS_THEME.palette.text.highlight,
+      color: GLASS_THEME.palette.text.secondary,
     });
     
     // Barra de progresso
@@ -910,7 +911,6 @@ export class GameUI {
     const barHeight = 32;
 
     drawBar(this.ctx, barX, barY, barWidth, barHeight, progress, 1, {
-      bgColor: 'rgba(12, 28, 56, 0.35)',
       fillColor: GLASS_THEME.palette.accent.cyan,
       label: `${Math.floor(progress * 100)}%`,
     });
@@ -918,7 +918,7 @@ export class GameUI {
     // Tempo restante
     drawText(this.ctx, `Tempo restante: ${formatTime(timeRemaining)}`, x + 16, y + 124, {
       font: 'bold 16px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.secondary,
       shadow: false,
     });
     
@@ -970,7 +970,7 @@ export class GameUI {
 
       drawButton(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, action.label, {
         variant: 'primary',
-        bgColor: isSelected ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.cyan,
+        bgColor: isSelected ? GLASS_THEME.palette.accent.cyan : GLASS_THEME.palette.accent.cyanSoft,
         isHovered,
         isActive: isSelected,
         isDisabled: !canStart.can,
@@ -997,7 +997,7 @@ export class GameUI {
         drawText(this.ctx, formatTime(canStart.timeRemaining), buttonX + buttonWidth / 2, buttonY + buttonHeight + 12, {
           align: 'center',
           font: '10px monospace',
-          color: GLASS_THEME.palette.accent.danger,
+          color: GLASS_THEME.palette.text.muted,
           shadow: false,
         });
       }
