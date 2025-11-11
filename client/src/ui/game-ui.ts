@@ -321,27 +321,6 @@ export class GameUI {
       borderWidth: 1.5,
     });
 
-    drawText(this.ctx, 'BEAST KEEPERS', 24, 24, {
-      font: 'bold 28px monospace',
-      color: GLASS_THEME.palette.text.highlight,
-    });
-
-    const moneyX = this.canvas.width - 20;
-    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 30, {
-      font: 'bold 16px monospace',
-      color: GLASS_THEME.palette.accent.amber,
-      align: 'right',
-      shadow: false,
-    });
-
-    const beast = this.gameState.activeBeast;
-    const explorationCount = beast?.explorationCount || 0;
-    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 24, 62, {
-      font: 'bold 15px monospace',
-      color: GLASS_THEME.palette.text.secondary,
-      shadow: false,
-    });
-
     const buttonY = 20;
     const logoutBtnWidth = 110;
     const logoutBtnHeight = 32;
@@ -379,6 +358,27 @@ export class GameUI {
       width: settingsBtnWidth,
       height: settingsBtnHeight,
       action: () => this.onOpenSettings(),
+    });
+
+    const moneyX = settingsBtnX - 20;
+    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 30, {
+      font: 'bold 16px monospace',
+      color: GLASS_THEME.palette.accent.amber,
+      align: 'right',
+      shadow: false,
+    });
+
+    drawText(this.ctx, 'BEAST KEEPERS', 24, 24, {
+      font: 'bold 28px monospace',
+      color: GLASS_THEME.palette.text.highlight,
+    });
+
+    const beast = this.gameState.activeBeast;
+    const explorationCount = beast?.explorationCount || 0;
+    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 24, 62, {
+      font: 'bold 15px monospace',
+      color: GLASS_THEME.palette.text.secondary,
+      shadow: false,
     });
 
     this.drawGlobalMenu();

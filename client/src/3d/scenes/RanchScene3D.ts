@@ -176,6 +176,10 @@ const DEFAULT_LAYOUT: RanchLayout = {
     { position: [-11.4, 0, -9.2], radius: 3.9, height: 6.6, colorIndex: 3 },
     { position: [9.8, 0, -4.6], radius: 3.5, height: 5.4, colorIndex: 0 },
     { position: [-9.6, 0, -4.8], radius: 3.4, height: 5.3, colorIndex: 2 },
+    { position: [3.6, 0, -21.5], radius: 4.6, height: 8.2, colorIndex: 1, rotation: 0.2 },
+    { position: [-4.4, 0, -21.8], radius: 4.5, height: 8.4, colorIndex: 2, rotation: -0.3 },
+    { position: [12.4, 0, -18.5], radius: 4.1, height: 7.0, colorIndex: 0 },
+    { position: [-12.6, 0, -18.3], radius: 4.2, height: 7.1, colorIndex: 3 },
   ],
   clouds: [
     { position: [-5.8, 6.2, -5.6], scale: 1.2 },
@@ -621,12 +625,47 @@ export class RanchScene3D {
         break;
       }
     }
+
+    const manualGrassPositions: Vec3[] = [
+      [-1.4, 0, -2.4],
+      [-0.6, 0, -2.2],
+      [0.2, 0, -2.0],
+      [1.0, 0, -2.3],
+      [-1.2, 0, -1.6],
+    ];
+
+    manualGrassPositions.forEach((pos, index) => {
+      this.loadStaticModel('/assets/3d/Ranch/Grass/Grass1.glb', {
+        position: [pos[0], -0.05, pos[2]],
+        rotationY: (index / manualGrassPositions.length) * Math.PI * 2,
+        targetHeight: 0.52,
+        scaleMultiplier: 0.85,
+        name: 'ranch-grass-manual',
+        verticalOffset: -0.04,
+        onLoaded: (group) => {
+          group.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((mat) => {
+                if (mat && 'color' in mat) {
+                  const meshMat = mat as THREE.MeshStandardMaterial;
+                  meshMat.color.copy(finalGrassColor);
+                  meshMat.needsUpdate = true;
+                }
+              });
+            }
+          });
+        },
+      });
+    });
   }
 
   private createFlowers() {
     for (const placement of this.layout.flowers) {
       const rotation = placement.rotation ?? 0;
       const scale = placement.scale ?? 1;
+      const colorOptions = this.skin.flowerColors;
+      const chosenColor = colorOptions[(placement.colorIndex ?? 0) % colorOptions.length] ?? 0xffa0c0;
       this.loadStaticModel('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb', {
         position: [placement.position[0], placement.position[1] ?? 0, placement.position[2]],
         rotationY: rotation,
@@ -634,6 +673,20 @@ export class RanchScene3D {
         scaleMultiplier: scale,
         name: 'ranch-flower',
         verticalOffset: -0.12,
+        onLoaded: (group) => {
+          group.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              const materials = Array.isArray(child.material) ? child.material : [child.material];
+              materials.forEach((mat) => {
+                if (mat && 'color' in mat) {
+                  const meshMat = mat as THREE.MeshStandardMaterial;
+                  meshMat.color.setHex(chosenColor);
+                  meshMat.needsUpdate = true;
+                }
+              });
+            }
+          });
+        },
       });
     }
   }
