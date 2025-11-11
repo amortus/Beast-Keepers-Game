@@ -385,6 +385,7 @@ export class RanchScene3D {
       scaleMultiplier?: number;
       name?: string;
       onLoaded?: (group: THREE.Group) => void;
+      verticalOffset?: number;
     },
   ) {
     const spawnFromTemplate = (template: THREE.Group) => {
@@ -423,11 +424,8 @@ export class RanchScene3D {
       box.getCenter(centerVector);
       root.position.sub(centerVector);
 
-      wrapper.position.set(
-        options.position[0],
-        options.position[1] + WORLD_Y_OFFSET + sizeVector.y / 2,
-        options.position[2],
-      );
+      const finalY = options.position[1] + WORLD_Y_OFFSET + sizeVector.y / 2 + (options.verticalOffset ?? 0);
+      wrapper.position.set(options.position[0], finalY, options.position[2]);
 
       if (options.rotationY) {
         wrapper.rotation.y = options.rotationY;
@@ -476,13 +474,14 @@ export class RanchScene3D {
   }
 
   private createGround() {
-    const groundGeometry = new THREE.PlaneGeometry(26, 26, 80, 80);
+    const groundSize = 52;
+    const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize, 80, 80);
     const positions = groundGeometry.attributes.position as THREE.BufferAttribute;
 
     for (let i = 0; i < positions.count; i++) {
       const x = positions.getX(i);
       const z = positions.getZ(i);
-      const radialFalloff = 1 - Math.min(1, Math.sqrt(x * x + z * z) / 13);
+      const radialFalloff = 1 - Math.min(1, (Math.sqrt(x * x + z * z) / (groundSize / 2)));
       const noise =
         Math.sin(x * 0.14) * 0.04 +
         Math.cos(z * 0.12) * 0.03 +
@@ -504,7 +503,7 @@ export class RanchScene3D {
     ground.receiveShadow = true;
     this.addDecoration(ground);
 
-    const borderGeometry = new THREE.RingGeometry(13.4, 14.6, 64);
+    const borderGeometry = new THREE.RingGeometry(24.0, 26.0, 64);
     const borderMaterial = new THREE.MeshStandardMaterial({
       color: this.skin.ground.borderColor,
       roughness: 0.92,
@@ -516,7 +515,7 @@ export class RanchScene3D {
     border.receiveShadow = true;
     this.addDecoration(border);
 
-    const centerGeometry = new THREE.CircleGeometry(12.0, 64);
+    const centerGeometry = new THREE.CircleGeometry(24.0, 64);
     const centerMaterial = new THREE.MeshStandardMaterial({
       color: this.skin.ground.centerPatchColor,
       roughness: 0.78,
@@ -557,6 +556,13 @@ export class RanchScene3D {
     const rng = this.createSeededRandom(this.layout.grass.seed);
     const maxRadius = Math.min(Math.sqrt(this.layout.grass.area) * 1.5, this.layout.walkableRadius - 0.4);
     const pondRadius = this.layout.pond.collisionRadius + 0.6;
+    const skinGrassColor = new THREE.Color(this.skin.grassColor);
+    const groundCenterColor = new THREE.Color(this.skin.ground.centerPatchColor);
+    const blendedGrassColor = skinGrassColor.clone().lerp(groundCenterColor, 0.55);
+    const hsl = { h: 0, s: 0, l: 0 };
+    blendedGrassColor.getHSL(hsl);
+    hsl.l = Math.min(1, hsl.l + 0.12);
+    const finalGrassColor = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
 
     for (let i = 0; i < desiredCount; i++) {
       let attempts = 0;
@@ -587,6 +593,7 @@ export class RanchScene3D {
           targetHeight: 0.55,
           scaleMultiplier: scale,
           name: 'ranch-grass',
+          verticalOffset: -0.05,
           onLoaded: (group) => {
             group.traverse((child) => {
               if (child instanceof THREE.Mesh) {
@@ -594,7 +601,7 @@ export class RanchScene3D {
                 materials.forEach((mat) => {
                   if (mat && 'color' in mat) {
                     const meshMat = mat as THREE.MeshStandardMaterial;
-                    meshMat.color.setHex(this.skin.grassColor);
+                    meshMat.color.copy(finalGrassColor);
                     meshMat.needsUpdate = true;
                   }
                 });
@@ -612,11 +619,12 @@ export class RanchScene3D {
       const rotation = placement.rotation ?? 0;
       const scale = placement.scale ?? 1;
       this.loadStaticModel('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb', {
-        position: [placement.position[0], (placement.position[1] ?? -0.02), placement.position[2]],
+        position: [placement.position[0], placement.position[1] ?? 0, placement.position[2]],
         rotationY: rotation,
         targetHeight: 0.55,
         scaleMultiplier: scale,
         name: 'ranch-flower',
+        verticalOffset: -0.12,
       });
     }
   }
@@ -680,11 +688,12 @@ export class RanchScene3D {
     const rng = this.createSeededRandom(42);
     for (const rock of this.layout.rocks) {
       this.loadStaticModel('/assets/3d/Ranch/Rock/Stone1.glb', {
-        position: [rock.position[0], (rock.position[1] ?? -0.05), rock.position[2]],
+        position: [rock.position[0], rock.position[1] ?? 0, rock.position[2]],
         rotationY: rng() * Math.PI * 2,
         targetHeight: 0.9,
         scaleMultiplier: rock.scale ?? 1,
         name: 'ranch-rock',
+        verticalOffset: -0.18,
       });
     }
   }
@@ -765,6 +774,7 @@ export class RanchScene3D {
       rotationY: 0,
       targetHeight: 5,
       name: 'ranch-house',
+      verticalOffset: -0.2,
       onLoaded: (group) => {
         this.houseModel = group;
       },
