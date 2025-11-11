@@ -431,31 +431,26 @@ export function drawButton(
   const isDisabled = options.isDisabled ?? false;
   const fontSize = options.fontSize ?? 14;
   const variant = options.variant ?? 'primary';
-  const radius = variant === 'tab' ? GLASS_THEME.radius.pill : GLASS_THEME.radius.lg;
+  const radius = GLASS_THEME.radius.lg;
 
   const baseColor = resolveButtonBaseColor(options);
-  const [gradientTop, gradientBottom] =
-    variant === 'tab'
-      ? (isActive ? GLASS_THEME.tabs.gradient.active : GLASS_THEME.tabs.gradient.base)
-      : [
-          rgbaToString(
-            isDisabled
-              ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.1)
-              : lightenColor(baseColor, isActive ? 0.1 : isHovered ? 0.28 : 0.33),
-          ),
-          rgbaToString(
-            isDisabled
-              ? parseColor('rgba(12, 24, 48, 0.25)')
-              : darkenColor(baseColor, isActive ? 0.32 : isHovered ? 0.22 : 0.18),
-          ),
-        ];
+  const [gradientTop, gradientBottom] = [
+    rgbaToString(
+      isDisabled
+        ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.1)
+        : lightenColor(baseColor, isActive ? 0.16 : isHovered ? 0.32 : 0.28),
+    ),
+    rgbaToString(
+      isDisabled
+        ? parseColor('rgba(12, 24, 48, 0.25)')
+        : darkenColor(baseColor, isActive ? 0.24 : isHovered ? 0.18 : 0.14),
+    ),
+  ];
 
   ctx.save();
   if (!isDisabled) {
-    const shadow = variant === 'tab'
-      ? { color: GLASS_THEME.tabs.glow, blur: isActive ? 28 : 18, offsetX: 0, offsetY: isActive ? 14 : 12 }
-      : GLASS_THEME.shadow.button;
-    ctx.shadowColor = withAlpha(shadow.color, isHovered ? 1 : 0.8);
+    const shadow = GLASS_THEME.shadow.button;
+    ctx.shadowColor = withAlpha(shadow.color, isHovered ? 1 : 0.85);
     ctx.shadowBlur = shadow.blur;
     ctx.shadowOffsetX = shadow.offsetX ?? 0;
     ctx.shadowOffsetY = shadow.offsetY ?? 10;
@@ -499,15 +494,10 @@ export function drawButton(
     shadow: false,
   });
 
-  if (variant === 'tab') {
+  if (variant === 'tab' && isActive) {
     ctx.save();
-    ctx.fillStyle = withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.5 : 0.22);
-    ctx.fillRect(x + width * 0.1, y + height - 4, width * 0.8, 1.5);
-    const underline = ctx.createLinearGradient(x, y + height - 5, x, y + height);
-    underline.addColorStop(0, withAlpha(GLASS_THEME.tabs.underline, isActive ? 1 : 0.5));
-    underline.addColorStop(1, withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.75 : 0));
-    ctx.fillStyle = underline;
-    ctx.fillRect(x + width * 0.08, y + height - 3, width * 0.84, 3);
+    ctx.fillStyle = withAlpha(GLASS_THEME.tabs.underline, 0.6);
+    ctx.fillRect(x + 12, y + height - 4, width - 24, 2);
     ctx.restore();
   }
 }

@@ -385,30 +385,23 @@ export class GameUI {
   }
 
   private drawGlobalMenu() {
-    const menuY = 76;
-    const btnSpacing = 8;
-    let currentX = 24;
-
-    const rightMargin = 24;
-
-    const tabColor = GLASS_THEME.palette.accent.cyan;
-    const menuItems = [
-      { id: 'ranch', label: '🏠 Rancho', accent: tabColor, action: () => this.onNavigate('ranch') },
-      { id: 'village', label: '🏘️ Vila', accent: tabColor, action: () => this.onOpenVillage() },
-      { id: 'inventory', label: '🎒 Inventário', accent: tabColor, action: () => this.onOpenInventory() },
-      { id: 'arena', label: '🥊 Arena PVP', accent: tabColor, action: () => this.onOpenArenaPvp() },
-      { id: 'exploration', label: '🗺️ Explorar', accent: tabColor, action: () => this.onOpenExploration() },
-      { id: 'dungeons', label: '⚔️ Dungeons', accent: tabColor, action: () => this.onOpenDungeons() },
-      { id: 'quests', label: '📜 Missões', accent: tabColor, action: () => this.onOpenQuests() },
-      { id: 'achievements', label: '🏆 Conquistas', accent: tabColor, action: () => this.onOpenAchievements() },
-      { id: 'temple', label: '🏛️ Templo', accent: tabColor, action: () => this.onOpenTemple() },
-    ];
-
-    const totalItems = menuItems.length;
-    const totalSpacing = (totalItems - 1) * btnSpacing;
-    const availableWidth = this.canvas.width - currentX - rightMargin;
-    const btnWidth = Math.max(110, Math.floor((availableWidth - totalSpacing) / totalItems));
+    const menuY = 78;
+    const btnSpacing = 6;
+    const btnWidth = 118;
     const btnHeight = 34;
+    let currentX = 32;
+
+    const menuItems = [
+      { id: 'ranch', label: '🏠 Rancho', action: () => this.onNavigate('ranch') },
+      { id: 'village', label: '🏘️ Vila', action: () => this.onOpenVillage() },
+      { id: 'inventory', label: '🎒 Inventário', action: () => this.onOpenInventory() },
+      { id: 'arena', label: '🥊 Arena PVP', action: () => this.onOpenArenaPvp() },
+      { id: 'exploration', label: '🗺️ Explorar', action: () => this.onOpenExploration() },
+      { id: 'dungeons', label: '⚔️ Dungeons', action: () => this.onOpenDungeons() },
+      { id: 'quests', label: '📜 Missões', action: () => this.onOpenQuests() },
+      { id: 'achievements', label: '🏆 Conquistas', action: () => this.onOpenAchievements() },
+      { id: 'temple', label: '🏛️ Templo', action: () => this.onOpenTemple() },
+    ];
 
     menuItems.forEach((item) => {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, currentX, menuY, btnWidth, btnHeight);
@@ -416,7 +409,6 @@ export class GameUI {
 
       drawButton(this.ctx, currentX, menuY, btnWidth, btnHeight, item.label, {
         variant: 'tab',
-        bgColor: item.accent,
         isHovered,
         isActive,
         fontSize: 13,

@@ -138,13 +138,6 @@ interface Obstacle {
 
 const WORLD_Y_OFFSET = -1.2;
 
-interface SmokeParticle {
-  sprite: THREE.Sprite;
-  velocity: THREE.Vector3;
-  life: number;
-  maxLife: number;
-}
-
 const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0.2, -6.8], obstacleRadius: 2.6 },
   pond: {
@@ -157,7 +150,7 @@ const DEFAULT_LAYOUT: RanchLayout = {
   fence: { radius: 9, postCount: 24 },
   walkableRadius: 7.3,
   grass: { count: 650, area: 16, seed: 1337 },
-  trees: [{ position: [-4.8, 1.8], rotation: 0.3, scale: 1.05 }],
+  trees: [{ position: [-4.2, -3.4], rotation: 0.32, scale: 1.0 }],
   hayBales: [],
   lamps: [
     { position: [-2.0, -1.8] },
@@ -261,9 +254,6 @@ export class RanchScene3D {
   private lanternLights: Array<{ light: THREE.PointLight; sprite: THREE.Sprite; baseIntensity: number; offset: number }> = [];
   private glowTexture: THREE.Texture | null = null;
   private smokeTexture: THREE.Texture | null = null;
-  private chimneySmokeGroup: THREE.Group | null = null;
-  private chimneySmokeParticles: SmokeParticle[] = [];
-  private smokeAccumulator = 0;
   private elapsedTime = 0;
 
   private gltfLoader = new GLTFLoader();
@@ -325,10 +315,6 @@ export class RanchScene3D {
     this.clearDecorations();
 
     this.lanternLights = [];
-    this.chimneySmokeParticles = [];
-    this.chimneySmokeGroup = null;
-    this.smokeAccumulator = 0;
-
     this.decorationsRoot = new THREE.Group();
     this.decorationsRoot.position.y = WORLD_Y_OFFSET;
     this.threeScene.addObject(this.decorationsRoot);
@@ -358,12 +344,6 @@ export class RanchScene3D {
 
     this.lanternLights = [];
 
-    this.chimneySmokeParticles.forEach((particle) => {
-      particle.sprite.material.dispose();
-    });
-    this.chimneySmokeParticles = [];
-    this.chimneySmokeGroup = null;
-    this.smokeAccumulator = 0;
     this.elapsedTime = 0;
 
     if (this.water) {
@@ -736,7 +716,7 @@ export class RanchScene3D {
         name: 'ranch-lantern',
         onLoaded: (group) => {
           const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.95, 7, 1.8);
-          light.position.set(0, 1.1, 0);
+          light.position.set(0, 0.92, 0);
           group.add(light);
 
           const innerGlow = new THREE.Mesh(
@@ -747,7 +727,7 @@ export class RanchScene3D {
               opacity: 0.45,
             }),
           );
-          innerGlow.position.set(0, 1.08, 0);
+          innerGlow.position.set(0, 0.9, 0);
           group.add(innerGlow);
 
           const sprite = new THREE.Sprite(
@@ -760,8 +740,8 @@ export class RanchScene3D {
               blending: THREE.AdditiveBlending,
             }),
           );
-          sprite.position.set(0, 1.08, 0);
-          sprite.scale.set(1.4, 1.4, 1.4);
+          sprite.position.set(0, 0.92, 0);
+          sprite.scale.set(1.35, 1.35, 1.35);
           group.add(sprite);
 
           this.lanternLights.push({
@@ -831,7 +811,7 @@ export class RanchScene3D {
     this.houseModel = null;
 
     this.loadStaticModel('/assets/3d/Ranch/House/House1.glb', {
-      position: this.layout.house.position,
+        position: [this.layout.house.position[0], this.layout.house.position[1], this.layout.house.position[2] - 0.4],
       rotationY: 0,
       targetHeight: 5,
       name: 'ranch-house',
@@ -906,12 +886,6 @@ export class RanchScene3D {
   }
 
   private setupChimneySmoke(group: THREE.Group) {
-    this.chimneySmokeParticles.forEach((particle) => {
-      particle.sprite.material.dispose();
-    });
-    this.chimneySmokeParticles = [];
-    this.smokeAccumulator = 0;
-
     const chimneyObject = this.findObjectByName(group, ['chimney', 'chimney_top', 'chimney01']);
     const origin = new THREE.Vector3();
 
@@ -926,9 +900,6 @@ export class RanchScene3D {
       origin.set(bounds.min.x + size.x * 0.75, bounds.max.y - 0.3, bounds.min.z + size.z * 0.3);
     }
 
-    this.chimneySmokeGroup = new THREE.Group();
-    this.chimneySmokeGroup.position.copy(origin);
-    group.add(this.chimneySmokeGroup);
   }
 
   private updateLanterns(delta: number) {
@@ -949,70 +920,11 @@ export class RanchScene3D {
   }
 
   private updateChimneySmoke(delta: number) {
-    if (!this.chimneySmokeGroup) {
-      return;
-    }
-
-    this.smokeAccumulator += delta;
-    if (this.smokeAccumulator >= 0.22) {
-      this.smokeAccumulator = 0;
-      if (this.chimneySmokeParticles.length < 16) {
-        this.spawnSmokeParticle();
-      }
-    }
-
-    this.chimneySmokeParticles = this.chimneySmokeParticles.filter((particle) => {
-      particle.life += delta;
-      const progress = particle.life / particle.maxLife;
-
-      particle.sprite.position.addScaledVector(particle.velocity, delta);
-      const spriteMaterial = particle.sprite.material as THREE.SpriteMaterial;
-      spriteMaterial.opacity = Math.max(0, 0.5 * (1 - progress));
-
-      const scale = 0.4 + progress * 0.5;
-      particle.sprite.scale.set(scale, scale, scale);
-
-      if (particle.life >= particle.maxLife) {
-        if (this.chimneySmokeGroup) {
-          this.chimneySmokeGroup.remove(particle.sprite);
-        }
-        spriteMaterial.dispose();
-        return false;
-      }
-
-      return true;
-    });
+    // Smoke disabled
   }
 
   private spawnSmokeParticle() {
-    if (!this.chimneySmokeGroup) {
-      return;
-    }
-
-    const sprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: this.getSmokeTexture(),
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        depthTest: true,
-        blending: THREE.NormalBlending,
-      }),
-    );
-    sprite.position.set((Math.random() - 0.5) * 0.1, 0, (Math.random() - 0.5) * 0.1);
-    sprite.scale.set(0.4, 0.4, 0.4);
-
-    const velocity = new THREE.Vector3((Math.random() - 0.5) * 0.025, 0.28 + Math.random() * 0.08, (Math.random() - 0.5) * 0.025);
-    const maxLife = 3.2 + Math.random() * 1.4;
-
-    this.chimneySmokeGroup.add(sprite);
-    this.chimneySmokeParticles.push({
-      sprite,
-      velocity,
-      life: 0,
-      maxLife,
-    });
+    // Smoke disabled
   }
 
   private getGlowTexture(): THREE.Texture {

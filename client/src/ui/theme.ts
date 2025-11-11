@@ -60,9 +60,9 @@ export const GLASS_THEME = {
       disabled: ['rgba(20, 44, 74, 0.22)', 'rgba(14, 30, 54, 0.18)'],
     },
     border: {
-      base: 'rgba(160, 210, 255, 0.82)',
-      hover: 'rgba(200, 235, 255, 0.9)',
-      active: 'rgba(140, 200, 255, 0.88)',
+      base: 'rgba(150, 205, 255, 0.78)',
+      hover: 'rgba(195, 230, 255, 0.88)',
+      active: 'rgba(135, 195, 255, 0.85)',
       disabled: 'rgba(110, 135, 170, 0.45)',
     },
     text: {
