@@ -278,6 +278,19 @@ export function drawText(
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
 
+  if (color === GLASS_THEME.button.text.base || color === GLASS_THEME.palette.text.primary || color === GLASS_THEME.palette.text.highlight) {
+    const textWidth = ctx.measureText(text).width;
+    const underlineY = baseline === 'middle' ? y + (ctx.measureText('M').actualBoundingBoxAscent ?? 0) + 2 : y + (ctx.measureText('M').actualBoundingBoxAscent ?? 0) + 2;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - (align === 'center' ? textWidth / 2 : align === 'right' ? textWidth : 0), underlineY);
+    ctx.lineTo(x + (align === 'center' ? textWidth / 2 : align === 'right' ? 0 : textWidth), underlineY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (shadow) {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
