@@ -135,7 +135,7 @@ export class ModalUI {
     drawText(this.ctx, this.currentModal.title, x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
     });
 
     // Mensagem
@@ -186,7 +186,7 @@ export class ModalUI {
     drawText(this.ctx, this.currentModal.title, x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
     });
 
     // Mensagem

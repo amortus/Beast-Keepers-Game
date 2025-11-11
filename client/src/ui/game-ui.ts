@@ -319,7 +319,7 @@ export class GameUI {
 
     drawText(this.ctx, 'BEAST KEEPERS', 24, 20, {
       font: 'bold 26px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
     });
 
     const beast = this.gameState.activeBeast;
@@ -603,7 +603,7 @@ export class GameUI {
     const formattedName = `${beast.name} - ${lineData.name}`;
     drawText(this.ctx, formattedName, x + 16, y + 10, {
       font: 'bold 18px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
     });
     
     // Info básica em linha
@@ -659,7 +659,7 @@ export class GameUI {
     barY += 15;
     drawText(this.ctx, 'ATRIBUTOS', x + 16, barY, {
       font: 'bold 16px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
       shadow: false,
     });
 
@@ -717,7 +717,7 @@ export class GameUI {
     
     drawText(this.ctx, 'STATUS', x + 16, yOffset, {
       font: 'bold 18px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
       shadow: false,
     });
     
@@ -797,7 +797,7 @@ export class GameUI {
     // Se não tem ação, mostrar menu de ações
     drawText(this.ctx, 'AÇÕES DISPONÍVEIS', x + 16, y + 10, {
       font: 'bold 16px monospace',
-      color: GLASS_THEME.palette.accent.lilac,
+      color: GLASS_THEME.palette.text.highlight,
       shadow: false,
     });
 
@@ -900,7 +900,7 @@ export class GameUI {
     // Nome da ação
     drawText(this.ctx, getRealtimeActionName(action.type), x + 16, y + 46, {
       font: 'bold 18px monospace',
-      color: GLASS_THEME.palette.text.primary,
+      color: GLASS_THEME.palette.text.highlight,
     });
     
     // Barra de progresso
