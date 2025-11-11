@@ -69,9 +69,9 @@ export class ImmersiveBattleScene3D {
     this.scene.fog = new THREE.Fog(0xa0d8ef, 20, 50);
     
     // Camera setup (estilo Pokémon)
-    this.camera = new THREE.PerspectiveCamera(55, width / height, 0.1, 120);
-    this.cameraTargetPosition = new THREE.Vector3(0, 7.5, 14);
-    this.cameraTargetLookAt = new THREE.Vector3(0, 1.2, 0);
+    this.camera = new THREE.PerspectiveCamera(62, width / height, 0.1, 140);
+    this.cameraTargetPosition = new THREE.Vector3(0, 7.2, 12.5);
+    this.cameraTargetLookAt = new THREE.Vector3(0, 0.5, 0);
     this.camera.position.copy(this.cameraTargetPosition);
     this.camera.lookAt(this.cameraTargetLookAt);
     
@@ -395,9 +395,9 @@ export class ImmersiveBattleScene3D {
     const model = new BeastModel(beastLine.toLowerCase());
     const group = model.getGroup();
     
-    // Posicionar à ESQUERDA, virado para DIREITA (encarando inimigo)
+    // Posicionar à ESQUERDA, virado para o centro
     group.position.set(-4, 0, 0);
-    group.rotation.y = Math.PI * 0.35; // 63° = mais de frente para o inimigo (AJUSTADO)
+    group.lookAt(new THREE.Vector3(0, 0.6, 0));
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -415,7 +415,7 @@ export class ImmersiveBattleScene3D {
       model,
       group,
       basePosition: new THREE.Vector3(-4, 0, 0),
-      baseRotation: Math.PI * 0.35, // 63° - mesmo do rotation (AJUSTADO)
+      baseRotation: group.rotation.y,
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
@@ -446,9 +446,9 @@ export class ImmersiveBattleScene3D {
     const model = new BeastModel(beastLine.toLowerCase());
     const group = model.getGroup();
     
-    // Posicionar à DIREITA, virado para ESQUERDA (encarando jogador)
+    // Posicionar à DIREITA, virado para o centro
     group.position.set(4, 0, 0);
-    group.rotation.y = Math.PI * 1.40; // 252° = virado ainda mais para o jogador (AJUSTADO)
+    group.lookAt(new THREE.Vector3(0, 0.6, 0));
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -466,7 +466,7 @@ export class ImmersiveBattleScene3D {
       model,
       group,
       basePosition: new THREE.Vector3(4, 0, 0),
-      baseRotation: Math.PI * 1.40, // 252° - mesmo do rotation (AJUSTADO)
+      baseRotation: group.rotation.y,
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,

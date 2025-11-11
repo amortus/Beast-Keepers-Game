@@ -85,6 +85,10 @@ export class BattleUI3D {
         window.innerWidth,
         window.innerHeight
       );
+      this.scene3DContainer.firstElementChild?.setAttribute(
+        'style',
+        'width:100%;height:100%;display:block;'
+      );
       
       // Load beasts
       this.scene3D.setPlayerBeast(this.battle.player.beast.line);
@@ -341,10 +345,10 @@ export class BattleUI3D {
 
   // ===== COMBAT LOG (COPIADO DO 2D) =====
   private drawCombatLog() {
-    const width = 600;
-    const height = 100;
+    const width = 640;
+    const height = 130;
     const x = (this.canvas.width - width) / 2;
-    const y = 120;
+    const y = 110;
     
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(26, 32, 44, 0.85)',
@@ -353,7 +357,7 @@ export class BattleUI3D {
     });
     
     const log = this.battle.combatLog || [];
-    let currentY = y + 20;
+    let currentY = y + 24;
     
     // Show last 3 messages
     log.slice(-3).forEach(message => {
@@ -362,7 +366,7 @@ export class BattleUI3D {
         color: COLORS.ui.text,
         align: 'center',
       });
-      currentY += 25;
+      currentY += 28;
     });
   }
 

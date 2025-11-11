@@ -788,12 +788,12 @@ export class GameUI {
     });
 
     // Category buttons (2x2 grid MENOR)
-    const buttonWidth = 168;
-    const buttonHeight = 30;
-    const buttonStartX = x + 16;
-    const buttonStartY = y + 34;
-    const buttonSpacingX = 176;
-    const buttonSpacingY = 38;
+    const buttonWidth = 226;
+    const buttonHeight = 38;
+    const buttonStartX = x + 18;
+    const buttonStartY = y + 30;
+    const buttonSpacingX = 188;
+    const buttonSpacingY = 44;
 
     // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [
@@ -935,11 +935,11 @@ export class GameUI {
   private drawActionList(x: number, y: number, beast: Beast, serverTime: number) {
     const actions = this.getActionsForCategory();
     
-    // Layout 2 colunas (botões MAIORES para melhor leitura)
-    const buttonWidth = 238; // Aumentado de 235 → 238px (quase preenche)
-    const buttonHeight = 42; // Aumentado de 38 → 42px (mais alto)
-    const spacingX = 8; // Reduzido de 10 → 8px
-    const spacingY = 6; // Reduzido de 8 → 6px (mais compacto verticalmente)
+    // Layout 2 colunas (botões menores para harmonizar com painel)
+    const buttonWidth = 168;
+    const buttonHeight = 28;
+    const spacingX = 14;
+    const spacingY = 10;
     const columns = 2; // 2 colunas
 
     actions.forEach((action, index) => {

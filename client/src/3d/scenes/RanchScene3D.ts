@@ -699,10 +699,13 @@ export class RanchScene3D {
     for (const [index, placement] of this.layout.flowers.entries()) {
       const rotation = placement.rotation ?? 0;
       const scale = placement.scale ?? 1;
-      const chosenColor =
-        placement.colorIndex !== undefined
-          ? colorOptions[placement.colorIndex % colorOptions.length]
-          : colorOptions[index % colorOptions.length];
+      let chosenColor: number;
+      if (index === 0) {
+        chosenColor = colorOptions[0];
+      } else {
+        const palette = colorOptions.length > 1 ? colorOptions.slice(1) : colorOptions;
+        chosenColor = palette[(index - 1) % palette.length];
+      }
       this.loadStaticModel('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb', {
         position: [placement.position[0], placement.position[1] ?? 0, placement.position[2]],
         rotationY: rotation,
@@ -805,8 +808,8 @@ export class RanchScene3D {
         targetHeight: 2.2,
         name: 'ranch-lantern',
         onLoaded: (group) => {
-          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.82, 6.5, 1.6);
-          light.position.set(0, 0.9, 0);
+          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.62, 6.0, 1.4);
+          light.position.set(0, 0.88, 0);
           group.add(light);
 
           const innerGlow = new THREE.Mesh(
@@ -814,10 +817,10 @@ export class RanchScene3D {
             new THREE.MeshBasicMaterial({
               color: this.skin.lamp.emissiveColor,
               transparent: true,
-              opacity: 0.34,
+              opacity: 0.24,
             }),
           );
-          innerGlow.position.set(0, 0.88, 0);
+          innerGlow.position.set(0, 0.86, 0);
           group.add(innerGlow);
 
           const sprite = new THREE.Sprite(
@@ -825,13 +828,13 @@ export class RanchScene3D {
               map: this.getGlowTexture(),
               color: this.skin.lamp.lightColor,
               transparent: true,
-              opacity: 0.45,
+              opacity: 0.32,
               depthWrite: false,
               blending: THREE.AdditiveBlending,
             }),
           );
-          sprite.position.set(0, 0.9, 0);
-          sprite.scale.set(1.2, 1.2, 1.2);
+          sprite.position.set(0, 0.88, 0);
+          sprite.scale.set(1.08, 1.08, 1.08);
           group.add(sprite);
 
           this.lanternLights.push({
@@ -1292,7 +1295,7 @@ export class RanchScene3D {
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
-    this.baseYPosition = WORLD_Y_OFFSET - 0.35;
+    this.baseYPosition = WORLD_Y_OFFSET - 0.46;
     this.isMoving = false;
     this.currentTarget = null;
     this.nextMoveTime = 2 + Math.random() * 2;
