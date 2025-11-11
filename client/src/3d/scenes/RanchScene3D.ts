@@ -285,7 +285,17 @@ export class RanchScene3D {
     scene.background = new THREE.Color(0x1d2b44);
     scene.fog = new THREE.Fog(0x1d2b44, 18, 45);
 
-    this.rebuildDecorations();
+    Promise.all([
+      this.preloadModel('/assets/3d/Ranch/House/House1.glb'),
+      this.preloadModel('/assets/3d/Ranch/Tree/Tree1.glb'),
+      this.preloadModel('/assets/3d/Ranch/Mountain/Mountain1.glb'),
+    ])
+      .catch((error) => {
+        console.error('[RanchScene3D] Failed to preload models', error);
+      })
+      .finally(() => {
+        this.rebuildDecorations();
+      });
   }
 
   public applySkin(skin: RanchSkin) {
@@ -448,6 +458,26 @@ export class RanchScene3D {
         console.error(`[RanchScene3D] Failed to load model '${url}'`, error);
       },
     );
+  }
+
+  private preloadModel(url: string): Promise<void> {
+    if (this.gltfCache.has(url)) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(
+        url,
+        (gltf) => {
+          this.gltfCache.set(url, gltf.scene);
+          resolve();
+        },
+        undefined,
+        (error) => {
+          reject(error);
+        },
+      );
+    });
   }
 
   private createGround() {
