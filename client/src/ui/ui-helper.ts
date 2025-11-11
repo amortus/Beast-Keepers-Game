@@ -370,13 +370,16 @@ export function drawBar(
   ctx.restore();
 
   if (options.label) {
-    drawText(ctx, options.label, x + width / 2, y + height / 2, {
-      align: 'center',
-      baseline: 'middle',
-      font: 'bold 14px monospace',
-      color: GLASS_THEME.palette.text.primary,
-      shadow: false,
-    });
+    ctx.save();
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.strokeText(options.label, x + width / 2, y + height / 2);
+    ctx.fillStyle = GLASS_THEME.palette.text.primary;
+    ctx.fillText(options.label, x + width / 2, y + height / 2);
+    ctx.restore();
   }
 }
 
@@ -437,13 +440,13 @@ export function drawButton(
   const [gradientTop, gradientBottom] = [
     rgbaToString(
       isDisabled
-        ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.1)
-        : lightenColor(baseColor, isActive ? 0.16 : isHovered ? 0.32 : 0.28),
+        ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.06)
+        : lightenColor(baseColor, isActive ? 0.12 : isHovered ? 0.18 : 0.14),
     ),
     rgbaToString(
       isDisabled
-        ? parseColor('rgba(12, 24, 48, 0.25)')
-        : darkenColor(baseColor, isActive ? 0.24 : isHovered ? 0.18 : 0.14),
+        ? parseColor('rgba(12, 24, 48, 0.22)')
+        : darkenColor(baseColor, isActive ? 0.18 : isHovered ? 0.14 : 0.1),
     ),
   ];
 

@@ -787,12 +787,13 @@ export class GameUI {
       shadow: false,
     });
 
-    // Category buttons (2x2 grid MENOR)
-    const buttonWidth = 226;
+    // Category buttons (2 colunas alinhadas ao centro)
+    const buttonWidth = 210;
     const buttonHeight = 38;
-    const buttonStartX = x + 18;
-    const buttonStartY = y + 30;
-    const buttonSpacingX = 188;
+    const buttonSpacingX = 32;
+    const totalCategoryWidth = buttonWidth * 2 + buttonSpacingX;
+    const buttonStartX = x + (width - totalCategoryWidth) / 2;
+    const buttonStartY = y + 28;
     const buttonSpacingY = 44;
 
     // Grid 2x2 de botões de categoria (sem Torneio)
@@ -936,16 +937,19 @@ export class GameUI {
     const actions = this.getActionsForCategory();
     
     // Layout 2 colunas (botões menores para harmonizar com painel)
-    const buttonWidth = 168;
+    const buttonWidth = 164;
     const buttonHeight = 28;
-    const spacingX = 14;
+    const spacingX = 12;
     const spacingY = 10;
     const columns = 2; // 2 colunas
 
     actions.forEach((action, index) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
-      const buttonX = x + col * (buttonWidth + spacingX);
+      const panelInnerWidth = SIDE_PANEL_WIDTH - 20;
+      const totalWidth = buttonWidth * columns + spacingX * (columns - 1);
+      const startX = x + (panelInnerWidth - totalWidth) / 2;
+      const buttonX = startX + col * (buttonWidth + spacingX);
       const buttonY = y + row * (buttonHeight + spacingY);
       const isHovered = isMouseOver(this.mouseX, this.mouseY, buttonX, buttonY, buttonWidth, buttonHeight);
       const isSelected = this.selectedAction === action.id;

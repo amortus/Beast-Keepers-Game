@@ -69,9 +69,9 @@ export class ImmersiveBattleScene3D {
     this.scene.fog = new THREE.Fog(0xa0d8ef, 20, 50);
     
     // Camera setup (estilo Pokémon)
-    this.camera = new THREE.PerspectiveCamera(62, width / height, 0.1, 140);
-    this.cameraTargetPosition = new THREE.Vector3(0, 7.2, 12.5);
-    this.cameraTargetLookAt = new THREE.Vector3(0, 0.5, 0);
+    this.camera = new THREE.PerspectiveCamera(68, width / height, 0.1, 160);
+    this.cameraTargetPosition = new THREE.Vector3(0, 6.4, 10.2);
+    this.cameraTargetLookAt = new THREE.Vector3(0, 0.2, 0);
     this.camera.position.copy(this.cameraTargetPosition);
     this.camera.lookAt(this.cameraTargetLookAt);
     
@@ -116,7 +116,7 @@ export class ImmersiveBattleScene3D {
 
   private createBattleArena() {
     // Chão de grama natural (igual rancho)
-    const groundGeometry = new THREE.CircleGeometry(20, 48);
+    const groundGeometry = new THREE.CircleGeometry(26, 64);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x5a8f4a, // Verde grama
       roughness: 0.9,
@@ -279,7 +279,7 @@ export class ImmersiveBattleScene3D {
 
   private createGrassField() {
     // Usar PS1Grass (igual rancho)
-    this.grass = new PS1Grass(this.scene, 20); // Radius expandido para preencher tela
+    this.grass = new PS1Grass(this.scene, 26); // Radius expandido para preencher tela
   }
 
   private createClouds() {
@@ -396,8 +396,11 @@ export class ImmersiveBattleScene3D {
     const group = model.getGroup();
     
     // Posicionar à ESQUERDA, virado para o centro
-    group.position.set(-4, 0, 0);
-    group.lookAt(new THREE.Vector3(0, 0.6, 0));
+    const playerPosition = new THREE.Vector3(-4, 0, 0);
+    const focusPoint = new THREE.Vector3(0, 0, 0);
+    const playerAngle = Math.atan2(focusPoint.x - playerPosition.x, focusPoint.z - playerPosition.z);
+    group.position.copy(playerPosition);
+    group.rotation.set(0, playerAngle, 0);
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -414,8 +417,8 @@ export class ImmersiveBattleScene3D {
     this.playerBeast = {
       model,
       group,
-      basePosition: new THREE.Vector3(-4, 0, 0),
-      baseRotation: group.rotation.y,
+      basePosition: playerPosition.clone(),
+      baseRotation: playerAngle,
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
@@ -447,8 +450,11 @@ export class ImmersiveBattleScene3D {
     const group = model.getGroup();
     
     // Posicionar à DIREITA, virado para o centro
-    group.position.set(4, 0, 0);
-    group.lookAt(new THREE.Vector3(0, 0.6, 0));
+    const enemyPosition = new THREE.Vector3(4, 0, 0);
+    const focusPoint = new THREE.Vector3(0, 0, 0);
+    const enemyAngle = Math.atan2(focusPoint.x - enemyPosition.x, focusPoint.z - enemyPosition.z);
+    group.position.copy(enemyPosition);
+    group.rotation.set(0, enemyAngle, 0);
     group.castShadow = true;
     group.receiveShadow = true;
     
@@ -465,8 +471,8 @@ export class ImmersiveBattleScene3D {
     this.enemyBeast = {
       model,
       group,
-      basePosition: new THREE.Vector3(4, 0, 0),
-      baseRotation: group.rotation.y,
+      basePosition: enemyPosition.clone(),
+      baseRotation: enemyAngle,
       currentAnimation: 'idle',
       animationTime: 0,
       health: 100,
