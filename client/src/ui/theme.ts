@@ -68,6 +68,7 @@ export const GLASS_THEME = {
     text: {
       base: '#F7FAFF',
       disabled: 'rgba(170, 190, 215, 0.55)',
+      dark: '#0B1120',
     },
     droplet: 'rgba(255, 255, 255, 0.38)',
   },

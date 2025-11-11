@@ -134,6 +134,19 @@ function multiplyAlpha(color: RGBAColor, multiplier: number): RGBAColor {
   return { ...color, a: clamp(color.a * multiplier, 0, 1) };
 }
 
+function relativeLuminance(color: RGBAColor): number {
+  const toLinear = (channel: number) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
+  };
+
+  const r = toLinear(color.r);
+  const g = toLinear(color.g);
+  const b = toLinear(color.b);
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   const r = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
@@ -458,11 +471,19 @@ export function drawButton(
     ctx.restore();
   }
 
+  const defaultTextColor = (() => {
+    if (isDisabled) {
+      return GLASS_THEME.button.text.disabled;
+    }
+    const luminance = relativeLuminance(baseColor);
+    return luminance > 0.55 ? GLASS_THEME.button.text.dark : GLASS_THEME.button.text.base;
+  })();
+
   drawText(ctx, text, x + width / 2, y + height / 2, {
     align: 'center',
     baseline: 'middle',
     font: `bold ${fontSize}px monospace`,
-    color: isDisabled ? GLASS_THEME.button.text.disabled : options.textColor ?? GLASS_THEME.button.text.base,
+    color: options.textColor ?? defaultTextColor,
     shadow: false,
   });
 }
