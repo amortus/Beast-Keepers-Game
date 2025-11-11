@@ -134,19 +134,6 @@ function multiplyAlpha(color: RGBAColor, multiplier: number): RGBAColor {
   return { ...color, a: clamp(color.a * multiplier, 0, 1) };
 }
 
-function relativeLuminance(color: RGBAColor): number {
-  const toLinear = (channel: number) => {
-    const normalized = channel / 255;
-    return normalized <= 0.03928 ? normalized / 12.92 : Math.pow((normalized + 0.055) / 1.055, 2.4);
-  };
-
-  const r = toLinear(color.r);
-  const g = toLinear(color.g);
-  const b = toLinear(color.b);
-
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
 function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   const r = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
@@ -277,6 +264,46 @@ export function drawText(
 
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
+
+  const needsOutline = (() => {
+    const normalized = color.trim().toLowerCase();
+    if (normalized === '#ffffff') return true;
+    if (normalized === GLASS_THEME.button.text.base.toLowerCase()) return true;
+    if (normalized === GLASS_THEME.palette.text.highlight.toLowerCase()) return true;
+    if (normalized.startsWith('rgba')) {
+      const match = normalized.match(/rgba\(([^)]+)\)/);
+      if (match) {
+        const parts = match[1].split(',').map((p) => p.trim());
+        const r = parseFloat(parts[0] ?? '0');
+        const g = parseFloat(parts[1] ?? '0');
+        const b = parseFloat(parts[2] ?? '0');
+        const a = parseFloat(parts[3] ?? '1');
+        if (a < 0.05) return false;
+        return r + g + b >= 690;
+      }
+    }
+    if (normalized.startsWith('#')) {
+      const hex = normalized.slice(1);
+      if (hex.length === 6) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        return r + g + b >= 690;
+      }
+    }
+    return false;
+  })();
+
+  if (needsOutline) {
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.strokeText(text, x, y);
+    ctx.restore();
+  }
 
   if (shadow) {
     ctx.shadowBlur = 0;

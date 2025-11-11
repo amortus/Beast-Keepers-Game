@@ -13,6 +13,11 @@ import { RanchScene3D } from '../3d/scenes/RanchScene3D';
 import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';
 import { formatTime } from '../utils/time-format';
 
+const HEADER_HEIGHT = 112;
+const SIDE_PANEL_WIDTH = 510;
+const STATUS_PANEL_HEIGHT = 430;
+const SIDE_PANEL_GAP = 12;
+
 export class GameUI {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -310,61 +315,59 @@ export class GameUI {
   }
 
   private drawHeader() {
-    const headerHeight = 88;
-    drawPanel(this.ctx, 0, 0, this.canvas.width, headerHeight, {
+    drawPanel(this.ctx, 0, 0, this.canvas.width, HEADER_HEIGHT, {
       variant: 'header',
       highlightIntensity: 0.9,
       borderWidth: 1.5,
     });
 
-    drawText(this.ctx, 'BEAST KEEPERS', 24, 20, {
-      font: 'bold 26px monospace',
+    drawText(this.ctx, 'BEAST KEEPERS', 24, 24, {
+      font: 'bold 28px monospace',
       color: GLASS_THEME.palette.text.highlight,
     });
 
-    const beast = this.gameState.activeBeast;
-    const explorationCount = beast?.explorationCount || 0;
-    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 310, 26, {
-      font: 'bold 16px monospace',
-      color: GLASS_THEME.palette.text.secondary,
-      shadow: false,
-    });
-
     const moneyX = this.canvas.width - 20;
-    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 26, {
+    drawText(this.ctx, `💰 ${this.gameState.economy.coronas} Coronas`, moneyX, 30, {
       font: 'bold 16px monospace',
       color: GLASS_THEME.palette.accent.amber,
       align: 'right',
       shadow: false,
     });
 
-    const logoutBtnWidth = 110;
-    const logoutBtnHeight = 30;
-    const logoutBtnY = 54;
-    const logoutBtnX = this.canvas.width - logoutBtnWidth - 20;
-    const isLogoutHovered = isMouseOver(this.mouseX, this.mouseY, logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight);
+    const beast = this.gameState.activeBeast;
+    const explorationCount = beast?.explorationCount || 0;
+    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 24, 62, {
+      font: 'bold 15px monospace',
+      color: GLASS_THEME.palette.text.secondary,
+      shadow: false,
+    });
 
-    drawButton(this.ctx, logoutBtnX, logoutBtnY, logoutBtnWidth, logoutBtnHeight, '🚪 Sair', {
+    const buttonY = 20;
+    const logoutBtnWidth = 110;
+    const logoutBtnHeight = 32;
+    const logoutBtnX = this.canvas.width - logoutBtnWidth - 24;
+    const isLogoutHovered = isMouseOver(this.mouseX, this.mouseY, logoutBtnX, buttonY, logoutBtnWidth, logoutBtnHeight);
+
+    drawButton(this.ctx, logoutBtnX, buttonY, logoutBtnWidth, logoutBtnHeight, '🚪 Sair', {
       variant: 'danger',
       isHovered: isLogoutHovered,
-      fontSize: 13,
+      fontSize: 14,
     });
 
     this.buttons.set('logout', {
       x: logoutBtnX,
-      y: logoutBtnY,
+      y: buttonY,
       width: logoutBtnWidth,
       height: logoutBtnHeight,
       action: () => this.onLogout(),
     });
 
     const settingsBtnWidth = 46;
-    const settingsBtnHeight = 30;
-    const settingsBtnY = 54;
-    const settingsBtnX = logoutBtnX - settingsBtnWidth - 14;
-    const isSettingsHovered = isMouseOver(this.mouseX, this.mouseY, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight);
+    const settingsBtnHeight = 32;
+    const settingsBtnX = logoutBtnX - settingsBtnWidth - 12;
+    const isSettingsHovered = isMouseOver(this.mouseX, this.mouseY, settingsBtnX, buttonY, settingsBtnWidth, settingsBtnHeight);
 
-    drawButton(this.ctx, settingsBtnX, settingsBtnY, settingsBtnWidth, settingsBtnHeight, '⚙️', {
+    drawButton(this.ctx, settingsBtnX, buttonY, settingsBtnWidth, settingsBtnHeight, '⚙️', {
       variant: 'ghost',
       isHovered: isSettingsHovered,
       fontSize: 18,
@@ -372,7 +375,7 @@ export class GameUI {
 
     this.buttons.set('settings', {
       x: settingsBtnX,
-      y: settingsBtnY,
+      y: buttonY,
       width: settingsBtnWidth,
       height: settingsBtnHeight,
       action: () => this.onOpenSettings(),
@@ -382,12 +385,11 @@ export class GameUI {
   }
 
   private drawGlobalMenu() {
-    const menuY = 54;
+    const menuY = 76;
     const btnSpacing = 8;
     let currentX = 24;
 
-    const rightButtonsWidth = 160;
-    const rightMargin = 20;
+    const rightMargin = 24;
 
     const tabColor = GLASS_THEME.palette.accent.cyan;
     const menuItems = [
@@ -404,9 +406,9 @@ export class GameUI {
 
     const totalItems = menuItems.length;
     const totalSpacing = (totalItems - 1) * btnSpacing;
-    const availableWidth = this.canvas.width - currentX - rightButtonsWidth - rightMargin;
-    const btnWidth = Math.max(96, Math.floor((availableWidth - totalSpacing) / totalItems));
-    const btnHeight = 32;
+    const availableWidth = this.canvas.width - currentX - rightMargin;
+    const btnWidth = Math.max(110, Math.floor((availableWidth - totalSpacing) / totalItems));
+    const btnHeight = 34;
 
     menuItems.forEach((item) => {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, currentX, menuY, btnWidth, btnHeight);
@@ -417,7 +419,7 @@ export class GameUI {
         bgColor: item.accent,
         isHovered,
         isActive,
-        fontSize: 12,
+        fontSize: 13,
       });
 
       this.buttons.set(item.id, {
@@ -439,11 +441,10 @@ export class GameUI {
     const beast = this.gameState.activeBeast!;
     
     // === 3D Ranch: preenche TODO o espaço disponível ===
-    const headerHeight = 88; // Mesmo valor do drawHeader()
     const scene3DX = 0;
-    const scene3DY = headerHeight; // Começa LOGO APÓS o header
-    const scene3DWidth = this.canvas.width - 510; // Até os painéis direitos
-    const scene3DHeight = this.canvas.height - headerHeight; // ATÉ O FUNDO (sem Week Info)
+    const scene3DY = HEADER_HEIGHT; // Começa LOGO APÓS o header
+    const scene3DWidth = this.canvas.width - SIDE_PANEL_WIDTH; // Até os painéis direitos
+    const scene3DHeight = this.canvas.height - HEADER_HEIGHT; // ATÉ O FUNDO (sem Week Info)
     
     // Criar/atualizar Ranch Scene 3D como background
     if (this.is3DViewerVisible && this.useFullRanchScene) {
@@ -587,11 +588,10 @@ export class GameUI {
     const beast = this.gameState.activeBeast!;
     
     // Painel INFO + ATRIBUTOS + STATUS (lado direito - AUMENTADO para mostrar STATUS)
-    const headerHeight = 80; // Mesmo valor do drawHeader()
-    const x = this.canvas.width - 510;
-    const y = headerHeight; // Começa LOGO APÓS o header
-    const width = 510;
-    const height = 430; // Aumentado de 350 → 430 (+80px para STATUS)
+    const x = this.canvas.width - SIDE_PANEL_WIDTH;
+    const y = HEADER_HEIGHT; // Começa LOGO APÓS o header
+    const width = SIDE_PANEL_WIDTH;
+    const height = STATUS_PANEL_HEIGHT; // Aumentado de 350 → 430 (+80px para STATUS)
 
     drawPanel(this.ctx, x, y, width, height, {
       variant: 'card',
@@ -767,10 +767,9 @@ export class GameUI {
     const serverTime = Date.now();
     
     // Painel AÇÕES - lado direito, abaixo do STATUS (ATÉ O FUNDO)
-    const headerHeight = 80;
-    const x = this.canvas.width - 510;
-    const y = headerHeight + 435; // Logo após STATUS (80 + 430 + 5 gap)
-    const width = 510;
+    const x = this.canvas.width - SIDE_PANEL_WIDTH;
+    const y = HEADER_HEIGHT + STATUS_PANEL_HEIGHT + SIDE_PANEL_GAP; // Logo após STATUS
+    const width = SIDE_PANEL_WIDTH;
     const height = this.canvas.height - y; // ATÉ O FUNDO (sem Week Info)
 
     drawPanel(this.ctx, x, y, width, height, {
@@ -1041,10 +1040,9 @@ export class GameUI {
     const serverTime = this.gameState.serverTime || Date.now();
     
     // Week Info - embaixo de AÇÕES
-    const headerHeight = 80;
-    const x = this.canvas.width - 510;
-    const y = headerHeight + 435 + 215; // Logo após AÇÕES (80 + 430 + 5 + 210 + 5)
-    const width = 510;
+    const x = this.canvas.width - SIDE_PANEL_WIDTH;
+    const y = HEADER_HEIGHT + STATUS_PANEL_HEIGHT + SIDE_PANEL_GAP + 215; // Logo após AÇÕES
+    const width = SIDE_PANEL_WIDTH;
     const height = 60;
 
     drawPanel(this.ctx, x, y, width, height, {
