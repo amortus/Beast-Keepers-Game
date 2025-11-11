@@ -138,6 +138,13 @@ interface Obstacle {
 
 const WORLD_Y_OFFSET = -1.2;
 
+interface SmokeParticle {
+  sprite: THREE.Sprite;
+  velocity: THREE.Vector3;
+  life: number;
+  maxLife: number;
+}
+
 const DEFAULT_LAYOUT: RanchLayout = {
   house: { position: [0, 0.2, -6.8], obstacleRadius: 2.6 },
   pond: {
@@ -251,6 +258,13 @@ export class RanchScene3D {
   private decorationsRoot: THREE.Group | null = null;
   private water: PS1Water | null = null;
   private critters: RanchCritters | null = null;
+  private lanternLights: Array<{ light: THREE.PointLight; sprite: THREE.Sprite; baseIntensity: number; offset: number }> = [];
+  private glowTexture: THREE.Texture | null = null;
+  private smokeTexture: THREE.Texture | null = null;
+  private chimneySmokeGroup: THREE.Group | null = null;
+  private chimneySmokeParticles: SmokeParticle[] = [];
+  private smokeAccumulator = 0;
+  private elapsedTime = 0;
 
   private gltfLoader = new GLTFLoader();
   private gltfCache = new Map<string, THREE.Group>();
@@ -310,6 +324,11 @@ export class RanchScene3D {
     const scene = this.threeScene.getScene();
     this.clearDecorations();
 
+    this.lanternLights = [];
+    this.chimneySmokeParticles = [];
+    this.chimneySmokeGroup = null;
+    this.smokeAccumulator = 0;
+
     this.decorationsRoot = new THREE.Group();
     this.decorationsRoot.position.y = WORLD_Y_OFFSET;
     this.threeScene.addObject(this.decorationsRoot);
@@ -336,6 +355,16 @@ export class RanchScene3D {
       this.critters.dispose();
       this.critters = null;
     }
+
+    this.lanternLights = [];
+
+    this.chimneySmokeParticles.forEach((particle) => {
+      particle.sprite.material.dispose();
+    });
+    this.chimneySmokeParticles = [];
+    this.chimneySmokeGroup = null;
+    this.smokeAccumulator = 0;
+    this.elapsedTime = 0;
 
     if (this.water) {
       if (this.decorationsRoot) {
@@ -706,9 +735,41 @@ export class RanchScene3D {
         targetHeight: 2.2,
         name: 'ranch-lantern',
         onLoaded: (group) => {
-          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.8, 7, 1.8);
+          const light = new THREE.PointLight(this.skin.lamp.lightColor, 0.9, 7, 1.8);
           light.position.set(0, 1.45, 0);
           group.add(light);
+
+          const innerGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 12, 12),
+            new THREE.MeshBasicMaterial({
+              color: this.skin.lamp.emissiveColor,
+              transparent: true,
+              opacity: 0.4,
+            }),
+          );
+          innerGlow.position.set(0, 1.45, 0);
+          group.add(innerGlow);
+
+          const sprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({
+              map: this.getGlowTexture(),
+              color: this.skin.lamp.lightColor,
+              transparent: true,
+              opacity: 0.55,
+              depthWrite: false,
+              blending: THREE.AdditiveBlending,
+            }),
+          );
+          sprite.position.set(0, 1.45, 0);
+          sprite.scale.set(1.3, 1.3, 1.3);
+          group.add(sprite);
+
+          this.lanternLights.push({
+            light,
+            sprite,
+            baseIntensity: light.intensity,
+            offset: Math.random() * Math.PI * 2,
+          });
         },
       });
     }
@@ -777,6 +838,7 @@ export class RanchScene3D {
       verticalOffset: -0.2,
       onLoaded: (group) => {
         this.houseModel = group;
+        this.setupHouseLighting(group);
       },
     });
   }
@@ -799,6 +861,221 @@ export class RanchScene3D {
 
     this.obstacles = obstacles;
     this.boundaryRadius = this.layout.walkableRadius;
+  }
+
+  private setupHouseLighting(group: THREE.Group) {
+    this.applyWindowLighting(group);
+    this.setupChimneySmoke(group);
+  }
+
+  private applyWindowLighting(group: THREE.Group) {
+    const warmColor = new THREE.Color(this.skin.lamp.lightColor);
+    const emissiveColor = warmColor.clone().multiplyScalar(0.65);
+
+    group.traverse((child) => {
+      if (child instanceof THREE.Mesh && this.isWindowMesh(child)) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((mat) => {
+          if (mat && 'emissive' in mat) {
+            const standard = mat as THREE.MeshStandardMaterial;
+            standard.emissive.copy(emissiveColor);
+            standard.emissiveIntensity = 0.8;
+            standard.needsUpdate = true;
+          }
+        });
+      }
+    });
+
+    const windowLight = new THREE.PointLight(this.skin.lamp.lightColor, 0.6, 8, 2.2);
+    windowLight.position.set(0, 1.8, 1.3);
+    group.add(windowLight);
+
+    const windowGlow = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: this.getGlowTexture(),
+        color: this.skin.lamp.lightColor,
+        transparent: true,
+        opacity: 0.4,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    windowGlow.scale.set(2.4, 2.0, 2.4);
+    windowGlow.position.set(0, 1.7, 1.25);
+    group.add(windowGlow);
+  }
+
+  private setupChimneySmoke(group: THREE.Group) {
+    this.chimneySmokeParticles.forEach((particle) => {
+      particle.sprite.material.dispose();
+    });
+    this.chimneySmokeParticles = [];
+    this.smokeAccumulator = 0;
+
+    const chimneyObject = this.findObjectByName(group, ['chimney', 'chimney_top', 'chimney01']);
+    const origin = new THREE.Vector3();
+
+    if (chimneyObject) {
+      chimneyObject.updateWorldMatrix(true, false);
+      chimneyObject.getWorldPosition(origin);
+      group.worldToLocal(origin);
+      origin.y += 0.2;
+    } else {
+      const bounds = new THREE.Box3().setFromObject(group);
+      const size = bounds.getSize(new THREE.Vector3());
+      origin.set(bounds.min.x + size.x * 0.75, bounds.max.y - 0.3, bounds.min.z + size.z * 0.3);
+    }
+
+    this.chimneySmokeGroup = new THREE.Group();
+    this.chimneySmokeGroup.position.copy(origin);
+    group.add(this.chimneySmokeGroup);
+  }
+
+  private updateLanterns(delta: number) {
+    if (!this.lanternLights.length) {
+      return;
+    }
+
+    for (const entry of this.lanternLights) {
+      const flicker = Math.sin((this.elapsedTime + entry.offset) * 5.6) * 0.15 + (Math.random() - 0.5) * 0.04;
+      const intensity = Math.max(0.35, Math.min(entry.baseIntensity + flicker, 1.4));
+      entry.light.intensity = intensity;
+
+      const spriteMaterial = entry.sprite.material as THREE.SpriteMaterial;
+      spriteMaterial.opacity = 0.35 + intensity * 0.22;
+      const scale = 1.1 + intensity * 0.45;
+      entry.sprite.scale.set(scale, scale, scale);
+    }
+  }
+
+  private updateChimneySmoke(delta: number) {
+    if (!this.chimneySmokeGroup) {
+      return;
+    }
+
+    this.smokeAccumulator += delta;
+    if (this.smokeAccumulator >= 0.35) {
+      this.smokeAccumulator = 0;
+      if (this.chimneySmokeParticles.length < 12) {
+        this.spawnSmokeParticle();
+      }
+    }
+
+    this.chimneySmokeParticles = this.chimneySmokeParticles.filter((particle) => {
+      particle.life += delta;
+      const progress = particle.life / particle.maxLife;
+
+      particle.sprite.position.addScaledVector(particle.velocity, delta);
+      const spriteMaterial = particle.sprite.material as THREE.SpriteMaterial;
+      spriteMaterial.opacity = Math.max(0, 0.4 * (1 - progress));
+
+      const scale = 0.35 + progress * 0.4;
+      particle.sprite.scale.set(scale, scale, scale);
+
+      if (particle.life >= particle.maxLife) {
+        if (this.chimneySmokeGroup) {
+          this.chimneySmokeGroup.remove(particle.sprite);
+        }
+        spriteMaterial.dispose();
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  private spawnSmokeParticle() {
+    if (!this.chimneySmokeGroup) {
+      return;
+    }
+
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map: this.getSmokeTexture(),
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+        depthTest: true,
+        blending: THREE.NormalBlending,
+      }),
+    );
+    sprite.position.set((Math.random() - 0.5) * 0.12, 0, (Math.random() - 0.5) * 0.12);
+    sprite.scale.set(0.35, 0.35, 0.35);
+
+    const velocity = new THREE.Vector3((Math.random() - 0.5) * 0.03, 0.35 + Math.random() * 0.1, (Math.random() - 0.5) * 0.03);
+    const maxLife = 2.8 + Math.random() * 1.2;
+
+    this.chimneySmokeGroup.add(sprite);
+    this.chimneySmokeParticles.push({
+      sprite,
+      velocity,
+      life: 0,
+      maxLife,
+    });
+  }
+
+  private getGlowTexture(): THREE.Texture {
+    if (!this.glowTexture) {
+      this.glowTexture = this.createRadialTexture(128, [
+        { offset: 0, color: 'rgba(255, 255, 255, 1)' },
+        { offset: 0.65, color: 'rgba(255, 255, 255, 0.5)' },
+        { offset: 1, color: 'rgba(255, 255, 255, 0)' },
+      ]);
+    }
+    return this.glowTexture;
+  }
+
+  private getSmokeTexture(): THREE.Texture {
+    if (!this.smokeTexture) {
+      this.smokeTexture = this.createRadialTexture(128, [
+        { offset: 0, color: 'rgba(255, 255, 255, 0.9)' },
+        { offset: 0.5, color: 'rgba(220, 220, 220, 0.4)' },
+        { offset: 1, color: 'rgba(220, 220, 220, 0)' },
+      ]);
+    }
+    return this.smokeTexture;
+  }
+
+  private createRadialTexture(
+    size: number,
+    stops: Array<{ offset: number; color: string }>,
+  ): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to create canvas context');
+    }
+
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    for (const stop of stops) {
+      gradient.addColorStop(stop.offset, stop.color);
+    }
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  private findObjectByName(group: THREE.Object3D, names: string[]): THREE.Object3D | null {
+    const lowerNames = names.map((name) => name.toLowerCase());
+    let found: THREE.Object3D | null = null;
+    group.traverse((child) => {
+      if (found) return;
+      const name = child.name?.toLowerCase?.() ?? '';
+      if (lowerNames.some((target) => name.includes(target))) {
+        found = child;
+      }
+    });
+    return found;
+  }
+
+  private isWindowMesh(object: THREE.Object3D): boolean {
+    const name = object.name?.toLowerCase?.() ?? '';
+    return name.includes('window') || name.includes('glass');
   }
 
   private isPositionValid(x: number, z: number, clearance: number = 0.5): boolean {
@@ -1024,6 +1301,8 @@ export class RanchScene3D {
   }
 
   public update(delta: number) {
+    this.elapsedTime += delta;
+
     if (this.beastModel) {
       this.beastModel.update(delta);
     }
@@ -1040,6 +1319,8 @@ export class RanchScene3D {
       this.critters.update(delta);
     }
 
+    this.updateLanterns(delta);
+    this.updateChimneySmoke(delta);
     this.updateBeastMovement(delta);
   }
 

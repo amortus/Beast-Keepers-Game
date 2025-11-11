@@ -299,8 +299,8 @@ export function drawText(
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
-    ctx.lineWidth = 2.4;
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
     ctx.strokeText(text, x, y);
     ctx.restore();
   }
@@ -501,13 +501,13 @@ export function drawButton(
 
   if (variant === 'tab') {
     ctx.save();
-    ctx.fillStyle = withAlpha(GLASS_THEME.button.droplet, 0.25);
-    ctx.fillRect(x, y + height - 5, width, 1);
+    ctx.fillStyle = withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.5 : 0.22);
+    ctx.fillRect(x + width * 0.1, y + height - 4, width * 0.8, 1.5);
     const underline = ctx.createLinearGradient(x, y + height - 5, x, y + height);
-    underline.addColorStop(0, withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.9 : 0.35));
-    underline.addColorStop(1, withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.6 : 0));
+    underline.addColorStop(0, withAlpha(GLASS_THEME.tabs.underline, isActive ? 1 : 0.5));
+    underline.addColorStop(1, withAlpha(GLASS_THEME.tabs.underline, isActive ? 0.75 : 0));
     ctx.fillStyle = underline;
-    ctx.fillRect(x, y + height - 4, width, 4);
+    ctx.fillRect(x + width * 0.08, y + height - 3, width * 0.84, 3);
     ctx.restore();
   }
 }
