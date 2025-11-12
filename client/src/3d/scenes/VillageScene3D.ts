@@ -64,6 +64,9 @@ export class VillageScene3D {
   private isRaining = false;
   private rainDuration = 0;
   private nextRainTime = 0;
+  private dungeonGroup: THREE.Group | null = null;
+  private dungeonBaseY: number = 0;
+  private dungeonFloatTime: number = 0;
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
@@ -158,6 +161,12 @@ export class VillageScene3D {
         isHovered: false,
         light: buildingLight,
       });
+
+      // Rastrear dungeon para animação de flutuação
+      if (config.variant === 'dungeon') {
+        this.dungeonGroup = group;
+        this.dungeonBaseY = config.position.y;
+      }
     }
 
     console.log(`[VillageScene3D] Carregado ${this.buildings.length} edifícios.`);
@@ -165,6 +174,9 @@ export class VillageScene3D {
   }
 
   private clearBuildings(): void {
+    this.dungeonGroup = null;
+    this.dungeonBaseY = 0;
+    this.dungeonFloatTime = 0;
     for (const building of this.buildings) {
       this.disposeObject(building.group);
       this.disposeObject(building.highlight);
@@ -238,6 +250,9 @@ export class VillageScene3D {
     this.environmentGroup = root;
     this.scene.add(root);
 
+    // Posições das casas para evitar sobreposição:
+    // Templo: (0, -25), Mercado: (-14, 4), Alquimia: (14, 4), Ruvian: (-18, -9)
+    // Toran: (-8, -14), Eryon: (12, -10), Dungeon: (0, 15)
     const treePositions: Array<[number, number]> = [
       [-30, -16],
       [30, -16],
@@ -245,25 +260,28 @@ export class VillageScene3D {
       [32, 18],
       [-12, 26],
       [12, 26],
-      [-24, -12], // Movida para evitar casa em [-26, -20]
-      [24, -8],
-      [-20, 12],
-      [20, 12],
-      [-38, 4],
-      [38, 4],
-      [-16, -24],
-      [16, -24],
-      [-8, 20],
-      [8, 20],
+      [-24, -12], // OK - longe de Ruvian (-18, -9)
+      [24, -8], // OK - longe de Eryon (12, -10)
+      [-20, 12], // OK - longe de Ruvian (-18, -9)
+      [20, 12], // OK - longe de Alquimia (14, 4) e Eryon (12, -10)
+      [-38, 4], // OK - longe de Mercado (-14, 4)
+      [38, 4], // OK - longe de Alquimia (14, 4)
+      [-16, -24], // OK - longe de Toran (-8, -14)
+      [16, -24], // OK - longe de Eryon (12, -10)
+      [-4, 22], // Ajustada: estava em [-8, 20] muito próxima de Toran (-8, -14) e Templo (0, -25)
+      [4, 22], // Ajustada: estava em [8, 20] muito próxima de Templo (0, -25)
       // Árvores adicionais evitando casas
-      [-28, -22],
-      [28, -22],
-      [-36, 12],
-      [36, 12],
-      [-14, 30],
-      [14, 30],
-      [-22, 2],
-      [22, 2],
+      [-28, -22], // OK - longe de Ruvian (-18, -9)
+      [28, -22], // OK - longe de Eryon (12, -10)
+      [-36, 12], // OK - longe de Ruvian (-18, -9)
+      [36, 12], // OK - longe de Alquimia (14, 4)
+      [-14, 30], // OK - longe de Mercado (-14, 4)
+      [14, 30], // OK - longe de Alquimia (14, 4)
+      [-22, 2], // OK - longe de Ruvian (-18, -9) e Mercado (-14, 4)
+      [22, 2], // OK - longe de Alquimia (14, 4)
+      // Árvores ajustadas para evitar sobreposição
+      [-10, -18], // Ajustada: estava muito próxima de Toran (-8, -14)
+      [10, -18], // Ajustada: estava muito próxima de Eryon (12, -10)
     ];
 
     treePositions.forEach(([x, z], index) => {
@@ -2229,8 +2247,20 @@ export class VillageScene3D {
     // Sistema de chuva
     this.updateRain(delta);
 
+    // Animar flutuação da dungeon
+    this.updateDungeonFloat(delta);
+
     this.renderer.render(this.scene, this.camera);
   };
+
+  private updateDungeonFloat(delta: number): void {
+    if (this.dungeonGroup) {
+      this.dungeonFloatTime += delta;
+      // Movimento senoidal sutil: amplitude de 0.15 unidades, período de ~3 segundos
+      const floatOffset = Math.sin(this.dungeonFloatTime * 2.0) * 0.15;
+      this.dungeonGroup.position.y = this.dungeonBaseY + floatOffset;
+    }
+  }
 
   private updateRain(delta: number): void {
     this.nextRainTime -= delta;
