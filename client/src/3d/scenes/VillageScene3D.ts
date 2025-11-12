@@ -14,6 +14,7 @@ interface BuildingInstance {
   group: THREE.Group;
   highlight: THREE.Mesh;
   isHovered: boolean;
+  light: THREE.PointLight | null;
 }
 
 interface PrefabSpawnOptions {
@@ -59,6 +60,10 @@ export class VillageScene3D {
   private housePrefabsPromise: Promise<THREE.Group[]> | null = null;
   private villagers: VillageVillagers | null = null;
   private lastFrameTime: number;
+  private rainDrops: Array<{ mesh: THREE.Group; velocity: THREE.Vector3 }> = [];
+  private isRaining = false;
+  private rainDuration = 0;
+  private nextRainTime = 0;
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
@@ -99,8 +104,14 @@ export class VillageScene3D {
     this.setBuildings(buildings);
     this.setupEventListeners();
     this.lastFrameTime = typeof performance !== 'undefined' ? performance.now() : 0;
+    this.nextRainTime = this.getRandomRainDelay();
     this.animate();
     console.log('[VillageScene3D] Vila 3D inicializada');
+  }
+
+  private getRandomRainDelay(): number {
+    // 10 minutos a 1 hora (600 a 3600 segundos)
+    return 600 + Math.random() * 3000;
   }
 
   public setBuildings(buildings: VillageBuildingConfig[]): void {
@@ -120,6 +131,23 @@ export class VillageScene3D {
       highlight.position.set(config.position.x, 0.05, config.position.z);
       highlight.userData.buildingId = config.id;
 
+      // Adicionar luz permanente para casas clicáveis (não bloqueadas)
+      let buildingLight: THREE.PointLight | null = null;
+      if (!config.isLocked) {
+        buildingLight = new THREE.PointLight(
+          config.highlightColor ?? 0xffffff,
+          0.8,
+          8,
+          1.5
+        );
+        buildingLight.position.set(
+          config.position.x,
+          4,
+          config.position.z
+        );
+        this.scene.add(buildingLight);
+      }
+
       this.buildingGroup.add(group);
       this.buildingGroup.add(highlight);
 
@@ -128,6 +156,7 @@ export class VillageScene3D {
         group,
         highlight,
         isHovered: false,
+        light: buildingLight,
       });
     }
 
@@ -139,6 +168,10 @@ export class VillageScene3D {
     for (const building of this.buildings) {
       this.disposeObject(building.group);
       this.disposeObject(building.highlight);
+      if (building.light) {
+        this.scene.remove(building.light);
+        building.light.dispose();
+      }
       this.buildingGroup.remove(building.group);
       this.buildingGroup.remove(building.highlight);
     }
@@ -291,12 +324,38 @@ export class VillageScene3D {
       [27, 9],
       [-29, -3],
       [29, -3],
+      // Flores nas extremidades do chão verde
+      [-35, 0],
+      [35, 0],
+      [0, -35],
+      [0, 35],
+      [-30, -20],
+      [30, -20],
+      [-30, 20],
+      [30, 20],
+      [-20, -30],
+      [20, -30],
+      [-20, 30],
+      [20, 30],
+      [-40, -10],
+      [40, -10],
+      [-40, 10],
+      [40, 10],
+      [-10, -40],
+      [10, -40],
+      [-10, 40],
+      [10, 40],
     ];
 
     flowerPositions.forEach(([x, z], index) => {
-      const flower = this.createFlower(index);
-      flower.position.set(x, 0, z);
-      root.add(flower);
+      this.spawnRanchPrefab('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb', {
+        name: `village-flower-${index}`,
+        position: [x, 0, z],
+        rotationY: Math.random() * Math.PI * 2,
+        targetHeight: 1.2,
+        verticalOffset: -0.05,
+        scaleMultiplier: 1.0,
+      });
     });
 
     const rockPositions: Array<[number, number]> = [
@@ -335,12 +394,38 @@ export class VillageScene3D {
       [11, 16],
       [-17, -7],
       [17, -7],
+      // Pedras nas extremidades do chão verde
+      [-38, 0],
+      [38, 0],
+      [0, -38],
+      [0, 38],
+      [-32, -22],
+      [32, -22],
+      [-32, 22],
+      [32, 22],
+      [-22, -32],
+      [22, -32],
+      [-22, 32],
+      [22, 32],
+      [-42, -12],
+      [42, -12],
+      [-42, 12],
+      [42, 12],
+      [-12, -42],
+      [12, -42],
+      [-12, 42],
+      [12, 42],
     ];
 
     rockPositions.forEach(([x, z], index) => {
-      const rock = this.createRock(index);
-      rock.position.set(x, 0, z);
-      root.add(rock);
+      this.spawnRanchPrefab('/assets/3d/Ranch/Rock/Stone1.glb', {
+        name: `village-rock-${index}`,
+        position: [x, 0, z],
+        rotationY: Math.random() * Math.PI * 2,
+        targetHeight: 1.0,
+        verticalOffset: -0.1,
+        scaleMultiplier: 0.8 + Math.random() * 0.4,
+      });
     });
 
     const grassPatches: Array<{ position: [number, number, number]; rotation?: number }> = [
@@ -398,6 +483,27 @@ export class VillageScene3D {
       { position: [27, 0, -6], rotation: -Math.PI * 0.76 },
       { position: [-29, 0, 10], rotation: Math.PI * 0.81 },
       { position: [29, 0, 10], rotation: -Math.PI * 0.81 },
+      // Gramas nas extremidades do chão verde
+      { position: [-40, 0, 0], rotation: Math.PI * 0.3 },
+      { position: [40, 0, 0], rotation: -Math.PI * 0.3 },
+      { position: [0, 0, -40], rotation: Math.PI * 0.6 },
+      { position: [0, 0, 40], rotation: -Math.PI * 0.6 },
+      { position: [-35, 0, -25], rotation: Math.PI * 0.4 },
+      { position: [35, 0, -25], rotation: -Math.PI * 0.4 },
+      { position: [-35, 0, 25], rotation: Math.PI * 0.5 },
+      { position: [35, 0, 25], rotation: -Math.PI * 0.5 },
+      { position: [-25, 0, -35], rotation: Math.PI * 0.7 },
+      { position: [25, 0, -35], rotation: -Math.PI * 0.7 },
+      { position: [-25, 0, 35], rotation: Math.PI * 0.8 },
+      { position: [25, 0, 35], rotation: -Math.PI * 0.8 },
+      { position: [-45, 0, -15], rotation: Math.PI * 0.35 },
+      { position: [45, 0, -15], rotation: -Math.PI * 0.35 },
+      { position: [-45, 0, 15], rotation: Math.PI * 0.45 },
+      { position: [45, 0, 15], rotation: -Math.PI * 0.45 },
+      { position: [-15, 0, -45], rotation: Math.PI * 0.55 },
+      { position: [15, 0, -45], rotation: -Math.PI * 0.55 },
+      { position: [-15, 0, 45], rotation: Math.PI * 0.65 },
+      { position: [15, 0, 45], rotation: -Math.PI * 0.65 },
     ];
 
     grassPatches.forEach((cfg, index) => {
@@ -434,90 +540,29 @@ export class VillageScene3D {
       }
     });
 
-    // Montanhas formando um círculo denso e completo ao redor da vila
-    const mountainPositions: Array<{ position: [number, number, number]; rotation?: number; scale?: number }> = [
-      // Camada externa - Sul
-      { position: [-52, 0, -40], rotation: Math.PI * 0.28, scale: 0.86 },
-      { position: [-48, 0, -44], rotation: Math.PI * 0.26, scale: 0.87 },
-      { position: [-44, 0, -47], rotation: Math.PI * 0.24, scale: 0.88 },
-      { position: [-40, 0, -50], rotation: Math.PI * 0.22, scale: 0.89 },
-      { position: [-36, 0, -54], rotation: Math.PI * 0.2, scale: 0.95 },
-      { position: [-32, 0, -56], rotation: Math.PI * 0.18, scale: 0.96 },
-      { position: [-28, 0, -57], rotation: Math.PI * 0.15, scale: 0.98 },
-      { position: [-24, 0, -59], rotation: Math.PI * 0.13, scale: 0.99 },
-      { position: [-20, 0, -60], rotation: Math.PI * 0.11, scale: 1.0 },
-      { position: [-18, 0, -60], rotation: Math.PI * 0.1, scale: 1.0 },
-      { position: [-14, 0, -61], rotation: Math.PI * 0.08, scale: 1.02 },
-      { position: [-10, 0, -61.5], rotation: Math.PI * 0.05, scale: 1.03 },
-      { position: [-6, 0, -62], rotation: Math.PI * 0.03, scale: 1.04 },
-      { position: [-2, 0, -62], rotation: Math.PI * 0.01, scale: 1.05 },
-      { position: [0, 0, -62], rotation: 0, scale: 1.05 },
-      { position: [2, 0, -62], rotation: -Math.PI * 0.01, scale: 1.05 },
-      { position: [6, 0, -62], rotation: -Math.PI * 0.03, scale: 1.04 },
-      { position: [10, 0, -61.5], rotation: -Math.PI * 0.05, scale: 1.03 },
-      { position: [14, 0, -61], rotation: -Math.PI * 0.08, scale: 1.02 },
-      { position: [18, 0, -60], rotation: -Math.PI * 0.1, scale: 1.0 },
-      { position: [20, 0, -60], rotation: -Math.PI * 0.11, scale: 1.0 },
-      { position: [24, 0, -59], rotation: -Math.PI * 0.13, scale: 0.99 },
-      { position: [28, 0, -57], rotation: -Math.PI * 0.15, scale: 0.98 },
-      { position: [32, 0, -56], rotation: -Math.PI * 0.18, scale: 0.96 },
-      { position: [36, 0, -54], rotation: -Math.PI * 0.2, scale: 0.95 },
-      { position: [40, 0, -50], rotation: -Math.PI * 0.22, scale: 0.89 },
-      { position: [44, 0, -47], rotation: -Math.PI * 0.24, scale: 0.88 },
-      { position: [48, 0, -44], rotation: -Math.PI * 0.26, scale: 0.87 },
-      { position: [52, 0, -40], rotation: -Math.PI * 0.28, scale: 0.86 },
-      // Camada externa - Leste
-      { position: [58, 0, -9], rotation: -Math.PI * 0.45, scale: 0.88 },
-      { position: [60, 0, -4.5], rotation: -Math.PI * 0.47, scale: 0.89 },
-      { position: [62, 0, -18], rotation: -Math.PI * 0.4, scale: 0.9 },
-      { position: [63, 0, -9], rotation: -Math.PI * 0.48, scale: 0.91 },
-      { position: [64, 0, 0], rotation: -Math.PI * 0.5, scale: 0.92 },
-      { position: [63, 0, 9], rotation: Math.PI * 0.48, scale: 0.91 },
-      { position: [62, 0, 18], rotation: Math.PI * 0.4, scale: 0.9 },
-      { position: [60, 0, 9], rotation: Math.PI * 0.35, scale: 0.88 },
-      { position: [60, 0, 4.5], rotation: Math.PI * 0.47, scale: 0.89 },
-      // Camada externa - Norte
-      { position: [52, 0, 40], rotation: Math.PI * 0.28, scale: 0.86 },
-      { position: [48, 0, 44], rotation: Math.PI * 0.26, scale: 0.87 },
-      { position: [48, 0, 46], rotation: Math.PI * 0.24, scale: 0.88 },
-      { position: [44, 0, 47], rotation: Math.PI * 0.22, scale: 0.89 },
-      { position: [40, 0, 50], rotation: Math.PI * 0.2, scale: 0.9 },
-      { position: [36, 0, 54], rotation: Math.PI * 0.2, scale: 0.95 },
-      { position: [32, 0, 56], rotation: Math.PI * 0.18, scale: 0.96 },
-      { position: [28, 0, 57], rotation: Math.PI * 0.15, scale: 0.98 },
-      { position: [24, 0, 59], rotation: Math.PI * 0.13, scale: 0.99 },
-      { position: [20, 0, 60], rotation: Math.PI * 0.11, scale: 1.0 },
-      { position: [18, 0, 60], rotation: Math.PI * 0.1, scale: 1.0 },
-      { position: [14, 0, 61], rotation: Math.PI * 0.08, scale: 1.02 },
-      { position: [10, 0, 61.5], rotation: Math.PI * 0.05, scale: 1.03 },
-      { position: [6, 0, 62], rotation: Math.PI * 0.03, scale: 1.04 },
-      { position: [2, 0, 62], rotation: Math.PI * 0.01, scale: 1.05 },
-      { position: [0, 0, 62], rotation: 0, scale: 1.05 },
-      { position: [-2, 0, 62], rotation: -Math.PI * 0.01, scale: 1.05 },
-      { position: [-6, 0, 62], rotation: -Math.PI * 0.03, scale: 1.04 },
-      { position: [-10, 0, 61.5], rotation: -Math.PI * 0.05, scale: 1.03 },
-      { position: [-14, 0, 61], rotation: -Math.PI * 0.08, scale: 1.02 },
-      { position: [-18, 0, 60], rotation: -Math.PI * 0.1, scale: 1.0 },
-      { position: [-20, 0, 60], rotation: -Math.PI * 0.11, scale: 1.0 },
-      { position: [-24, 0, 59], rotation: -Math.PI * 0.13, scale: 0.99 },
-      { position: [-28, 0, 57], rotation: -Math.PI * 0.15, scale: 0.98 },
-      { position: [-32, 0, 56], rotation: -Math.PI * 0.18, scale: 0.96 },
-      { position: [-36, 0, 54], rotation: -Math.PI * 0.2, scale: 0.95 },
-      { position: [-40, 0, 50], rotation: -Math.PI * 0.22, scale: 0.9 },
-      { position: [-44, 0, 47], rotation: -Math.PI * 0.24, scale: 0.88 },
-      { position: [-48, 0, 44], rotation: -Math.PI * 0.26, scale: 0.87 },
-      { position: [-52, 0, 40], rotation: -Math.PI * 0.28, scale: 0.86 },
-      // Camada externa - Oeste
-      { position: [-58, 0, 9], rotation: -Math.PI * 0.35, scale: 0.88 },
-      { position: [-60, 0, 4.5], rotation: -Math.PI * 0.47, scale: 0.89 },
-      { position: [-62, 0, 18], rotation: -Math.PI * 0.4, scale: 0.9 },
-      { position: [-63, 0, 9], rotation: -Math.PI * 0.48, scale: 0.91 },
-      { position: [-64, 0, 0], rotation: Math.PI * 0.5, scale: 0.92 },
-      { position: [-63, 0, -9], rotation: Math.PI * 0.48, scale: 0.91 },
-      { position: [-62, 0, -18], rotation: Math.PI * 0.4, scale: 0.9 },
-      { position: [-60, 0, -9], rotation: Math.PI * 0.45, scale: 0.88 },
-      { position: [-60, 0, -4.5], rotation: Math.PI * 0.47, scale: 0.89 },
-    ];
+    // Montanhas formando um círculo uniforme e completo ao redor da vila
+    // Distribuição circular com espaçamento uniforme
+    const mountainCount = 48; // Número de montanhas ao redor do círculo
+    const radius = 60; // Raio do círculo
+    const mountainPositions: Array<{ position: [number, number, number]; rotation?: number; scale?: number }> = [];
+
+    for (let i = 0; i < mountainCount; i++) {
+      const angle = (i / mountainCount) * Math.PI * 2;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      
+      // Variação de escala para dar naturalidade (0.85 a 1.05)
+      const scale = 0.85 + (Math.sin(i * 0.5) * 0.1) + (Math.random() * 0.1);
+      
+      // Rotação baseada no ângulo
+      const rotation = angle + Math.PI / 2;
+      
+      mountainPositions.push({
+        position: [x, 0, z],
+        rotation,
+        scale,
+      });
+    }
 
     mountainPositions.forEach((cfg, index) => {
       this.spawnRanchPrefab('/assets/3d/Ranch/Mountain/Mountain1.glb', {
@@ -1960,7 +2005,7 @@ export class VillageScene3D {
 
   private prepareCraftModel(model: THREE.Group) {
     this.prepareStaticPrefab(model);
-    this.normaliseStaticModel(model, 6.5, -0.15);
+    this.normaliseStaticModel(model, 6.5, -0.35);
   }
 
   private prepareStaticPrefab(model: THREE.Group) {
@@ -2148,8 +2193,91 @@ export class VillageScene3D {
       this.villagers.update(delta);
     }
 
+    // Sistema de chuva
+    this.updateRain(delta);
+
     this.renderer.render(this.scene, this.camera);
   };
+
+  private updateRain(delta: number): void {
+    this.nextRainTime -= delta;
+
+    if (!this.isRaining && this.nextRainTime <= 0) {
+      this.spawnRain();
+      this.isRaining = true;
+      this.rainDuration = 120; // 2 minutos
+    }
+
+    if (this.isRaining) {
+      this.rainDuration -= delta;
+
+      if (this.rainDuration <= 0) {
+        this.isRaining = false;
+        this.removeAllRain();
+        this.nextRainTime = this.getRandomRainDelay();
+      }
+    }
+
+    // Atualizar movimento das gotas
+    for (let i = this.rainDrops.length - 1; i >= 0; i--) {
+      const drop = this.rainDrops[i];
+      drop.mesh.position.add(
+        new THREE.Vector3(
+          drop.velocity.x * delta,
+          drop.velocity.y * delta,
+          drop.velocity.z * delta
+        )
+      );
+
+      // Remover se caiu muito abaixo do chão
+      if (drop.mesh.position.y < -5) {
+        this.scene.remove(drop.mesh);
+        this.rainDrops.splice(i, 1);
+      }
+    }
+  }
+
+  private spawnRain(): void {
+    const dropCount = 80 + Math.floor(Math.random() * 40); // 80-120 gotas
+
+    for (let i = 0; i < dropCount; i++) {
+      const dropGroup = new THREE.Group();
+
+      const dropGeometry = new THREE.CylinderGeometry(0.02, 0.015, 0.18, 4);
+      const dropMaterial = new THREE.MeshToonMaterial({
+        color: 0x87ceeb,
+        transparent: true,
+        opacity: 0.7,
+      });
+      const drop = new THREE.Mesh(dropGeometry, dropMaterial);
+      dropGroup.add(drop);
+
+      const x = (Math.random() - 0.5) * 120;
+      const z = (Math.random() - 0.5) * 120;
+      const startY = 8 + Math.random() * 6;
+
+      dropGroup.position.set(x, startY, z);
+      this.scene.add(dropGroup);
+
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.2,
+        -7 - Math.random() * 2,
+        0
+      );
+
+      this.rainDrops.push({
+        mesh: dropGroup,
+        velocity,
+      });
+    }
+  }
+
+  private removeAllRain(): void {
+    for (const drop of this.rainDrops) {
+      this.scene.remove(drop.mesh);
+    }
+    this.rainDrops = [];
+  }
 
   public resize(width: number, height: number): void {
     this.camera.aspect = width / height;
@@ -2166,6 +2294,8 @@ export class VillageScene3D {
       this.villagers.dispose();
       this.villagers = null;
     }
+
+    this.removeAllRain();
 
     if (this.environmentGroup) {
       this.scene.remove(this.environmentGroup);
