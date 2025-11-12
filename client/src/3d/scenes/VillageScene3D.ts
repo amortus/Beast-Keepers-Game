@@ -152,61 +152,70 @@ export class VillageScene3D {
     // Pré-carregar todos os assets necessários
     await this.preloadAllAssets(buildings);
 
+    // Aguardar que todos os edifícios sejam realmente criados e seus prefabs carregados
+    const buildingPromises: Promise<void>[] = [];
+    
     for (const config of buildings) {
-      const group = this.createBuildingMesh(config);
-      group.position.set(config.position.x, config.position.y, config.position.z);
-      if (config.rotation) {
-        group.rotation.y = config.rotation;
-      }
-      group.castShadow = true;
-      group.receiveShadow = true;
-      group.userData.buildingId = config.id;
+      const buildingPromise = this.createBuildingMeshAsync(config).then((group) => {
+        group.position.set(config.position.x, config.position.y, config.position.z);
+        if (config.rotation) {
+          group.rotation.y = config.rotation;
+        }
+        group.castShadow = true;
+        group.receiveShadow = true;
+        group.userData.buildingId = config.id;
 
-      const highlight = this.createHighlightCircle(config);
-      highlight.position.set(config.position.x, 0.05, config.position.z);
-      highlight.userData.buildingId = config.id;
+        const highlight = this.createHighlightCircle(config);
+        highlight.position.set(config.position.x, 0.05, config.position.z);
+        highlight.userData.buildingId = config.id;
 
-      // Adicionar luz permanente para casas clicáveis (não bloqueadas)
-      let buildingLight: THREE.PointLight | null = null;
-      if (!config.isLocked) {
-        buildingLight = new THREE.PointLight(
-          config.highlightColor ?? 0xffffff,
-          0.8,
-          8,
-          1.5
-        );
-        buildingLight.position.set(
-          config.position.x,
-          4,
-          config.position.z
-        );
-        this.scene.add(buildingLight);
-      }
+        // Adicionar luz permanente para casas clicáveis (não bloqueadas)
+        let buildingLight: THREE.PointLight | null = null;
+        if (!config.isLocked) {
+          buildingLight = new THREE.PointLight(
+            config.highlightColor ?? 0xffffff,
+            0.8,
+            8,
+            1.5
+          );
+          buildingLight.position.set(
+            config.position.x,
+            4,
+            config.position.z
+          );
+          this.scene.add(buildingLight);
+        }
 
-      this.buildingGroup.add(group);
-      this.buildingGroup.add(highlight);
+        this.buildingGroup.add(group);
+        this.buildingGroup.add(highlight);
 
-      this.buildings.push({
-        config,
-        group,
-        highlight,
-        isHovered: false,
-        light: buildingLight,
+        this.buildings.push({
+          config,
+          group,
+          highlight,
+          isHovered: false,
+          light: buildingLight,
+        });
+
+        // Rastrear dungeon para animação de flutuação
+        if (config.variant === 'dungeon') {
+          this.dungeonGroup = group;
+          this.dungeonBaseY = config.position.y;
+        }
+
+        // Adicionar zona de colisão para esta casa (raio padrão de 4 unidades)
+        this.collisionZones.push({
+          x: config.position.x,
+          z: config.position.z,
+          radius: 4.0, // Raio de colisão padrão para casas
+        });
       });
-
-      // Rastrear dungeon para animação de flutuação
-      if (config.variant === 'dungeon') {
-        this.dungeonGroup = group;
-        this.dungeonBaseY = config.position.y;
-      }
-
-      // Adicionar zona de colisão para esta casa (raio padrão de 4 unidades)
-      this.collisionZones.push({
-        x: config.position.x,
-        z: config.position.z,
-        radius: 4.0, // Raio de colisão padrão para casas
-      });
+      
+      buildingPromises.push(buildingPromise);
     }
+    
+    // Aguardar todos os edifícios serem criados
+    await Promise.all(buildingPromises);
 
     console.log(`[VillageScene3D] Carregado ${this.buildings.length} edifícios.`);
     this.rebuildVillagers();
@@ -1565,6 +1574,29 @@ export class VillageScene3D {
     }
   }
 
+  /**
+   * Cria edifício de forma assíncrona, aguardando prefab carregar
+   */
+  private async createBuildingMeshAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    switch (config.variant) {
+      case 'shop':
+        return await this.createMarketAsync(config);
+      case 'alchemy':
+        return await this.createAlchemySanctumAsync(config);
+      case 'temple':
+        return await this.createTempleAsync(config);
+      case 'tavern':
+        return await this.createTavernAsync(config);
+      case 'dungeon':
+        return await this.createDungeonAsync(config);
+      case 'guild':
+        return await this.createPrefabHouseAsync(config, 2);
+      case 'house':
+      default:
+        return await this.createPrefabHouseAsync(config, 0);
+    }
+  }
+
   private createMarket(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralMarket(config);
@@ -1583,6 +1615,27 @@ export class VillageScene3D {
         console.error('[VillageScene3D] Falha ao carregar Market.glb, usando fallback procedural.', error);
         fallback.visible = true; // Mostrar fallback se prefab falhar
       });
+
+    return wrapper;
+  }
+
+  private async createMarketAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralMarket(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefab = await this.loadMarketPrefab();
+      const clone = prefab.clone(true);
+      this.prepareMarketModel(clone);
+      wrapper.remove(fallback);
+      this.disposeObject(fallback);
+      wrapper.add(clone);
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar Market.glb, usando fallback procedural.', error);
+      fallback.visible = true;
+    }
 
     return wrapper;
   }
@@ -1690,6 +1743,32 @@ export class VillageScene3D {
     return wrapper;
   }
 
+  private async createPrefabHouseAsync(config: VillageBuildingConfig, index: number): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralHouse(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefabs = await this.loadHousePrefabs();
+      if (prefabs.length === 0) {
+        fallback.visible = true;
+      } else {
+        const prefab = prefabs[Math.abs(index) % prefabs.length] ?? prefabs[0];
+        const clone = prefab.clone(true);
+        this.prepareHouseModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      }
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar House prefab, mantendo fallback procedural.', error);
+      fallback.visible = true;
+    }
+
+    return wrapper;
+  }
+
   private createHouse(config: VillageBuildingConfig): THREE.Group {
     return this.createPrefabHouse(config, 0);
   }
@@ -1754,6 +1833,27 @@ export class VillageScene3D {
         console.error('[VillageScene3D] Falha ao carregar Craft.glb, usando fallback procedural.', error);
         fallback.visible = true; // Mostrar fallback se prefab falhar
       });
+
+    return wrapper;
+  }
+
+  private async createAlchemySanctumAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralAlchemy(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefab = await this.loadCraftPrefab();
+      const clone = prefab.clone(true);
+      this.prepareCraftModel(clone);
+      wrapper.remove(fallback);
+      this.disposeObject(fallback);
+      wrapper.add(clone);
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar Craft.glb, usando fallback procedural.', error);
+      fallback.visible = true;
+    }
 
     return wrapper;
   }
@@ -1940,6 +2040,28 @@ export class VillageScene3D {
     return wrapper;
   }
 
+  private async createTempleAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    wrapper.rotation.y = Math.PI;
+    const fallback = this.createProceduralTemple(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefab = await this.loadTemplePrefab();
+      const clone = prefab.clone(true);
+      this.prepareTempleModel(clone);
+      wrapper.remove(fallback);
+      this.disposeObject(fallback);
+      wrapper.add(clone);
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar Temple.glb, usando fallback procedural.', error);
+      fallback.visible = true;
+    }
+
+    return wrapper;
+  }
+
   private createDungeon(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralDungeon(config);
@@ -1958,6 +2080,27 @@ export class VillageScene3D {
         console.error('[VillageScene3D] Falha ao carregar Dungeon.glb, usando fallback procedural.', error);
         fallback.visible = true; // Mostrar fallback se prefab falhar
       });
+
+    return wrapper;
+  }
+
+  private async createDungeonAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralDungeon(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefab = await this.loadDungeonPrefab();
+      const clone = prefab.clone(true);
+      this.prepareDungeonModel(clone);
+      wrapper.remove(fallback);
+      this.disposeObject(fallback);
+      wrapper.add(clone);
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar Dungeon.glb, usando fallback procedural.', error);
+      fallback.visible = true;
+    }
 
     return wrapper;
   }
@@ -2320,6 +2463,27 @@ export class VillageScene3D {
         console.error('[VillageScene3D] Falha ao carregar Tavern.glb, usando fallback procedural.', error);
         fallback.visible = true; // Mostrar fallback se prefab falhar
       });
+
+    return wrapper;
+  }
+
+  private async createTavernAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    const fallback = this.createHouse(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefab = await this.loadTavernPrefab();
+      const clone = prefab.clone(true);
+      this.prepareTavernModel(clone);
+      wrapper.remove(fallback);
+      this.disposeObject(fallback);
+      wrapper.add(clone);
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar Tavern.glb, usando fallback procedural.', error);
+      fallback.visible = true;
+    }
 
     return wrapper;
   }
