@@ -260,7 +260,7 @@ export class VillageVillagers {
 
     const size = box.getSize(new THREE.Vector3());
     if (size.y > 0) {
-      const desiredHeight = 1.5;
+      const desiredHeight = 0.15;
       const scale = desiredHeight / size.y;
       model.scale.setScalar(scale);
     }
