@@ -737,25 +737,20 @@ export class BattleUI3D {
   }
 
   private getBattleViewportRect(): { x: number; y: number; width: number; height: number } {
-    const HUD_MARGIN = 50;
-    const HUD_WIDTH = 300;
-    const HUD_GAP = 30;
-    const topPadding = 110;
+    const top = 110;
     const actionPanelTop = 620;
-    const actionPanelGap = 24;
+    const bottomMargin = 28;
+    const horizontalMargin = Math.max(36, this.canvas.width * 0.045);
 
-    const horizontalMargin = HUD_MARGIN + HUD_WIDTH + HUD_GAP;
     const left = horizontalMargin;
     const right = Math.max(left + 200, this.canvas.width - horizontalMargin);
-    const top = topPadding;
-    const bottomLimit = Math.min(this.canvas.height - 150, actionPanelTop - actionPanelGap);
-    const height = Math.max(200, bottomLimit - top);
+    const bottom = Math.max(top + 180, Math.min(this.canvas.height - 120, actionPanelTop - bottomMargin));
 
     return {
       x: left,
       y: top,
       width: right - left,
-      height,
+      height: bottom - top,
     };
   }
 
