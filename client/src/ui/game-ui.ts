@@ -937,17 +937,20 @@ export class GameUI {
   private drawActionList(x: number, y: number, beast: Beast, serverTime: number) {
     const actions = this.getActionsForCategory();
     
-    // Layout 2 colunas (botões menores para harmonizar com painel)
-    const buttonWidth = 154;
-    const buttonHeight = 26;
-    const spacingX = 12;
-    const spacingY = 10;
-    const columns = 2; // 2 colunas
+    const panelInnerWidth = SIDE_PANEL_WIDTH - 20;
+
+    const columns = actions.length >= 6 ? 3 : Math.min(2, Math.max(1, actions.length));
+    const rows = Math.ceil(actions.length / columns);
+
+    const spacingX = columns === 3 ? 10 : 12;
+    const spacingY = 12;
+
+    const buttonWidth = Math.floor((panelInnerWidth - spacingX * (columns - 1)) / columns);
+    const buttonHeight = 28;
 
     actions.forEach((action, index) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
-      const panelInnerWidth = SIDE_PANEL_WIDTH - 20;
       const totalWidth = buttonWidth * columns + spacingX * (columns - 1);
       const startX = x + (panelInnerWidth - totalWidth) / 2;
       const buttonX = startX + col * (buttonWidth + spacingX);
