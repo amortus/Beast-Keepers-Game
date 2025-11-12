@@ -344,6 +344,21 @@ function startRenderLoop() {
         // Skip drawing GameUI when village is open
       } else if (hasActiveUI) {
         // Skip drawing GameUI when any other UI is active
+        // Debug: log apenas quando há problema (primeira vez que detecta)
+        if (frameCount % 60 === 0) { // Log a cada segundo aproximadamente
+          console.warn('[Render] gameUI.draw() blocked - hasActiveUI:', {
+            inShop, shopUI: !!shopUI,
+            inInventory, inventoryUI: !!inventoryUI,
+            inCraft, craftUI: !!craftUI,
+            inQuests, questsUI: !!questsUI,
+            inAchievements, achievementsUI: !!achievementsUI,
+            inDungeon, dungeonUI: !!dungeonUI,
+            inExploration, explorationUI: !!explorationUI,
+            inDialogue, dialogueUI: !!dialogueUI,
+            inBattle, battleUI: !!battleUI,
+            inTemple, templeUI: !!templeUI,
+          });
+        }
       } else {
         gameUI.draw();
       }
