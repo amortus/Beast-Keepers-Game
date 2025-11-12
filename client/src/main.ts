@@ -332,10 +332,18 @@ function startRenderLoop() {
       }
     } else if (gameUI && gameState) {
       // Only draw GameUI when NO other menu is active AND modal is not showing AND village is not open
+      // Verificar se nenhuma UI está ativa (verificar flag E se a UI existe)
+      const hasActiveUI = (inShop && shopUI) || (inInventory && inventoryUI) || (inCraft && craftUI) || 
+                          (inQuests && questsUI) || (inAchievements && achievementsUI) || 
+                          (inDungeon && dungeonUI) || (inExploration && explorationUI) || 
+                          (inDialogue && dialogueUI) || (inBattle && battleUI) || (inTemple && templeUI);
+      
       if (modalUI && modalUI.isShowing()) {
         // Skip drawing GameUI when modal is open (e.g., Vila menu)
       } else if (inVillage) {
         // Skip drawing GameUI when village is open
+      } else if (hasActiveUI) {
+        // Skip drawing GameUI when any other UI is active
       } else {
         gameUI.draw();
       }
@@ -1683,6 +1691,9 @@ function openShop() {
 }
 
 function closeShop() {
+  if (shopUI) {
+    shopUI.close();
+  }
   shopUI = null;
   inShop = false;
 
@@ -1791,6 +1802,9 @@ function openInventory() {
 }
 
 function closeInventory() {
+  if (inventoryUI) {
+    inventoryUI.close();
+  }
   inventoryUI = null;
   inInventory = false;
 
