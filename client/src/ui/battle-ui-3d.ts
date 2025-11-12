@@ -19,6 +19,9 @@ export class BattleUI3D {
   // 3D Scene
   private scene3D: ImmersiveBattleScene3D | null = null;
   private scene3DContainer: HTMLDivElement | null = null;
+  private lastViewportKey: string | null = null;
+  private windowResizeHandler: (() => void) | null = null;
+  private windowScrollHandler: (() => void) | null = null;
   
   // Mouse state
   private mouseX = 0;
@@ -62,28 +65,30 @@ export class BattleUI3D {
 
   private setup3DScene() {
     console.log('[BattleUI3D] Setting up immersive 3D scene...');
-    
-    // Create container for 3D scene (full screen, ATRÁS do canvas 2D)
+
+    const viewport = this.getBattleViewportRect();
+    if (viewport.width <= 0 || viewport.height <= 0) {
+      console.warn('[BattleUI3D] Viewport inválido para a cena 3D:', viewport);
+      return;
+    }
+
     this.scene3DContainer = document.createElement('div');
     this.scene3DContainer.id = 'battle-scene-3d-container';
-    this.scene3DContainer.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      pointer-events: none;
-    `;
-    
-    document.body.appendChild(this.scene3DContainer);
+    this.scene3DContainer.style.position = 'absolute';
+    this.scene3DContainer.style.pointerEvents = 'none';
+    this.scene3DContainer.style.zIndex = '1';
+    this.scene3DContainer.style.overflow = 'hidden';
+    this.scene3DContainer.style.borderRadius = '18px';
+
+    const parent = this.canvas.parentElement ?? document.body;
+    parent.appendChild(this.scene3DContainer);
     
     // Create 3D scene
     try {
       this.scene3D = new ImmersiveBattleScene3D(
         this.scene3DContainer,
-        window.innerWidth,
-        window.innerHeight
+        viewport.width,
+        viewport.height
       );
       this.scene3DContainer.firstElementChild?.setAttribute(
         'style',
@@ -100,14 +105,18 @@ export class BattleUI3D {
       console.log('[BattleUI3D] ✓ 3D scene created');
     } catch (error) {
       console.error('[BattleUI3D] Failed to create 3D scene:', error);
+      return;
     }
     
+    this.update3DViewport(true);
+    
     // Handle window resize
-    window.addEventListener('resize', () => {
-      if (this.scene3D) {
-        this.scene3D.resize(window.innerWidth, window.innerHeight);
-      }
-    });
+    const resizeHandler = () => this.update3DViewport();
+    const scrollHandler = () => this.update3DViewport();
+    this.windowResizeHandler = resizeHandler;
+    this.windowScrollHandler = scrollHandler;
+    window.addEventListener('resize', resizeHandler);
+    window.addEventListener('scroll', scrollHandler, true);
   }
 
   private handleClick() {
@@ -132,6 +141,7 @@ export class BattleUI3D {
 
   // ===== DRAW METHOD (COPIADO E ADAPTADO DO 2D) =====
   public draw() {
+    this.update3DViewport();
     this.animationFrame++;
     
     // Clear canvas (transparente para ver 3D)
@@ -702,6 +712,15 @@ export class BattleUI3D {
   public dispose() {
     console.log('[BattleUI3D] Disposing...');
     
+    if (this.windowResizeHandler) {
+      window.removeEventListener('resize', this.windowResizeHandler);
+      this.windowResizeHandler = null;
+    }
+    if (this.windowScrollHandler) {
+      window.removeEventListener('scroll', this.windowScrollHandler, true);
+      this.windowScrollHandler = null;
+    }
+
     // Dispose 3D scene
     if (this.scene3D) {
       this.scene3D.dispose();
@@ -715,5 +734,54 @@ export class BattleUI3D {
     }
     
     console.log('[BattleUI3D] ✓ Disposed');
+  }
+
+  private getBattleViewportRect(): { x: number; y: number; width: number; height: number } {
+    const HUD_MARGIN = 50;
+    const HUD_WIDTH = 300;
+    const HUD_GAP = 30;
+    const topPadding = 110;
+    const actionPanelTop = 620;
+    const actionPanelGap = 24;
+
+    const horizontalMargin = HUD_MARGIN + HUD_WIDTH + HUD_GAP;
+    const left = horizontalMargin;
+    const right = Math.max(left + 200, this.canvas.width - horizontalMargin);
+    const top = topPadding;
+    const bottomLimit = Math.min(this.canvas.height - 150, actionPanelTop - actionPanelGap);
+    const height = Math.max(200, bottomLimit - top);
+
+    return {
+      x: left,
+      y: top,
+      width: right - left,
+      height,
+    };
+  }
+
+  private update3DViewport(force = false): void {
+    if (!this.scene3DContainer || !this.scene3D) {
+      return;
+    }
+
+    const viewport = this.getBattleViewportRect();
+    if (viewport.width <= 0 || viewport.height <= 0) {
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const canvasLeft = rect.left + window.scrollX;
+    const canvasTop = rect.top + window.scrollY;
+
+    this.scene3DContainer.style.left = `${canvasLeft + viewport.x}px`;
+    this.scene3DContainer.style.top = `${canvasTop + viewport.y}px`;
+    this.scene3DContainer.style.width = `${viewport.width}px`;
+    this.scene3DContainer.style.height = `${viewport.height}px`;
+
+    const viewportKey = `${viewport.width}x${viewport.height}`;
+    if (force || viewportKey !== this.lastViewportKey) {
+      this.scene3D.resize(viewport.width, viewport.height);
+      this.lastViewportKey = viewportKey;
+    }
   }
 }

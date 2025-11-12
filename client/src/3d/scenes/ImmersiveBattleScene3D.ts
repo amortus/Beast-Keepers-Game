@@ -69,9 +69,9 @@ export class ImmersiveBattleScene3D {
     this.scene.fog = new THREE.Fog(0xa0d8ef, 20, 50);
     
     // Camera setup (estilo Pokémon)
-    this.camera = new THREE.PerspectiveCamera(68, width / height, 0.1, 160);
-    this.cameraTargetPosition = new THREE.Vector3(0, 6.4, 10.2);
-    this.cameraTargetLookAt = new THREE.Vector3(0, 0.2, 0);
+    this.camera = new THREE.PerspectiveCamera(62, width / height, 0.1, 160);
+    this.cameraTargetPosition = new THREE.Vector3(0, 7.2, 9.6);
+    this.cameraTargetLookAt = new THREE.Vector3(0, 0.6, 0);
     this.camera.position.copy(this.cameraTargetPosition);
     this.camera.lookAt(this.cameraTargetLookAt);
     
@@ -116,7 +116,7 @@ export class ImmersiveBattleScene3D {
 
   private createBattleArena() {
     // Chão de grama natural (igual rancho)
-    const groundGeometry = new THREE.CircleGeometry(26, 64);
+    const groundGeometry = new THREE.CircleGeometry(34, 80);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x5a8f4a, // Verde grama
       roughness: 0.9,
@@ -129,7 +129,7 @@ export class ImmersiveBattleScene3D {
     this.arena.add(ground);
     
     // Círculo da arena (marcação no chão)
-    const arenaRingGeometry = new THREE.RingGeometry(8, 8.3, 32);
+    const arenaRingGeometry = new THREE.RingGeometry(10.2, 10.6, 48);
     const arenaRingMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
@@ -142,7 +142,7 @@ export class ImmersiveBattleScene3D {
     this.arena.add(arenaRing);
     
     // Linha central (divisão entre os lados)
-    const lineGeometry = new THREE.PlaneGeometry(0.15, 16);
+    const lineGeometry = new THREE.PlaneGeometry(0.16, 24);
     const lineMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
@@ -168,12 +168,12 @@ export class ImmersiveBattleScene3D {
 
   private createRocks() {
     const rockPositions = [
-      [-6, 0, -6],
-      [6, 0, -6],
-      [-6, 0, 6],
-      [6, 0, 6],
-      [-8, 0, 0],
-      [8, 0, 0],
+      [-11, 0, -8],
+      [11, 0, -8],
+      [-11, 0, 8],
+      [11, 0, 8],
+      [-13, 0, 0],
+      [13, 0, 0],
     ];
     
     rockPositions.forEach(([x, y, z]) => {
@@ -195,19 +195,19 @@ export class ImmersiveBattleScene3D {
       rock.castShadow = true;
       rockGroup.add(rock);
       
-      rockGroup.position.set(x, y + 0.3, z);
+      rockGroup.position.set(x, y + 0.22, z);
       this.arena.add(rockGroup);
     });
   }
 
   private createBackgroundTrees() {
     const treePositions = [
-      [-10, 0, -8],
-      [-8, 0, -10],
-      [10, 0, -8],
-      [8, 0, -10],
-      [-10, 0, 8],
-      [10, 0, 8],
+      [-16, 0, -12],
+      [-12, 0, -16],
+      [16, 0, -12],
+      [12, 0, -16],
+      [-14, 0, 12],
+      [14, 0, 12],
     ];
     
     treePositions.forEach(([x, y, z]) => {
@@ -243,11 +243,11 @@ export class ImmersiveBattleScene3D {
   }
 
   private createFlowers() {
-    const flowerCount = 30;
+    const flowerCount = 40;
     
     for (let i = 0; i < flowerCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 3 + Math.random() * 5;
+      const radius = 4 + Math.random() * 7;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
       
@@ -258,7 +258,7 @@ export class ImmersiveBattleScene3D {
         flatShading: true,
       });
       const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-      stem.position.set(x, 0.15, z);
+      stem.position.set(x, 0.12, z);
       this.arena.add(stem);
       
       // Flor (círculo)
@@ -271,7 +271,7 @@ export class ImmersiveBattleScene3D {
         flatShading: true,
       });
       const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
-      flower.position.set(x, 0.3, z);
+      flower.position.set(x, 0.26, z);
       flower.rotation.x = -Math.PI / 2;
       this.arena.add(flower);
     }
@@ -279,7 +279,7 @@ export class ImmersiveBattleScene3D {
 
   private createGrassField() {
     // Usar PS1Grass (igual rancho)
-    this.grass = new PS1Grass(this.scene, 26); // Radius expandido para preencher tela
+    this.grass = new PS1Grass(this.scene, 34); // Radius expandido para preencher tela
   }
 
   private createClouds() {
@@ -327,7 +327,7 @@ export class ImmersiveBattleScene3D {
 
   private createBattleDecorations() {
     // Marcadores de posição (círculos no chão)
-    const markerGeometry = new THREE.RingGeometry(1.2, 1.4, 32);
+    const markerGeometry = new THREE.RingGeometry(1.4, 1.7, 48);
     
     // Marcador do jogador (verde)
     const playerMarkerMaterial = new THREE.MeshBasicMaterial({
@@ -338,7 +338,7 @@ export class ImmersiveBattleScene3D {
     });
     const playerMarker = new THREE.Mesh(markerGeometry, playerMarkerMaterial);
     playerMarker.rotation.x = -Math.PI / 2;
-    playerMarker.position.set(-4, 0.01, 0);
+    playerMarker.position.set(-5.4, 0.01, 0);
     this.arena.add(playerMarker);
     
     // Marcador do inimigo (vermelho)
@@ -350,7 +350,7 @@ export class ImmersiveBattleScene3D {
     });
     const enemyMarker = new THREE.Mesh(markerGeometry, enemyMarkerMaterial);
     enemyMarker.rotation.x = -Math.PI / 2;
-    enemyMarker.position.set(4, 0.01, 0);
+    enemyMarker.position.set(5.4, 0.01, 0);
     this.arena.add(enemyMarker);
   }
 
@@ -396,7 +396,7 @@ export class ImmersiveBattleScene3D {
     const group = model.getGroup();
     
     // Posicionar à ESQUERDA, virado para o centro
-    const playerPosition = new THREE.Vector3(-4, 0, 0);
+    const playerPosition = new THREE.Vector3(-5.5, 0, 0);
     const focusPoint = new THREE.Vector3(0, 0, 0);
     const playerAngle = Math.atan2(focusPoint.x - playerPosition.x, focusPoint.z - playerPosition.z);
     group.position.copy(playerPosition);
@@ -450,7 +450,7 @@ export class ImmersiveBattleScene3D {
     const group = model.getGroup();
     
     // Posicionar à DIREITA, virado para o centro
-    const enemyPosition = new THREE.Vector3(4, 0, 0);
+    const enemyPosition = new THREE.Vector3(5.5, 0, 0);
     const focusPoint = new THREE.Vector3(0, 0, 0);
     const enemyAngle = Math.atan2(focusPoint.x - enemyPosition.x, focusPoint.z - enemyPosition.z);
     group.position.copy(enemyPosition);
@@ -496,32 +496,32 @@ export class ImmersiveBattleScene3D {
     switch (angle) {
       case 'wide':
         // Wide shot: See both beasts
-        this.cameraTargetPosition.set(0, 6, 12);
-        this.cameraTargetLookAt.set(0, 1, 0);
+        this.cameraTargetPosition.set(0, 7.2, 9.6);
+        this.cameraTargetLookAt.set(0, 0.6, 0);
         break;
       
       case 'player':
         // Focus on player beast
-        this.cameraTargetPosition.set(-6, 4, 6);
-        this.cameraTargetLookAt.set(-4, 1, 0);
+        this.cameraTargetPosition.set(-6.6, 4.6, 7.4);
+        this.cameraTargetLookAt.set(-5.2, 1.1, 0);
         break;
       
       case 'enemy':
         // Focus on enemy beast
-        this.cameraTargetPosition.set(6, 4, 6);
-        this.cameraTargetLookAt.set(4, 1, 0);
+        this.cameraTargetPosition.set(6.6, 4.6, 7.4);
+        this.cameraTargetLookAt.set(5.2, 1.1, 0);
         break;
       
       case 'overhead':
         // Top-down view
-        this.cameraTargetPosition.set(0, 18, 3);
+        this.cameraTargetPosition.set(0, 18, 2.6);
         this.cameraTargetLookAt.set(0, 0, 0);
         break;
       
       case 'cinematic':
         // Dynamic cinematic angle (MAIS PRÓXIMA - 30% mais perto)
-        this.cameraTargetPosition.set(-1.5, 3.5, 7);
-        this.cameraTargetLookAt.set(0, 1, 0);
+        this.cameraTargetPosition.set(-1.2, 3.8, 6.6);
+        this.cameraTargetLookAt.set(0, 0.8, 0);
         break;
     }
   }
