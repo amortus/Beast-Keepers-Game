@@ -332,29 +332,29 @@ export class VillageScene3D {
     });
 
     const mountainPositions: Array<{ position: [number, number, number]; rotation?: number; scale?: number }> = [
-      { position: [-34, 0, -30], rotation: Math.PI * 0.32, scale: 1.08 },
-      { position: [-20, 0, -38], rotation: Math.PI * 0.18, scale: 1.1 },
-      { position: [0, 0, -42], rotation: 0, scale: 1.12 },
-      { position: [20, 0, -38], rotation: -Math.PI * 0.2, scale: 1.08 },
-      { position: [34, 0, -30], rotation: -Math.PI * 0.32, scale: 1.05 },
-      { position: [40, 0, -12], rotation: -Math.PI * 0.45, scale: 1.1 },
-      { position: [40, 0, 12], rotation: Math.PI * 0.45, scale: 1.12 },
-      { position: [34, 0, 30], rotation: Math.PI * 0.32, scale: 1.08 },
-      { position: [20, 0, 38], rotation: Math.PI * 0.18, scale: 1.1 },
-      { position: [0, 0, 42], rotation: 0, scale: 1.12 },
-      { position: [-20, 0, 38], rotation: -Math.PI * 0.18, scale: 1.1 },
-      { position: [-34, 0, 30], rotation: -Math.PI * 0.32, scale: 1.08 },
-      { position: [-40, 0, 12], rotation: -Math.PI * 0.45, scale: 1.1 },
-      { position: [-40, 0, -12], rotation: Math.PI * 0.45, scale: 1.12 },
+      { position: [-48, 0, -42], rotation: Math.PI * 0.25, scale: 0.82 },
+      { position: [-28, 0, -52], rotation: Math.PI * 0.18, scale: 0.9 },
+      { position: [0, 0, -56], rotation: 0, scale: 0.92 },
+      { position: [28, 0, -52], rotation: -Math.PI * 0.18, scale: 0.9 },
+      { position: [48, 0, -42], rotation: -Math.PI * 0.25, scale: 0.82 },
+      { position: [56, 0, -18], rotation: -Math.PI * 0.38, scale: 0.86 },
+      { position: [56, 0, 18], rotation: Math.PI * 0.38, scale: 0.88 },
+      { position: [48, 0, 42], rotation: Math.PI * 0.25, scale: 0.82 },
+      { position: [28, 0, 52], rotation: Math.PI * 0.18, scale: 0.9 },
+      { position: [0, 0, 56], rotation: 0, scale: 0.92 },
+      { position: [-28, 0, 52], rotation: -Math.PI * 0.18, scale: 0.9 },
+      { position: [-48, 0, 42], rotation: -Math.PI * 0.25, scale: 0.82 },
+      { position: [-56, 0, 18], rotation: -Math.PI * 0.38, scale: 0.86 },
+      { position: [-56, 0, -18], rotation: Math.PI * 0.38, scale: 0.88 },
     ];
 
     mountainPositions.forEach((cfg, index) => {
       this.spawnRanchPrefab('/assets/3d/Ranch/Mountain/Mountain1.glb', {
         name: `village-mountain-${index}`,
-        position: [cfg.position[0], -1.8, cfg.position[2]],
+        position: [cfg.position[0], -1.6, cfg.position[2]],
         rotationY: cfg.rotation,
-        targetHeight: 28 * (cfg.scale ?? 1),
-        verticalOffset: -1.4,
+        targetHeight: 20 * (cfg.scale ?? 1),
+        verticalOffset: -1.2,
         scaleMultiplier: cfg.scale ?? 1,
       });
     });
