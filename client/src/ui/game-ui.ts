@@ -605,9 +605,8 @@ export class GameUI {
     
     // Idade em dias (atualizada a cada meia-noite)
     const ageInDays = beast.ageInDays || 0;
-    const ageWeeks = Math.floor(ageInDays / 7);
     
-    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias (${ageWeeks} sem)`, x + 16, y + 34, {
+    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias`, x + 16, y + 34, {
       font: '12px monospace',
       color: GLASS_THEME.palette.text.secondary,
       shadow: false,

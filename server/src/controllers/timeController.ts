@@ -309,42 +309,36 @@ export async function cancelBeastAction(req: AuthRequest, res: Response) {
 function getMidnightTimestamp(): number {
   const now = new Date();
   
-  // Obter data/hora atual em Brasília como string ISO-like
-  const brasiliaStr = now.toLocaleString('en-CA', { 
+  // Obter data atual em Brasília (formato YYYY-MM-DD)
+  const brasiliaDateStr = now.toLocaleString('en-CA', { 
     timeZone: 'America/Sao_Paulo',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
   });
   
-  // brasiliaStr está no formato "YYYY-MM-DD"
-  const [year, month, day] = brasiliaStr.split('-').map(Number);
+  // brasiliaDateStr está no formato "YYYY-MM-DD"
+  const [year, month, day] = brasiliaDateStr.split('-').map(Number);
   
-  // Criar string ISO para meia-noite em Brasília
-  // Assumir que Brasília está UTC-3 (pode variar com horário de verão, mas funciona bem para comparar)
-  // Criar data UTC assumindo meia-noite Brasília = 03:00 UTC (UTC-3)
-  const midnightUtc = Date.UTC(year, month - 1, day, 3, 0, 0, 0);
+  // Calcular offset de Brasília comparando UTC com hora local de Brasília
+  // Criar uma data de teste para meia-noite UTC
+  const testUTC = Date.UTC(year, month - 1, day, 12, 0, 0, 0); // Meio-dia UTC
+  const testDate = new Date(testUTC);
   
-  // Obter offset real de Brasília agora
-  const formatter = new Intl.DateTimeFormat('en', {
+  // Obter hora em Brasília para este timestamp
+  const brasiliaHour = parseInt(testDate.toLocaleString('en-US', {
     timeZone: 'America/Sao_Paulo',
-    timeZoneName: 'longOffset'
-  });
-  
-  // Calcular offset atual (simplificado: usar diferença entre UTC e Brasília)
-  const utcHours = now.getUTCHours();
-  const brasiliaHours = parseInt(now.toLocaleString('en-US', { 
-    timeZone: 'America/Sao_Paulo', 
-    hour: '2-digit', 
-    hour12: false 
+    hour: '2-digit',
+    hour12: false
   }));
   
-  let offsetHours = brasiliaHours - utcHours;
-  if (offsetHours > 12) offsetHours -= 24; // Ajustar se cruzar meia-noite
-  if (offsetHours < -12) offsetHours += 24;
+  // Calcular offset: se meio-dia UTC = 9h em Brasília, offset é -3
+  // Se meio-dia UTC = 10h em Brasília, offset é -2 (horário de verão)
+  const offsetHours = 12 - brasiliaHour;
   
-  // Ajustar meia-noite para o offset correto
-  return midnightUtc - (offsetHours * 60 * 60 * 1000);
+  // Criar timestamp para meia-noite em Brasília
+  // Meia-noite em Brasília = (offsetHours) horas da manhã em UTC
+  return Date.UTC(year, month - 1, day, offsetHours, 0, 0, 0);
 }
 
 /**

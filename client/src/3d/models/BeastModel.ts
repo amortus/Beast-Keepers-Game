@@ -548,10 +548,6 @@ export class BeastModel {
       animations: [
         { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
         { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
-        { name: 'skill', file: 'Animation_Skill_01_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-        { name: 'hit', file: 'Animation_BeHit_FlyUp_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-        { name: 'dead', file: 'Animation_Dead_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-        { name: 'arise', file: 'Animation_Arise_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
       ],
     });
   }
@@ -567,7 +563,6 @@ export class BeastModel {
         { name: 'skill', file: 'Animation_Indoor_Swing_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
         { name: 'hit', file: 'Animation_Basic_Jump_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
         { name: 'dead', file: 'Animation_dying_backwards_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-        { name: 'arise', file: 'Animation_Arise_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
         { name: 'victory', file: 'Animation_Cheer_with_Both_Hands_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
         { name: 'throw', file: 'Animation_Female_Crouch_Pick_Throw_Forward_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
       ],
@@ -772,6 +767,11 @@ export class BeastModel {
       },
       undefined,
       (error) => {
+        // Silently ignore missing animation files (404 errors)
+        // These animations are optional and may not exist for all beasts
+        if (error?.message?.includes('404') || error?.message?.includes('Not Found')) {
+          return;
+        }
         console.error(`[BeastModel] Failed to load animation "${name}" from ${url}:`, error);
       }
     );

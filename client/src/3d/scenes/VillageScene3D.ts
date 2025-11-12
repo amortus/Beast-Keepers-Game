@@ -191,33 +191,6 @@ export class VillageScene3D {
     base.receiveShadow = true;
     groundGroup.add(base);
 
-    const lushGrass = new THREE.Mesh(
-      new THREE.CircleGeometry(26, 64),
-      new THREE.MeshStandardMaterial({ color: 0x6ecf72, roughness: 0.82 }),
-    );
-    lushGrass.rotation.x = -Math.PI / 2;
-    lushGrass.position.y = 0.01;
-    lushGrass.receiveShadow = true;
-    groundGroup.add(lushGrass);
-
-    const plaza = new THREE.Mesh(
-      new THREE.CircleGeometry(14.5, 60),
-      new THREE.MeshStandardMaterial({ color: 0xdcc9a5, roughness: 0.88 }),
-    );
-    plaza.rotation.x = -Math.PI / 2;
-    plaza.position.y = 0.015;
-    plaza.receiveShadow = true;
-    groundGroup.add(plaza);
-
-    const plazaRing = new THREE.Mesh(
-      new THREE.RingGeometry(15, 19.5, 60, 1),
-      new THREE.MeshStandardMaterial({ color: 0xe8d8b8, roughness: 0.78 }),
-    );
-    plazaRing.rotation.x = -Math.PI / 2;
-    plazaRing.position.y = 0.012;
-    plazaRing.receiveShadow = true;
-    groundGroup.add(plazaRing);
-
     const pathMaterial = new THREE.MeshStandardMaterial({ color: 0xe4cfa8, roughness: 0.78 });
 
     const radialPaths: Array<{ size: [number, number, number]; position: [number, number, number]; rotation?: number }> = [
@@ -336,20 +309,26 @@ export class VillageScene3D {
     });
 
     const mountainPositions: Array<{ position: [number, number, number]; rotation?: number; scale?: number }> = [
-      { position: [-48, 0, -42], rotation: Math.PI * 0.25, scale: 0.82 },
-      { position: [-28, 0, -52], rotation: Math.PI * 0.18, scale: 0.9 },
-      { position: [0, 0, -56], rotation: 0, scale: 0.92 },
-      { position: [28, 0, -52], rotation: -Math.PI * 0.18, scale: 0.9 },
-      { position: [48, 0, -42], rotation: -Math.PI * 0.25, scale: 0.82 },
-      { position: [56, 0, -18], rotation: -Math.PI * 0.38, scale: 0.86 },
-      { position: [56, 0, 18], rotation: Math.PI * 0.38, scale: 0.88 },
-      { position: [48, 0, 42], rotation: Math.PI * 0.25, scale: 0.82 },
-      { position: [28, 0, 52], rotation: Math.PI * 0.18, scale: 0.9 },
-      { position: [0, 0, 56], rotation: 0, scale: 0.92 },
-      { position: [-28, 0, 52], rotation: -Math.PI * 0.18, scale: 0.9 },
-      { position: [-48, 0, 42], rotation: -Math.PI * 0.25, scale: 0.82 },
-      { position: [-56, 0, 18], rotation: -Math.PI * 0.38, scale: 0.86 },
-      { position: [-56, 0, -18], rotation: Math.PI * 0.38, scale: 0.88 },
+      { position: [-52, 0, -40], rotation: Math.PI * 0.28, scale: 0.86 },
+      { position: [-36, 0, -54], rotation: Math.PI * 0.2, scale: 0.95 },
+      { position: [-18, 0, -60], rotation: Math.PI * 0.1, scale: 1.0 },
+      { position: [0, 0, -62], rotation: 0, scale: 1.05 },
+      { position: [18, 0, -60], rotation: -Math.PI * 0.1, scale: 1.0 },
+      { position: [36, 0, -54], rotation: -Math.PI * 0.2, scale: 0.95 },
+      { position: [52, 0, -40], rotation: -Math.PI * 0.28, scale: 0.86 },
+      { position: [62, 0, -18], rotation: -Math.PI * 0.4, scale: 0.9 },
+      { position: [64, 0, 0], rotation: -Math.PI * 0.5, scale: 0.92 },
+      { position: [62, 0, 18], rotation: Math.PI * 0.4, scale: 0.9 },
+      { position: [52, 0, 40], rotation: Math.PI * 0.28, scale: 0.86 },
+      { position: [36, 0, 54], rotation: Math.PI * 0.2, scale: 0.95 },
+      { position: [18, 0, 60], rotation: Math.PI * 0.1, scale: 1.0 },
+      { position: [0, 0, 62], rotation: 0, scale: 1.05 },
+      { position: [-18, 0, 60], rotation: -Math.PI * 0.1, scale: 1.0 },
+      { position: [-36, 0, 54], rotation: -Math.PI * 0.2, scale: 0.95 },
+      { position: [-52, 0, 40], rotation: -Math.PI * 0.28, scale: 0.86 },
+      { position: [-62, 0, 18], rotation: -Math.PI * 0.4, scale: 0.9 },
+      { position: [-64, 0, 0], rotation: Math.PI * 0.5, scale: 0.92 },
+      { position: [-62, 0, -18], rotation: Math.PI * 0.4, scale: 0.9 },
     ];
 
     mountainPositions.forEach((cfg, index) => {
@@ -1224,7 +1203,7 @@ export class VillageScene3D {
 
   private prepareMarketModel(model: THREE.Group) {
     this.prepareStaticPrefab(model);
-    this.normaliseStaticModel(model, 6.0, 0);
+    this.normaliseStaticModel(model, 6.0, -0.18);
   }
 
   private createPrefabHouse(config: VillageBuildingConfig, index: number): THREE.Group {
@@ -1793,7 +1772,7 @@ export class VillageScene3D {
 
   private prepareCraftModel(model: THREE.Group) {
     this.prepareStaticPrefab(model);
-    this.normaliseStaticModel(model, 6.5, 0);
+    this.normaliseStaticModel(model, 6.5, -0.15);
   }
 
   private prepareStaticPrefab(model: THREE.Group) {
