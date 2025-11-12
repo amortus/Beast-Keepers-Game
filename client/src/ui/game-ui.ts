@@ -788,13 +788,13 @@ export class GameUI {
     });
 
     // Category buttons (2 colunas alinhadas ao centro)
-    const buttonWidth = 210;
-    const buttonHeight = 38;
-    const buttonSpacingX = 32;
+    const buttonWidth = 228;
+    const buttonHeight = 46;
+    const buttonSpacingX = 36;
     const totalCategoryWidth = buttonWidth * 2 + buttonSpacingX;
     const buttonStartX = x + (width - totalCategoryWidth) / 2;
-    const buttonStartY = y + 28;
-    const buttonSpacingY = 44;
+    const buttonStartY = y + 34;
+    const buttonSpacingY = 56;
 
     // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [
@@ -804,7 +804,7 @@ export class GameUI {
     ];
 
     categories.forEach((cat) => {
-      const btnX = buttonStartX + (cat.col * buttonSpacingX);
+      const btnX = buttonStartX + cat.col * (buttonWidth + buttonSpacingX);
       const btnY = buttonStartY + (cat.row * buttonSpacingY);
       const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, buttonWidth, buttonHeight);
       const isSelected = this.actionCategory === cat.id;
@@ -830,7 +830,7 @@ export class GameUI {
     });
     
     // Mensagem "Em Desenvolvimento" onde ficava o botão de Torneio
-    const devMsgX = buttonStartX + buttonSpacingX; // Coluna da direita
+    const devMsgX = buttonStartX + (buttonWidth + buttonSpacingX); // Coluna da direita
     const devMsgY = buttonStartY + buttonSpacingY; // Linha de baixo
     
     drawText(this.ctx, '🏆 Torneio', devMsgX + buttonWidth / 2, devMsgY + 8, {
@@ -840,7 +840,7 @@ export class GameUI {
       shadow: false,
     });
     
-    drawText(this.ctx, 'Em Desenvolvimento', devMsgX + buttonWidth / 2, devMsgY + 26, {
+    drawText(this.ctx, 'Em Desenvolvimento', devMsgX + buttonWidth / 2, devMsgY + 30, {
       font: '12px monospace',
       color: GLASS_THEME.palette.text.muted,
       align: 'center',
@@ -849,7 +849,8 @@ export class GameUI {
 
     // Show actions for selected category
     if (this.actionCategory) {
-      this.drawActionList(x + 10, y + 120, beast, serverTime); // Ajustado de 150 → 120px
+      const actionsStartY = buttonStartY + buttonSpacingY + buttonHeight + 36;
+      this.drawActionList(x + 10, actionsStartY, beast, serverTime);
     }
   }
   
@@ -937,8 +938,8 @@ export class GameUI {
     const actions = this.getActionsForCategory();
     
     // Layout 2 colunas (botões menores para harmonizar com painel)
-    const buttonWidth = 164;
-    const buttonHeight = 28;
+    const buttonWidth = 154;
+    const buttonHeight = 26;
     const spacingX = 12;
     const spacingY = 10;
     const columns = 2; // 2 colunas
@@ -957,7 +958,9 @@ export class GameUI {
       // Verificar se pode iniciar esta ação
       const canStart = canStartAction(beast, action.id, serverTime);
 
-      drawButton(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, action.label, {
+      const displayLabel = action.label.replace(/\s*\([^)]*\)/g, '').trim();
+
+      drawButton(this.ctx, buttonX, buttonY, buttonWidth, buttonHeight, displayLabel, {
         variant: 'primary',
         bgColor: isSelected ? GLASS_THEME.palette.accent.cyan : GLASS_THEME.palette.accent.cyanSoft,
         isHovered,
