@@ -54,7 +54,7 @@ export class VillageScene3D {
   private housePrefabs: THREE.Group[] = [];
   private housePrefabsPromise: Promise<THREE.Group[]> | null = null;
   private villagers: VillageVillagers | null = null;
-  private lastFrameTime = performance.now();
+  private lastFrameTime: number;
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
@@ -94,7 +94,7 @@ export class VillageScene3D {
     this.createDecoration();
     this.setBuildings(buildings);
     this.setupEventListeners();
-    this.lastFrameTime = performance.now();
+    this.lastFrameTime = typeof performance !== 'undefined' ? performance.now() : 0;
     this.animate();
     console.log('[VillageScene3D] Vila 3D inicializada');
   }
