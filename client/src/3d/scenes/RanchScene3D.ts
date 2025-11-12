@@ -10,7 +10,7 @@ import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Water } from '../water/PS1Water';
 import { RanchCritters } from '../events/RanchCritters';
-import { getSkyColor } from '../utils/day-night';
+import { getSkyColor } from '../../utils/day-night';
 
 type Vec2 = [number, number];
 type Vec3 = [number, number, number];

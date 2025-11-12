@@ -79,8 +79,6 @@ export class VillageScene3D {
   private loadingProgress: number = 0;
   private totalAssets: number = 0;
   private loadedAssets: number = 0;
-  private onLoadingProgress?: (progress: number) => void;
-  private onLoadingComplete?: () => void;
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;

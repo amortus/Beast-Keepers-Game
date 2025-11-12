@@ -274,7 +274,7 @@ export function getBrasiliaTimestamp(): number {
     hour12: false
   }));
   
-  const offsetHours = brasiliaHour - utcHour;
+  let offsetHours = brasiliaHour - utcHour;
   if (offsetHours < -12) offsetHours += 24;
   if (offsetHours > 12) offsetHours -= 24;
   
@@ -298,7 +298,7 @@ export function getMidnightTimestampBrasilia(): number {
     hour12: false
   }));
   
-  const offsetHours = brasiliaHour - utcHour;
+  let offsetHours = brasiliaHour - utcHour;
   if (offsetHours < -12) offsetHours += 24;
   if (offsetHours > 12) offsetHours -= 24;
   
