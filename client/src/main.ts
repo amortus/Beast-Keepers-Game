@@ -1541,10 +1541,22 @@ async function openVillage() {
     village3DUI.onOpenNPC = (npcId: string) => {
       openDialogueWith(npcId);
     };
-    village3DUI.onOpenShop = () => openShop();
-    village3DUI.onOpenTemple = () => openTemple();
-    village3DUI.onOpenCraft = () => openCraft();
-    village3DUI.onOpenDungeons = () => openDungeon();
+    village3DUI.onOpenShop = () => {
+      closeVillage();
+      openShop();
+    };
+    village3DUI.onOpenTemple = () => {
+      closeVillage();
+      openTemple();
+    };
+    village3DUI.onOpenCraft = () => {
+      closeVillage();
+      openCraft();
+    };
+    village3DUI.onOpenDungeons = () => {
+      closeVillage();
+      openDungeon();
+    };
     village3DUI.onOpenRanch = () => {
       closeVillage();
     };
@@ -1560,6 +1572,7 @@ async function openVillage() {
 }
 
 function closeVillage() {
+  console.log('[Main] closeVillage() called - setting inVillage = false');
   inVillage = false;
   
   if (village3DUI) {
@@ -1573,6 +1586,11 @@ function closeVillage() {
     // Show 3D viewer will recreate it on next draw
     gameUI.show3DViewer();
     console.log('[Main] Village closed - forcing ranch 3D recreation');
+  }
+  
+  // Update main UI
+  if (gameUI && gameState) {
+    gameUI.updateGameState(gameState);
   }
 }
 
@@ -1698,6 +1716,12 @@ function closeDialogue() {
 
 function openShop() {
   if (!gameState) return;
+
+  // Close village if open (shop can be opened from village)
+  if (inVillage) {
+    console.log('[Main] Closing village before opening shop');
+    closeVillage();
+  }
 
   // Hide 3D viewer when opening shop
   if (gameUI) {
