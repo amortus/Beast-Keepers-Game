@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VillageVillagers } from '../events/VillageVillagers';
+import { VillageCritters } from '../events/VillageCritters';
 
 import type { VillageBuildingConfig } from '../../types/village';
 
@@ -59,6 +60,7 @@ export class VillageScene3D {
   private housePrefabs: THREE.Group[] = [];
   private housePrefabsPromise: Promise<THREE.Group[]> | null = null;
   private villagers: VillageVillagers | null = null;
+  private critters: VillageCritters | null = null;
   private lastFrameTime: number;
   private rainDrops: Array<{ mesh: THREE.Group; velocity: THREE.Vector3 }> = [];
   private isRaining = false;
@@ -119,6 +121,10 @@ export class VillageScene3D {
     this.setupEventListeners();
     this.lastFrameTime = typeof performance !== 'undefined' ? performance.now() : 0;
     this.nextRainTime = this.getRandomRainDelay();
+    
+    // Inicializar sistema de critters
+    this.critters = new VillageCritters(this.scene);
+    
     this.animate();
     
     // setBuildings será chamado de forma async pelo Village3DUI após criar a cena
@@ -154,20 +160,20 @@ export class VillageScene3D {
 
     // Aguardar que todos os edifícios sejam realmente criados e seus prefabs carregados
     const buildingPromises: Promise<void>[] = [];
-    
+
     for (const config of buildings) {
       const buildingPromise = this.createBuildingMeshAsync(config).then((group) => {
-        group.position.set(config.position.x, config.position.y, config.position.z);
-        if (config.rotation) {
-          group.rotation.y = config.rotation;
-        }
-        group.castShadow = true;
-        group.receiveShadow = true;
-        group.userData.buildingId = config.id;
+      group.position.set(config.position.x, config.position.y, config.position.z);
+      if (config.rotation) {
+        group.rotation.y = config.rotation;
+      }
+      group.castShadow = true;
+      group.receiveShadow = true;
+      group.userData.buildingId = config.id;
 
-        const highlight = this.createHighlightCircle(config);
-        highlight.position.set(config.position.x, 0.05, config.position.z);
-        highlight.userData.buildingId = config.id;
+      const highlight = this.createHighlightCircle(config);
+      highlight.position.set(config.position.x, 0.05, config.position.z);
+      highlight.userData.buildingId = config.id;
 
         // Adicionar luz permanente para casas clicáveis (não bloqueadas)
         let buildingLight: THREE.PointLight | null = null;
@@ -186,14 +192,14 @@ export class VillageScene3D {
           this.scene.add(buildingLight);
         }
 
-        this.buildingGroup.add(group);
-        this.buildingGroup.add(highlight);
+      this.buildingGroup.add(group);
+      this.buildingGroup.add(highlight);
 
-        this.buildings.push({
-          config,
-          group,
-          highlight,
-          isHovered: false,
+      this.buildings.push({
+        config,
+        group,
+        highlight,
+        isHovered: false,
           light: buildingLight,
         });
 
@@ -2593,6 +2599,11 @@ export class VillageScene3D {
       this.villagers.update(delta);
     }
 
+    // Sistema de critters
+    if (this.critters) {
+      this.critters.update(delta);
+    }
+
     // Sistema de chuva
     this.updateRain(delta);
 
@@ -2705,6 +2716,11 @@ export class VillageScene3D {
     if (this.villagers) {
       this.villagers.dispose();
       this.villagers = null;
+    }
+
+    if (this.critters) {
+      this.critters.dispose();
+      this.critters = null;
     }
 
     this.removeAllRain();
