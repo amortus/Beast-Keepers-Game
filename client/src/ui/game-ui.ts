@@ -398,24 +398,37 @@ export class GameUI {
       color: GLASS_THEME.palette.text.highlight,
     });
 
-    // Relógio e calendário visual
+    // Relógio e calendário visual (centralizado no header)
     const gameTime = getGameTime();
     const clockIcon = gameTime.timeOfDay.isNight ? '🌙' : '☀️';
-    const clockX = 24;
-    const clockY = 62;
+    const clockText = `${clockIcon} ${gameTime.timeOfDay.timeString}`;
+    const dateText = `📅 ${gameTime.calendar.dateString} - ${gameTime.calendar.dayOfWeekName}`;
     
-    // Hora
-    drawText(this.ctx, `${clockIcon} ${gameTime.timeOfDay.timeString}`, clockX, clockY, {
+    // Calcular largura dos textos para centralizar
+    this.ctx.font = 'bold 16px monospace';
+    const clockTextWidth = this.ctx.measureText(clockText).width;
+    this.ctx.font = 'bold 13px monospace';
+    const dateTextWidth = this.ctx.measureText(dateText).width;
+    const maxTextWidth = Math.max(clockTextWidth, dateTextWidth);
+    
+    // Centralizar no header (considerando espaço para título à esquerda e botões à direita)
+    const clockX = (this.canvas.width - maxTextWidth) / 2;
+    const clockY = 50;
+    
+    // Hora (centralizada)
+    drawText(this.ctx, clockText, clockX, clockY, {
       font: 'bold 16px monospace',
       color: gameTime.timeOfDay.isNight ? GLASS_THEME.palette.accent.blue : GLASS_THEME.palette.accent.amber,
       shadow: false,
+      align: 'center',
     });
     
-    // Data (abaixo da hora)
-    drawText(this.ctx, `📅 ${gameTime.calendar.dateString} - ${gameTime.calendar.dayOfWeekName}`, clockX, clockY + 22, {
+    // Data (centralizada, abaixo da hora)
+    drawText(this.ctx, dateText, clockX + maxTextWidth / 2, clockY + 22, {
       font: 'bold 13px monospace',
       color: GLASS_THEME.palette.text.secondary,
       shadow: false,
+      align: 'center',
     });
 
     const beast = this.gameState.activeBeast;
