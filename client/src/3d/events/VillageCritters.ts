@@ -31,10 +31,10 @@ export class VillageCritters {
   }
   
   /**
-   * Tempo aleatório até próximo spawn (5-15 segundos)
+   * Tempo aleatório até próximo spawn (3-8 segundos) - mais frequente na vila
    */
   private getRandomSpawnDelay(): number {
-    return 5 + Math.random() * 10;
+    return 3 + Math.random() * 5;
   }
   
   /**
@@ -523,9 +523,9 @@ export class VillageCritters {
       pos.y = Math.max(pos.y, 0);
     }
     
-    // Remover se saiu muito longe da vila
+    // Remover se saiu muito longe da vila (aumentado para dar mais tempo de aparecer)
     const distFromCenter = Math.sqrt(pos.x ** 2 + pos.z ** 2);
-    if (distFromCenter > this.VILLAGE_SIZE * 1.5) {
+    if (distFromCenter > this.VILLAGE_SIZE * 2) {
       critter.lifetime = 0; // Forçar remoção
     }
   }
