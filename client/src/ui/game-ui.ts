@@ -208,6 +208,12 @@ export class GameUI {
       console.log('[GameUI] 3D mini viewer hidden');
     }
     
+    // Stop ranch scene 3D loop to save resources when hidden
+    if (this.ranchScene3D) {
+      this.ranchScene3D.stopLoop();
+      console.log('[GameUI] Ranch Scene 3D loop stopped');
+    }
+    
     if (this.ranchScene3DContainer) {
       this.ranchScene3DContainer.style.display = 'none';
       console.log('[GameUI] Ranch Scene 3D hidden');
@@ -224,8 +230,27 @@ export class GameUI {
     }
     
     if (this.ranchScene3DContainer) {
-      this.ranchScene3DContainer.style.display = 'block';
-      console.log('[GameUI] Ranch Scene 3D shown');
+      // Check if container is still in DOM (might have been removed)
+      if (!this.ranchScene3DContainer.parentNode) {
+        console.warn('[GameUI] Ranch Scene 3D container was removed from DOM, will be recreated');
+        this.ranchScene3DContainer = null;
+        this.ranchScene3D = null;
+      } else {
+        this.ranchScene3DContainer.style.display = 'block';
+        console.log('[GameUI] Ranch Scene 3D container shown');
+        
+        // Restart ranch scene 3D loop if it exists
+        if (this.ranchScene3D) {
+          this.ranchScene3D.startLoop();
+          console.log('[GameUI] Ranch Scene 3D loop restarted');
+        } else if (this.gameState.activeBeast) {
+          // If ranch scene doesn't exist, recreate it
+          console.log('[GameUI] Ranch Scene 3D not found, will be recreated on next draw');
+        }
+      }
+    } else if (this.gameState.activeBeast) {
+      // Container doesn't exist, will be created on next draw
+      console.log('[GameUI] Ranch Scene 3D container not found, will be created on next draw');
     }
   }
 

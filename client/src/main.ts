@@ -919,13 +919,26 @@ async function loadGameFromServer() {
               console.log(`[DailyCycle] Beast aged: ${cycleResponse.data.ageInDays} days`);
               gameState.activeBeast.ageInDays = cycleResponse.data.ageInDays;
               gameState.activeBeast.explorationCount = 0; // Resetado pelo servidor
+              
+              // Atualizar UI para refletir a nova idade
+              if (gameUI) {
+                gameUI.updateGameState(gameState);
+              }
             }
             if (cycleResponse.data.died) {
               console.log('[DailyCycle] Beast died of old age');
+              // Atualizar UI se a besta morreu
+              if (gameUI) {
+                gameUI.updateGameState(gameState);
+              }
             }
           }
         } catch (error) {
-          console.warn('[DailyCycle] Failed to process daily cycle:', error);
+          console.error('[DailyCycle] Failed to process daily cycle:', error);
+          // Log detalhes do erro se disponível
+          if (error instanceof Error) {
+            console.error('[DailyCycle] Error details:', error.message, error.stack);
+          }
         }
         
         // Verificar se a besta morreu (servidor já processou ciclo diário)

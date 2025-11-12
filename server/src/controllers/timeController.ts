@@ -376,8 +376,38 @@ export async function processDailyCycle(req: AuthRequest, res: Response) {
     const now = Date.now();
     const midnightTimestamp = getMidnightTimestamp();
     
-    // Pegar maxAge do banco (campo max_age)
-    const maxAge = beast.max_age || 365; // padrão 1 ano
+    // Verificar quais colunas existem no banco
+    const columnCheck = await query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'beasts' 
+      AND column_name IN ('age_in_days', 'last_day_processed', 'last_update', 'max_age', 'daily_training_count', 'daily_potion_used', 'exploration_count')
+    `);
+    
+    const availableColumns = columnCheck.rows.map((r: any) => r.column_name);
+    const hasAgeInDays = availableColumns.includes('age_in_days');
+    const hasLastDayProcessed = availableColumns.includes('last_day_processed');
+    const hasLastUpdate = availableColumns.includes('last_update');
+    const hasMaxAge = availableColumns.includes('max_age');
+    const hasDailyTrainingCount = availableColumns.includes('daily_training_count');
+    const hasDailyPotionUsed = availableColumns.includes('daily_potion_used');
+    const hasExplorationCount = availableColumns.includes('exploration_count');
+    
+    if (!hasAgeInDays || !hasLastDayProcessed) {
+      return res.status(500).json({
+        success: false,
+        error: 'Required columns (age_in_days, last_day_processed) not found in database',
+      } as ApiResponse);
+    }
+    
+    // Pegar maxAge do banco (campo max_age ou max_age_weeks)
+    let maxAge = 365; // padrão 1 ano
+    if (hasMaxAge && beast.max_age) {
+      maxAge = beast.max_age;
+    } else if (beast.max_age_weeks) {
+      maxAge = beast.max_age_weeks * 7; // converter semanas para dias
+    }
+    
     const currentAgeInDays = beast.age_in_days || 0;
     const lastDayProcessed = beast.last_day_processed || 0;
     
@@ -405,18 +435,42 @@ export async function processDailyCycle(req: AuthRequest, res: Response) {
       console.log(`[DailyCycle] Beast ${beastId} died at age ${newAgeInDays} (max: ${maxAge})`);
     }
     
-    // Atualizar no banco (incluindo resets diários)
+    // Construir UPDATE dinamicamente baseado nas colunas disponíveis
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    let paramIndex = 2;
+    
+    updateFields.push(`age_in_days = $${paramIndex++}`);
+    updateValues.push(newAgeInDays);
+    
+    updateFields.push(`last_day_processed = $${paramIndex++}`);
+    updateValues.push(midnightTimestamp);
+    
+    updateFields.push(`is_active = $${paramIndex++}`);
+    updateValues.push(isActive);
+    
+    if (hasLastUpdate) {
+      updateFields.push(`last_update = $${paramIndex++}`);
+      updateValues.push(now);
+    }
+    
+    // Resetar limites diários se as colunas existirem
+    if (hasDailyTrainingCount) {
+      updateFields.push('daily_training_count = 0');
+    }
+    if (hasDailyPotionUsed) {
+      updateFields.push('daily_potion_used = false');
+    }
+    if (hasExplorationCount) {
+      updateFields.push('exploration_count = 0');
+    }
+    
+    // Atualizar no banco
     await query(
       `UPDATE beasts
-       SET age_in_days = $2,
-           last_day_processed = $3,
-           is_active = $4,
-           last_update = $5,
-           daily_training_count = 0,
-           daily_potion_used = false,
-           exploration_count = 0
+       SET ${updateFields.join(', ')}
        WHERE id = $1`,
-      [beastId, newAgeInDays, midnightTimestamp, isActive, now]
+      [beastId, ...updateValues]
     );
     
     console.log(`[DailyCycle] Beast ${beastId} aged from ${currentAgeInDays} to ${newAgeInDays} days. Alive: ${isAlive}`);
@@ -432,11 +486,19 @@ export async function processDailyCycle(req: AuthRequest, res: Response) {
       },
     } as ApiResponse);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Time] Process daily cycle error:', error);
+    console.error('[Time] Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      stack: error.stack
+    });
     return res.status(500).json({
       success: false,
       error: 'Failed to process daily cycle',
+      details: error.message,
     } as ApiResponse);
   }
 }
