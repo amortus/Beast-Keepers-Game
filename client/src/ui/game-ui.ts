@@ -12,9 +12,9 @@ import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
 import { RanchScene3D } from '../3d/scenes/RanchScene3D';
 import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';
 import { formatTime } from '../utils/time-format';
-import { getCurrentTimeOfDay } from '../utils/day-night';
+import { getGameTime } from '../utils/day-night';
 
-const HEADER_HEIGHT = 112;
+const HEADER_HEIGHT = 130; // Aumentado para acomodar data do calendário
 const SIDE_PANEL_WIDTH = 510;
 const STATUS_PANEL_HEIGHT = 430;
 const SIDE_PANEL_GAP = 12;
@@ -398,14 +398,23 @@ export class GameUI {
       color: GLASS_THEME.palette.text.highlight,
     });
 
-    // Relógio visual
-    const timeOfDay = getCurrentTimeOfDay();
-    const clockIcon = timeOfDay.isNight ? '🌙' : '☀️';
+    // Relógio e calendário visual
+    const gameTime = getGameTime();
+    const clockIcon = gameTime.timeOfDay.isNight ? '🌙' : '☀️';
     const clockX = 24;
     const clockY = 62;
-    drawText(this.ctx, `${clockIcon} ${timeOfDay.timeString}`, clockX, clockY, {
+    
+    // Hora
+    drawText(this.ctx, `${clockIcon} ${gameTime.timeOfDay.timeString}`, clockX, clockY, {
       font: 'bold 16px monospace',
-      color: timeOfDay.isNight ? GLASS_THEME.palette.accent.blue : GLASS_THEME.palette.accent.amber,
+      color: gameTime.timeOfDay.isNight ? GLASS_THEME.palette.accent.blue : GLASS_THEME.palette.accent.amber,
+      shadow: false,
+    });
+    
+    // Data (abaixo da hora)
+    drawText(this.ctx, `📅 ${gameTime.calendar.dateString} - ${gameTime.calendar.dayOfWeekName}`, clockX, clockY + 22, {
+      font: 'bold 13px monospace',
+      color: GLASS_THEME.palette.text.secondary,
       shadow: false,
     });
 
