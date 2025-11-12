@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { VillageVillagers } from '../events/VillageVillagers';
 
 import type { VillageBuildingConfig } from '../../types/village';
 
@@ -52,6 +53,8 @@ export class VillageScene3D {
   private ranchPrefabCache = new Map<string, THREE.Group>();
   private housePrefabs: THREE.Group[] = [];
   private housePrefabsPromise: Promise<THREE.Group[]> | null = null;
+  private villagers: VillageVillagers | null = null;
+  private lastFrameTime = performance.now();
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
@@ -91,7 +94,7 @@ export class VillageScene3D {
     this.createDecoration();
     this.setBuildings(buildings);
     this.setupEventListeners();
-
+    this.lastFrameTime = performance.now();
     this.animate();
     console.log('[VillageScene3D] Vila 3D inicializada');
   }
@@ -125,6 +128,7 @@ export class VillageScene3D {
     }
 
     console.log(`[VillageScene3D] Carregado ${this.buildings.length} edifícios.`);
+    this.rebuildVillagers();
   }
 
   private clearBuildings(): void {
@@ -378,6 +382,58 @@ export class VillageScene3D {
         verticalOffset: -0.2,
         scaleMultiplier: 1.05,
       });
+    });
+
+    this.rebuildVillagers();
+  }
+
+  private rebuildVillagers(): void {
+    if (!this.environmentGroup) {
+      return;
+    }
+
+    if (this.villagers) {
+      this.villagers.dispose();
+      this.villagers = null;
+    }
+
+    if (this.buildings.length === 0) {
+      return;
+    }
+
+    const obstacles: { position: [number, number]; radius: number }[] = this.buildings.map((building) => {
+      let radius = 3.2;
+      switch (building.config.variant) {
+        case 'temple':
+          radius = 5.2;
+          break;
+        case 'guild':
+          radius = 4;
+          break;
+        case 'tavern':
+        case 'alchemy':
+          radius = 3.6;
+          break;
+        default:
+          radius = 3.1;
+      }
+      return {
+        position: [building.config.position.x, building.config.position.z] as [number, number],
+        radius,
+      };
+    });
+
+    obstacles.push({ position: [0, 0], radius: 3.4 });
+
+    this.villagers = new VillageVillagers(this.environmentGroup, this.gltfLoader, {
+      radius: 23,
+      innerRadius: 4,
+      obstacles,
+      count: 8,
+    });
+
+    this.villagers.populate().catch((error) => {
+      console.error('[VillageScene3D] Falha ao instanciar villagers:', error);
     });
   }
 
@@ -1660,6 +1716,15 @@ export class VillageScene3D {
 
   private animate = (): void => {
     this.animationId = requestAnimationFrame(this.animate);
+
+    const now = performance.now();
+    const delta = (now - this.lastFrameTime) / 1000;
+    this.lastFrameTime = now;
+
+    if (this.villagers) {
+      this.villagers.update(delta);
+    }
+
     this.renderer.render(this.scene, this.camera);
   };
 
@@ -1672,6 +1737,11 @@ export class VillageScene3D {
   public dispose(): void {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
+    }
+
+    if (this.villagers) {
+      this.villagers.dispose();
+      this.villagers = null;
     }
 
     if (this.environmentGroup) {
