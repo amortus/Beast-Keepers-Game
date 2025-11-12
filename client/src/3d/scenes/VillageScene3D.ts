@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VillageVillagers } from '../events/VillageVillagers';
 import { VillageCritters } from '../events/VillageCritters';
+import { getDayNightBlend, getAmbientLightIntensity, getSkyColor } from '../utils/day-night';
 
 import type { VillageBuildingConfig } from '../../types/village';
 
@@ -389,25 +390,90 @@ export class VillageScene3D {
     });
   }
 
+  private ambientLight: THREE.AmbientLight | null = null;
+  private sunLight: THREE.DirectionalLight | null = null;
+  private hemiLight: THREE.HemisphereLight | null = null;
+
   private setupLights(): void {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.65);
-    this.scene.add(ambient);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    this.scene.add(this.ambientLight);
 
-    const sun = new THREE.DirectionalLight(0xfff2d5, 0.8);
-    sun.position.set(18, 38, 18);
-    sun.castShadow = true;
-    sun.shadow.mapSize.width = 2048;
-    sun.shadow.mapSize.height = 2048;
-    sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far = 120;
-    sun.shadow.camera.left = -50;
-    sun.shadow.camera.right = 50;
-    sun.shadow.camera.top = 50;
-    sun.shadow.camera.bottom = -50;
-    this.scene.add(sun);
+    this.sunLight = new THREE.DirectionalLight(0xfff2d5, 0.8);
+    this.sunLight.position.set(18, 38, 18);
+    this.sunLight.castShadow = true;
+    this.sunLight.shadow.mapSize.width = 2048;
+    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.camera.near = 0.5;
+    this.sunLight.shadow.camera.far = 120;
+    this.sunLight.shadow.camera.left = -50;
+    this.sunLight.shadow.camera.right = 50;
+    this.sunLight.shadow.camera.top = 50;
+    this.sunLight.shadow.camera.bottom = -50;
+    this.scene.add(this.sunLight);
 
-    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x5c8a3a, 0.35);
-    this.scene.add(hemi);
+    this.hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x5c8a3a, 0.35);
+    this.scene.add(this.hemiLight);
+    
+    // Atualizar iluminação inicial
+    this.updateDayNightLighting();
+  }
+  
+  /**
+   * Atualiza iluminação baseado no tempo do dia
+   */
+  private updateDayNightLighting(): void {
+    const blend = getDayNightBlend(); // 0 = dia, 1 = noite
+    const skyColor = getSkyColor();
+    
+    // Atualizar cor do céu
+    this.scene.background = new THREE.Color(skyColor.r, skyColor.g, skyColor.b);
+    
+    if (this.ambientLight) {
+      // Ambiente: dia (0.65) -> noite (0.2)
+      this.ambientLight.intensity = 0.2 + (0.45 * (1 - blend));
+      
+      // Cor ambiente: dia (branco) -> noite (azul escuro)
+      const dayColor = 0xffffff;
+      const nightColor = 0x1a1a2e;
+      this.ambientLight.color.setHex(
+        Math.floor(dayColor + (nightColor - dayColor) * blend)
+      );
+    }
+    
+    if (this.sunLight) {
+      // Sol: dia (0.8) -> noite (0.1, quase apagado)
+      this.sunLight.intensity = 0.1 + (0.7 * (1 - blend));
+      
+      // Cor do sol: dia (amarelo claro) -> noite (azul escuro)
+      const daySunColor = 0xfff2d5;
+      const nightSunColor = 0x2a3a5a;
+      this.sunLight.color.setHex(
+        Math.floor(daySunColor + (nightSunColor - daySunColor) * blend)
+      );
+      
+      // Posição do sol: dia (alto) -> noite (baixo, abaixo do horizonte)
+      const dayY = 38;
+      const nightY = -10; // Abaixo do horizonte
+      this.sunLight.position.y = dayY + (nightY - dayY) * blend;
+    }
+    
+    if (this.hemiLight) {
+      // Hemisphere: dia (0.35) -> noite (0.1)
+      this.hemiLight.intensity = 0.1 + (0.25 * (1 - blend));
+      
+      // Cor hemisfério: dia (azul claro/verde) -> noite (azul escuro)
+      const daySkyColor = 0x87ceeb;
+      const nightSkyColor = 0x1a1a2e;
+      const dayGroundColor = 0x5c8a3a;
+      const nightGroundColor = 0x0f0f1e;
+      
+      this.hemiLight.color.setHex(
+        Math.floor(daySkyColor + (nightSkyColor - daySkyColor) * blend)
+      );
+      this.hemiLight.groundColor.setHex(
+        Math.floor(dayGroundColor + (nightGroundColor - dayGroundColor) * blend)
+      );
+    }
   }
 
   private createGround(): void {
@@ -2603,6 +2669,9 @@ export class VillageScene3D {
     if (this.critters) {
       this.critters.update(delta);
     }
+
+    // Atualizar iluminação dia/noite
+    this.updateDayNightLighting();
 
     // Sistema de chuva
     this.updateRain(delta);

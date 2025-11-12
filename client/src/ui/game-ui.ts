@@ -12,6 +12,7 @@ import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
 import { RanchScene3D } from '../3d/scenes/RanchScene3D';
 import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';
 import { formatTime } from '../utils/time-format';
+import { getCurrentTimeOfDay } from '../utils/day-night';
 
 const HEADER_HEIGHT = 112;
 const SIDE_PANEL_WIDTH = 510;
@@ -397,9 +398,20 @@ export class GameUI {
       color: GLASS_THEME.palette.text.highlight,
     });
 
+    // Relógio visual
+    const timeOfDay = getCurrentTimeOfDay();
+    const clockIcon = timeOfDay.isNight ? '🌙' : '☀️';
+    const clockX = 24;
+    const clockY = 62;
+    drawText(this.ctx, `${clockIcon} ${timeOfDay.timeString}`, clockX, clockY, {
+      font: 'bold 16px monospace',
+      color: timeOfDay.isNight ? GLASS_THEME.palette.accent.blue : GLASS_THEME.palette.accent.amber,
+      shadow: false,
+    });
+
     const beast = this.gameState.activeBeast;
     const explorationCount = beast?.explorationCount || 0;
-    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 24, 62, {
+    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 24, 88, {
       font: 'bold 15px monospace',
       color: GLASS_THEME.palette.text.secondary,
       shadow: false,

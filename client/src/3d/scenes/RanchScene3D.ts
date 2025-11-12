@@ -10,6 +10,7 @@ import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Water } from '../water/PS1Water';
 import { RanchCritters } from '../events/RanchCritters';
+import { getSkyColor } from '../utils/day-night';
 
 type Vec2 = [number, number];
 type Vec3 = [number, number, number];
@@ -1303,6 +1304,17 @@ export class RanchScene3D {
 
     if (this.critters) {
       this.critters.update(delta);
+    }
+
+    // Atualizar iluminação dia/noite
+    this.threeScene.updateDayNightLighting();
+    
+    // Atualizar cor do fog baseado no tempo do dia
+    const scene = this.threeScene.getScene();
+    if (scene.fog) {
+      const skyColor = getSkyColor();
+      const fogColor = new THREE.Color(skyColor.r, skyColor.g, skyColor.b);
+      scene.fog.color = fogColor;
     }
 
     this.updateLanterns(delta);
