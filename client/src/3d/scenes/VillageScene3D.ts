@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import type { VillageBuildingConfig } from '../../types/village';
 
@@ -12,6 +13,16 @@ interface BuildingInstance {
   group: THREE.Group;
   highlight: THREE.Mesh;
   isHovered: boolean;
+}
+
+interface PrefabSpawnOptions {
+  name?: string;
+  position: [number, number, number];
+  rotationY?: number;
+  targetHeight?: number;
+  verticalOffset?: number;
+  scaleMultiplier?: number;
+  randomRotation?: boolean;
 }
 
 export class VillageScene3D {
@@ -25,6 +36,20 @@ export class VillageScene3D {
   private buildingGroup: THREE.Group;
   private buildings: BuildingInstance[] = [];
   private hoveredBuilding: BuildingInstance | null = null;
+  private gltfLoader: GLTFLoader = new GLTFLoader();
+  private templePrefab: THREE.Group | null = null;
+  private treePrefabs: THREE.Group[] = [];
+  private treePrefabsPromise: Promise<THREE.Group[]> | null = null;
+  private flowerPrefabs: THREE.Group[] = [];
+  private flowerPrefabsPromise: Promise<THREE.Group[]> | null = null;
+  private rockPrefabs: THREE.Group[] = [];
+  private rockPrefabsPromise: Promise<THREE.Group[]> | null = null;
+  private tavernPrefab: THREE.Group | null = null;
+  private tavernPrefabPromise: Promise<THREE.Group> | null = null;
+  private craftPrefab: THREE.Group | null = null;
+  private craftPrefabPromise: Promise<THREE.Group> | null = null;
+  private environmentGroup: THREE.Group | null = null;
+  private ranchPrefabCache = new Map<string, THREE.Group>();
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
@@ -207,9 +232,15 @@ export class VillageScene3D {
   }
 
   private createDecoration(): void {
-    const fountain = this.createFountain();
-    fountain.position.set(0, 0, 0);
-    this.scene.add(fountain);
+    if (this.environmentGroup) {
+      this.scene.remove(this.environmentGroup);
+      this.environmentGroup = null;
+    }
+
+    const root = new THREE.Group();
+    root.name = 'village-environment';
+    this.environmentGroup = root;
+    this.scene.add(root);
 
     const treePositions: Array<[number, number]> = [
       [-30, -16],
@@ -220,24 +251,11 @@ export class VillageScene3D {
       [12, 26],
     ];
 
-    for (const [x, z] of treePositions) {
-      const tree = this.createTree();
+    treePositions.forEach(([x, z], index) => {
+      const tree = this.createTree(index);
       tree.position.set(x, 0, z);
-      this.scene.add(tree);
-    }
-
-    const lampPositions: Array<[number, number]> = [
-      [-9, 7],
-      [9, 7],
-      [-6, -6],
-      [6, -6],
-    ];
-
-    for (const [x, z] of lampPositions) {
-      const lamp = this.createLampPost();
-      lamp.position.set(x, 0, z);
-      this.scene.add(lamp);
-    }
+      root.add(tree);
+    });
 
     const flowerPositions: Array<[number, number]> = [
       [-4, 11],
@@ -246,11 +264,111 @@ export class VillageScene3D {
       [11, -2],
     ];
 
-    for (const [x, z] of flowerPositions) {
-      const flowerBed = this.createFlowerBed();
-      flowerBed.position.set(x, 0, z);
-      this.scene.add(flowerBed);
-    }
+    flowerPositions.forEach(([x, z], index) => {
+      const flower = this.createFlower(index);
+      flower.position.set(x, 0, z);
+      root.add(flower);
+    });
+
+    const rockPositions: Array<[number, number]> = [
+      [-6, 14],
+      [6, 14],
+      [-14, 4],
+      [14, 4],
+    ];
+
+    rockPositions.forEach(([x, z], index) => {
+      const rock = this.createRock(index);
+      rock.position.set(x, 0, z);
+      root.add(rock);
+    });
+
+    const grassPatches: Array<{ position: [number, number, number]; rotation?: number }> = [
+      { position: [-10, 0, 8], rotation: Math.PI * 0.15 },
+      { position: [10, 0, 8], rotation: -Math.PI * 0.12 },
+      { position: [-16, 0, -6], rotation: Math.PI * 0.4 },
+      { position: [16, 0, -6], rotation: -Math.PI * 0.35 },
+      { position: [0, 0, -10], rotation: Math.PI * 0.5 },
+    ];
+
+    grassPatches.forEach((cfg, index) => {
+      this.spawnRanchPrefab('/assets/3d/Ranch/Grass/Grass1.glb', {
+        name: `village-grass-${index}`,
+        position: cfg.position,
+        rotationY: cfg.rotation,
+        targetHeight: 1.6,
+        verticalOffset: -0.1,
+        scaleMultiplier: 1.1,
+      });
+    });
+
+    const lanternPositions: Array<{ position: [number, number, number]; rotation?: number }> = [
+      { position: [-9, 0, 7], rotation: Math.PI * 0.08 },
+      { position: [9, 0, 7], rotation: -Math.PI * 0.08 },
+      { position: [-6, 0, -6], rotation: Math.PI * 0.12 },
+      { position: [6, 0, -6], rotation: -Math.PI * 0.12 },
+    ];
+
+    lanternPositions.forEach((cfg, index) => {
+      const wrapper = this.spawnRanchPrefab('/assets/3d/Ranch/Lantern/Lantern1.glb', {
+        name: `village-lantern-${index}`,
+        position: cfg.position,
+        rotationY: cfg.rotation,
+        targetHeight: 3.4,
+        verticalOffset: -0.15,
+      });
+
+      if (wrapper) {
+        const light = new THREE.PointLight(0xfff3c4, 1.1, 11, 2);
+        light.position.set(0, 2.2, 0);
+        wrapper.add(light);
+      }
+    });
+
+    const mountainPositions: Array<{ position: [number, number, number]; rotation?: number; scale?: number }> = [
+      { position: [-40, 0, -32], rotation: Math.PI * 0.4, scale: 1.2 },
+      { position: [42, 0, -30], rotation: -Math.PI * 0.35, scale: 1.25 },
+      { position: [-26, 0, 28], rotation: Math.PI * 0.15, scale: 0.95 },
+      { position: [28, 0, 30], rotation: -Math.PI * 0.18, scale: 1.05 },
+    ];
+
+    mountainPositions.forEach((cfg, index) => {
+      const wrapper = this.spawnRanchPrefab('/assets/3d/Ranch/Mountain/Mountain1.glb', {
+        name: `village-mountain-${index}`,
+        position: cfg.position,
+        rotationY: cfg.rotation,
+        targetHeight: 26 * (cfg.scale ?? 1),
+        verticalOffset: -1.8,
+      });
+      if (wrapper && cfg.scale) {
+        wrapper.scale.setScalar(cfg.scale);
+      }
+    });
+
+    const houseAssets = [
+      '/assets/3d/Ranch/House/House1.glb',
+      '/assets/3d/Ranch/House/House2.glb',
+      '/assets/3d/Ranch/House/House3.glb',
+    ];
+
+    const scenicHouses: Array<{ position: [number, number, number]; rotation?: number; index?: number }> = [
+      { position: [-26, 0, -20], rotation: Math.PI * 0.18, index: 0 },
+      { position: [26, 0, -22], rotation: -Math.PI * 0.22, index: 1 },
+      { position: [-34, 0, 8], rotation: Math.PI * 0.08, index: 2 },
+      { position: [34, 0, 10], rotation: -Math.PI * 0.1, index: 1 },
+    ];
+
+    scenicHouses.forEach((cfg, idx) => {
+      const assetIndex = cfg.index ?? (idx % houseAssets.length);
+      this.spawnRanchPrefab(houseAssets[assetIndex], {
+        name: `village-house-scenic-${idx}`,
+        position: cfg.position,
+        rotationY: cfg.rotation,
+        targetHeight: 6.4,
+        verticalOffset: -0.2,
+        scaleMultiplier: 1.05,
+      });
+    });
   }
 
   private createFountain(): THREE.Group {
@@ -289,7 +407,30 @@ export class VillageScene3D {
     return group;
   }
 
-  private createTree(): THREE.Group {
+  private createTree(index: number): THREE.Group {
+    const wrapper = new THREE.Group();
+    wrapper.name = `village-tree-${index}`;
+
+    this.loadTreePrefabs()
+      .then((prefabs) => {
+        if (prefabs.length === 0) {
+          throw new Error('No tree prefabs loaded');
+        }
+        const prefab = prefabs[index % prefabs.length] ?? prefabs[0];
+        const clone = prefab.clone(true);
+        this.prepareTreeModel(clone);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Failed to load tree prefab. Falling back to procedural tree.', error);
+        const fallback = this.createProceduralTree();
+        wrapper.add(fallback);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralTree(): THREE.Group {
     const tree = new THREE.Group();
 
     const trunk = new THREE.Mesh(
@@ -309,6 +450,407 @@ export class VillageScene3D {
     }
 
     return tree;
+  }
+
+  private loadTreePrefabs(): Promise<THREE.Group[]> {
+    if (this.treePrefabs.length > 0) {
+      return Promise.resolve(this.treePrefabs);
+    }
+
+    if (this.treePrefabsPromise) {
+      return this.treePrefabsPromise;
+    }
+
+    const treeFiles = ['/assets/3d/Ranch/Tree/Tree1.glb', '/assets/3d/Ranch/Tree/Tree2.glb'];
+    this.treePrefabsPromise = Promise.all(
+      treeFiles.map(
+        (url) =>
+          new Promise<THREE.Group>((resolve, reject) => {
+            this.gltfLoader.load(
+              url,
+              (gltf) => {
+                const scene = gltf.scene;
+                scene.traverse((child) => {
+                  if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                  }
+                });
+                resolve(scene);
+              },
+              undefined,
+              (error) => reject(error),
+            );
+          }),
+      ),
+    )
+      .then((prefabs) => {
+        this.treePrefabs = prefabs;
+        return this.treePrefabs;
+      })
+      .catch((error) => {
+        this.treePrefabsPromise = null;
+        throw error;
+      });
+
+    return this.treePrefabsPromise;
+  }
+
+  private prepareTreeModel(model: THREE.Group) {
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    // Normalize pivot and scale to fit village proportions
+    const initialBox = new THREE.Box3().setFromObject(model);
+    const initialSize = initialBox.getSize(new THREE.Vector3());
+    if (initialSize.y > 0) {
+      const targetHeight = 5.6;
+      const scale = targetHeight / initialSize.y;
+      model.scale.setScalar(scale);
+    }
+
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    model.position.y += size.y / 2;
+
+    model.rotation.y = Math.random() * Math.PI * 2;
+  }
+
+  private createFlower(index: number): THREE.Group {
+    const wrapper = new THREE.Group();
+    wrapper.name = `village-flower-${index}`;
+
+    const fallback = this.createProceduralFlower(index);
+    wrapper.add(fallback);
+
+    this.loadFlowerPrefabs()
+      .then((prefabs) => {
+        if (prefabs.length === 0) {
+          return;
+        }
+        const prefab = prefabs[index % prefabs.length] ?? prefabs[0];
+        const clone = prefab.clone(true);
+        this.prepareFlowerModel(clone, index);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Failed to load flower prefab. Using procedural fallback.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralFlower(index: number): THREE.Group {
+    const group = new THREE.Group();
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 0.6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2f7a36, roughness: 0.8 }),
+    );
+    stem.position.y = 0.3;
+    stem.castShadow = true;
+    group.add(stem);
+
+    const petals = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 12, 12),
+      new THREE.MeshStandardMaterial({ color: this.getFlowerColor(index), roughness: 0.6 }),
+    );
+    petals.position.y = 0.68;
+    petals.castShadow = true;
+    group.add(petals);
+
+    const center = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfff18f, roughness: 0.4 }),
+    );
+    center.position.y = 0.78;
+    center.castShadow = true;
+    group.add(center);
+
+    return group;
+  }
+
+  private loadFlowerPrefabs(): Promise<THREE.Group[]> {
+    if (this.flowerPrefabs.length > 0) {
+      return Promise.resolve(this.flowerPrefabs);
+    }
+
+    if (this.flowerPrefabsPromise) {
+      return this.flowerPrefabsPromise;
+    }
+
+    const flowerFiles = ['/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb'];
+    this.flowerPrefabsPromise = Promise.all(
+      flowerFiles.map(
+        (url) =>
+          new Promise<THREE.Group>((resolve, reject) => {
+            this.gltfLoader.load(
+              url,
+              (gltf) => {
+                const scene = gltf.scene;
+                scene.traverse((child) => {
+                  if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) {
+                      const materials = Array.isArray(child.material) ? child.material : [child.material];
+                      child.material = materials.map((mat) => mat.clone()) as unknown as THREE.Material;
+                    }
+                  }
+                });
+                resolve(scene);
+              },
+              undefined,
+              (error) => reject(error),
+            );
+          }),
+      ),
+    )
+      .then((prefabs) => {
+        this.flowerPrefabs = prefabs;
+        return this.flowerPrefabs;
+      })
+      .catch((error) => {
+        this.flowerPrefabsPromise = null;
+        throw error;
+      });
+
+    return this.flowerPrefabsPromise;
+  }
+
+  private prepareFlowerModel(model: THREE.Group, index: number) {
+    const color = new THREE.Color(this.getFlowerColor(index));
+    const leafColor = new THREE.Color(0x2f7a36);
+
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((mat) => {
+          if (mat instanceof THREE.MeshStandardMaterial) {
+            const name = (mat.name || '').toLowerCase();
+            const current = mat.color.clone();
+            if (name.includes('stem') || name.includes('leaf') || current.g > current.r) {
+              mat.color.copy(leafColor);
+            } else {
+              mat.color.copy(color);
+            }
+            mat.needsUpdate = true;
+          }
+        });
+      }
+    });
+
+    const targetHeight = 0.8;
+    this.normaliseStaticModel(model, targetHeight, -0.08);
+    model.rotation.y = Math.random() * Math.PI * 2;
+  }
+
+  private getFlowerColor(index: number): number {
+    const palette = [0xffa0c0, 0xffd65c, 0xff9159, 0xb074ff];
+    return palette[index % palette.length];
+  }
+
+  private createRock(index: number): THREE.Group {
+    const wrapper = new THREE.Group();
+    wrapper.name = `village-rock-${index}`;
+
+    const fallback = this.createProceduralRock();
+    wrapper.add(fallback);
+
+    this.loadRockPrefabs()
+      .then((prefabs) => {
+        if (prefabs.length === 0) {
+          return;
+        }
+        const prefab = prefabs[index % prefabs.length] ?? prefabs[0];
+        const clone = prefab.clone(true);
+        this.prepareRockModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Failed to load rock prefab. Using procedural fallback.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralRock(): THREE.Group {
+    const geometry = new THREE.DodecahedronGeometry(0.9, 0);
+    const material = new THREE.MeshStandardMaterial({ color: 0x7b7f8a, roughness: 0.85 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    const group = new THREE.Group();
+    group.add(mesh);
+    return group;
+  }
+
+  private loadRockPrefabs(): Promise<THREE.Group[]> {
+    if (this.rockPrefabs.length > 0) {
+      return Promise.resolve(this.rockPrefabs);
+    }
+
+    if (this.rockPrefabsPromise) {
+      return this.rockPrefabsPromise;
+    }
+
+    const rockFiles = ['/assets/3d/Ranch/Rock/Stone1.glb'];
+    this.rockPrefabsPromise = Promise.all(
+      rockFiles.map(
+        (url) =>
+          new Promise<THREE.Group>((resolve, reject) => {
+            this.gltfLoader.load(
+              url,
+              (gltf) => {
+                const scene = gltf.scene;
+                scene.traverse((child) => {
+                  if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) {
+                      const materials = Array.isArray(child.material) ? child.material : [child.material];
+                      child.material = materials.map((mat) => mat.clone()) as unknown as THREE.Material;
+                    }
+                  }
+                });
+                resolve(scene);
+              },
+              undefined,
+              (error) => reject(error),
+            );
+          }),
+      ),
+    )
+      .then((prefabs) => {
+        this.rockPrefabs = prefabs;
+        return this.rockPrefabs;
+      })
+      .catch((error) => {
+        this.rockPrefabsPromise = null;
+        throw error;
+      });
+
+    return this.rockPrefabsPromise;
+  }
+
+  private prepareRockModel(model: THREE.Group) {
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((mat) => {
+          if (mat instanceof THREE.MeshStandardMaterial) {
+            mat.roughness = 0.9;
+            mat.metalness = 0.05;
+            mat.color.setHex(0x70757f);
+            mat.needsUpdate = true;
+          }
+        });
+      }
+    });
+
+    const targetHeight = 1.1;
+    this.normaliseStaticModel(model, targetHeight, -0.12);
+    model.rotation.y = Math.random() * Math.PI * 2;
+  }
+
+  private spawnRanchPrefab(url: string, options: PrefabSpawnOptions): THREE.Group | null {
+    if (!this.environmentGroup) {
+      return null;
+    }
+
+    const wrapper = new THREE.Group();
+    if (options.name) {
+      wrapper.name = options.name;
+    }
+
+    const [x, y, z] = options.position;
+    wrapper.position.set(x, y, z);
+
+    if (options.rotationY !== undefined) {
+      wrapper.rotation.y = options.rotationY;
+    } else if (options.randomRotation) {
+      wrapper.rotation.y = Math.random() * Math.PI * 2;
+    }
+
+    if (options.scaleMultiplier && options.scaleMultiplier !== 1) {
+      wrapper.scale.setScalar(options.scaleMultiplier);
+    }
+
+    this.environmentGroup.add(wrapper);
+
+    this.loadRanchPrefab(url)
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareStaticPrefab(clone);
+
+        if (options.targetHeight !== undefined) {
+          this.normaliseStaticModel(clone, options.targetHeight, options.verticalOffset ?? 0);
+        } else if (options.verticalOffset) {
+          clone.position.y += options.verticalOffset;
+        }
+
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error(`[VillageScene3D] Falha ao carregar prefab ${url}:`, error);
+      });
+
+    return wrapper;
+  }
+
+  private loadRanchPrefab(url: string): Promise<THREE.Group> {
+    const cached = this.ranchPrefabCache.get(url);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(
+        url,
+        (gltf) => {
+          const scene = gltf.scene;
+          scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+
+          this.ranchPrefabCache.set(url, scene);
+          resolve(scene);
+        },
+        undefined,
+        (error) => reject(error),
+      );
+    });
+  }
+
+  private normaliseStaticModel(model: THREE.Group, targetHeight: number, verticalOffset: number) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    if (size.y > 0) {
+      const scale = targetHeight / size.y;
+      model.scale.setScalar(scale);
+    }
+
+    const scaledBox = new THREE.Box3().setFromObject(model);
+    const scaledSize = scaledBox.getSize(new THREE.Vector3());
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    model.position.y += scaledSize.y / 2 + verticalOffset;
   }
 
   private createLampPost(): THREE.Group {
@@ -498,6 +1040,26 @@ export class VillageScene3D {
   }
 
   private createAlchemySanctum(config: VillageBuildingConfig): THREE.Group {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralAlchemy(config);
+    wrapper.add(fallback);
+
+    this.loadCraftPrefab()
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareCraftModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar Craft.glb, usando fallback procedural.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralAlchemy(config: VillageBuildingConfig): THREE.Group {
     const lab = new THREE.Group();
 
     const base = new THREE.Mesh(
@@ -657,6 +1219,26 @@ export class VillageScene3D {
   }
 
   private createTemple(config: VillageBuildingConfig): THREE.Group {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralTemple(config);
+    wrapper.add(fallback);
+
+    this.loadTemplePrefab()
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareTempleModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar Temple.glb, usando fallback procedural.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralTemple(config: VillageBuildingConfig): THREE.Group {
     const temple = new THREE.Group();
 
     const base = new THREE.Mesh(
@@ -705,33 +1287,178 @@ export class VillageScene3D {
     return temple;
   }
 
+  private loadTemplePrefab(): Promise<THREE.Group> {
+    if (this.templePrefab) {
+      return Promise.resolve(this.templePrefab);
+    }
+
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(
+        '/assets/3d/Village/Temple.glb',
+        (gltf) => {
+          gltf.scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          this.templePrefab = gltf.scene;
+          resolve(this.templePrefab);
+        },
+        undefined,
+        (error) => reject(error),
+      );
+    });
+  }
+
+  private prepareTempleModel(model: THREE.Group) {
+    model.scale.set(3.2, 3.2, 3.2);
+    model.position.set(0, 0, 0);
+    model.rotation.y = Math.PI;
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+  }
+
+  private loadTavernPrefab(): Promise<THREE.Group> {
+    if (this.tavernPrefab) {
+      return Promise.resolve(this.tavernPrefab);
+    }
+    if (this.tavernPrefabPromise) {
+      return this.tavernPrefabPromise;
+    }
+
+    const candidates = ['/assets/3d/Village/Tavern.glb', '/assets/3d/Village/TavernHouse.glb'];
+    this.tavernPrefabPromise = this.loadVillagePrefabCandidates(candidates)
+      .then((prefab) => {
+        this.tavernPrefab = prefab;
+        return prefab;
+      })
+      .catch((error) => {
+        this.tavernPrefabPromise = null;
+        throw error;
+      });
+
+    return this.tavernPrefabPromise;
+  }
+
+  private prepareTavernModel(model: THREE.Group) {
+    this.prepareStaticPrefab(model);
+    this.normaliseStaticModel(model, 6.2, 0);
+  }
+
+  private loadCraftPrefab(): Promise<THREE.Group> {
+    if (this.craftPrefab) {
+      return Promise.resolve(this.craftPrefab);
+    }
+    if (this.craftPrefabPromise) {
+      return this.craftPrefabPromise;
+    }
+
+    const candidates = [
+      '/assets/3d/Village/Craft.glb',
+      '/assets/3d/Village/CraftHouse.glb',
+      '/assets/3d/Village/Alchemy.glb',
+    ];
+    this.craftPrefabPromise = this.loadVillagePrefabCandidates(candidates)
+      .then((prefab) => {
+        this.craftPrefab = prefab;
+        return prefab;
+      })
+      .catch((error) => {
+        this.craftPrefabPromise = null;
+        throw error;
+      });
+
+    return this.craftPrefabPromise;
+  }
+
+  private prepareCraftModel(model: THREE.Group) {
+    this.prepareStaticPrefab(model);
+    this.normaliseStaticModel(model, 6.5, 0);
+  }
+
+  private prepareStaticPrefab(model: THREE.Group) {
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          const clonedMaterials = materials.map((mat) => {
+            if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
+              const cloned = mat.clone();
+              cloned.needsUpdate = true;
+              return cloned;
+            }
+            if ((mat as THREE.Material).clone) {
+              return (mat as THREE.Material).clone();
+            }
+            return mat;
+          });
+
+          child.material = Array.isArray(child.material)
+            ? (clonedMaterials as THREE.Material[])
+            : (clonedMaterials[0] as THREE.Material);
+        }
+      }
+    });
+  }
+
+  private loadVillagePrefabCandidates(candidates: string[]): Promise<THREE.Group> {
+    return new Promise((resolve, reject) => {
+      const tryLoad = (index: number) => {
+        if (index >= candidates.length) {
+          reject(new Error(`Nenhum dos modelos pôde ser carregado: ${candidates.join(', ')}`));
+          return;
+        }
+
+        const url = candidates[index];
+        this.gltfLoader.load(
+          url,
+          (gltf) => {
+            const scene = gltf.scene;
+            scene.traverse((child) => {
+              if (child instanceof THREE.Mesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
+            resolve(scene);
+          },
+          undefined,
+          (error) => {
+            console.warn(`[VillageScene3D] Falha ao carregar ${url}:`, error);
+            tryLoad(index + 1);
+          },
+        );
+      };
+
+      tryLoad(0);
+    });
+  }
+
   private createTavern(config: VillageBuildingConfig): THREE.Group {
-    const tavern = this.createHouse(config);
+    const wrapper = new THREE.Group();
+    const fallback = this.createHouse(config);
+    wrapper.add(fallback);
 
-    const banner = new THREE.Mesh(
-      new THREE.BoxGeometry(0.15, 2.4, 0.15),
-      new THREE.MeshStandardMaterial({ color: 0x50322d, roughness: 0.8 }),
-    );
-    banner.position.set(-1.9, 2.1, 1.6);
-    tavern.add(banner);
+    this.loadTavernPrefab()
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareTavernModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar Tavern.glb, usando fallback procedural.', error);
+      });
 
-    const flag = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.6, 1.1),
-      new THREE.MeshStandardMaterial({
-        color: 0xffd280,
-        roughness: 0.5,
-        side: THREE.DoubleSide,
-      }),
-    );
-    flag.position.set(-2.7, 2.0, 1.6);
-    flag.rotation.y = Math.PI / 2;
-    tavern.add(flag);
-
-    const note = this.createBillboardText(config.icon, 0.35);
-    note.position.set(0, 2.6, 1.7);
-    tavern.add(note);
-
-    return tavern;
+    return wrapper;
   }
 
   private createGuildHall(config: VillageBuildingConfig): THREE.Group {
@@ -866,6 +1593,11 @@ export class VillageScene3D {
   public dispose(): void {
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);
+    }
+
+    if (this.environmentGroup) {
+      this.scene.remove(this.environmentGroup);
+      this.environmentGroup = null;
     }
 
     this.clearBuildings();
