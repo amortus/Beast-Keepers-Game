@@ -300,31 +300,44 @@ function startRenderLoop() {
     // Render based on state
     // CORREÇÃO: inAuth já garante que não renderizamos AuthUI após login
     if (inAuth && authUI) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing authUI');
       authUI.draw();
     } else if (needsGameInit && gameInitUI) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing gameInitUI');
       gameInitUI.draw();
     } else if (inBattle && battleUI) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing battleUI');
       battleUI.draw();
     } else if (inTemple && templeUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing templeUI');
       templeUI.draw(gameState);
     } else if (inDialogue && dialogueUI) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing dialogueUI');
       // Draw dialogue UI (Vila) - NO gameUI underneath!
       dialogueUI.draw();
     } else if (inShop && shopUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing shopUI');
       shopUI.draw(gameState);
     } else if (inInventory && inventoryUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing inventoryUI');
       inventoryUI.draw(gameState);
     } else if (inCraft && craftUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing craftUI');
       craftUI.draw(gameState);
     } else if (inQuests && questsUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing questsUI');
       questsUI.draw(gameState);
     } else if (inAchievements && achievementsUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing achievementsUI');
       achievementsUI.draw(gameState);
     } else if (inDungeon && dungeonUI && gameState) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing dungeonUI');
       dungeonUI.draw(gameState);
     } else if (inExploration && explorationUI) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing explorationUI');
       explorationUI.draw(explorationState || undefined);
     } else if (inRanch3D && ranch3DUI) {
+      if (frameCount % 60 === 0) console.log('[Render] Drawing ranch3DUI');
       ranch3DUI.render();
       // Clean up mini viewer when in full 3D mode
       if (gameUI) {
@@ -360,7 +373,30 @@ function startRenderLoop() {
           });
         }
       } else {
+        if (frameCount % 60 === 0) console.log('[Render] Drawing gameUI - all conditions met');
         gameUI.draw();
+      }
+    } else {
+      // Debug: log quando gameUI ou gameState não existem
+      if (frameCount % 60 === 0) {
+        console.warn('[Render] Cannot draw gameUI:', {
+          hasGameUI: !!gameUI,
+          hasGameState: !!gameState,
+          inAuth,
+          needsGameInit,
+          inBattle,
+          inTemple,
+          inDialogue,
+          inShop,
+          inInventory,
+          inCraft,
+          inQuests,
+          inAchievements,
+          inDungeon,
+          inExploration,
+          inRanch3D,
+          inVillage,
+        });
       }
     }
 
