@@ -1365,6 +1365,7 @@ export class VillageScene3D {
   private createMarket(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralMarket(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
     wrapper.add(fallback);
 
     this.loadMarketPrefab()
@@ -1377,6 +1378,7 @@ export class VillageScene3D {
       })
       .catch((error) => {
         console.error('[VillageScene3D] Falha ao carregar Market.glb, usando fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
       });
 
     return wrapper;
@@ -1461,11 +1463,13 @@ export class VillageScene3D {
   private createPrefabHouse(config: VillageBuildingConfig, index: number): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralHouse(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
     wrapper.add(fallback);
 
     this.loadHousePrefabs()
       .then((prefabs) => {
         if (prefabs.length === 0) {
+          fallback.visible = true; // Mostrar fallback se não houver prefabs
           return;
         }
         const prefab = prefabs[Math.abs(index) % prefabs.length] ?? prefabs[0];
@@ -1477,6 +1481,7 @@ export class VillageScene3D {
       })
       .catch((error) => {
         console.error('[VillageScene3D] Falha ao carregar House prefab, mantendo fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
       });
 
     return wrapper;
@@ -1531,6 +1536,7 @@ export class VillageScene3D {
   private createAlchemySanctum(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralAlchemy(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
     wrapper.add(fallback);
 
     this.loadCraftPrefab()
@@ -1543,6 +1549,7 @@ export class VillageScene3D {
       })
       .catch((error) => {
         console.error('[VillageScene3D] Falha ao carregar Craft.glb, usando fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
       });
 
     return wrapper;
@@ -1711,6 +1718,7 @@ export class VillageScene3D {
     const wrapper = new THREE.Group();
     wrapper.rotation.y = Math.PI; // Rotação de 180 graus no wrapper
     const fallback = this.createProceduralTemple(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
     wrapper.add(fallback);
 
     this.loadTemplePrefab()
@@ -1723,6 +1731,7 @@ export class VillageScene3D {
       })
       .catch((error) => {
         console.error('[VillageScene3D] Falha ao carregar Temple.glb, usando fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
       });
 
     return wrapper;
@@ -1731,6 +1740,7 @@ export class VillageScene3D {
   private createDungeon(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralDungeon(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
     wrapper.add(fallback);
 
     this.loadDungeonPrefab()
@@ -1743,6 +1753,7 @@ export class VillageScene3D {
       })
       .catch((error) => {
         console.error('[VillageScene3D] Falha ao carregar Dungeon.glb, usando fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
       });
 
     return wrapper;
@@ -2091,6 +2102,7 @@ export class VillageScene3D {
   private createTavern(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
     const fallback = this.createHouse(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
     wrapper.add(fallback);
 
     this.loadTavernPrefab()
@@ -2103,6 +2115,7 @@ export class VillageScene3D {
       })
       .catch((error) => {
         console.error('[VillageScene3D] Falha ao carregar Tavern.glb, usando fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
       });
 
     return wrapper;

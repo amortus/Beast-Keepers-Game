@@ -89,7 +89,7 @@ export class GameUI {
   }
   
   // Cleanup Ranch Scene 3D
-  private cleanupRanchScene3D() {
+  public cleanupRanchScene3D() {
     console.log('[GameUI] Ranch Scene 3D cleanup started...');
     
     if (this.ranchScene3D) {

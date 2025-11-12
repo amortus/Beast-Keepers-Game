@@ -20,6 +20,7 @@ export class Village3DUI {
   public onOpenCraft?: () => void;
   public onOpenDungeons?: () => void;
   public onOpenRanch?: () => void;
+  public onClose?: () => void;
 
   constructor() {
     // Container principal
@@ -27,10 +28,10 @@ export class Village3DUI {
     this.container.id = 'village-3d-container';
     this.container.style.cssText = `
       position: fixed;
-      top: 60px;
+      top: 0;
       left: 0;
       right: 0;
-      bottom: 40px;
+      bottom: 0;
       background: #87CEEB;
       z-index: 5;
       display: none;
@@ -77,7 +78,12 @@ export class Village3DUI {
       cursor: pointer;
       z-index: 10;
     `;
-    closeButton.addEventListener('click', () => this.hide());
+    closeButton.addEventListener('click', () => {
+      this.hide();
+      if (this.onClose) {
+        this.onClose();
+      }
+    });
     closeButton.addEventListener('mouseenter', () => {
       closeButton.style.background = COLORS.primary.redDark;
     });

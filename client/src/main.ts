@@ -177,6 +177,7 @@ let modalUI: ModalUI | null = null;
 let explorationUI: ExplorationUI | null = null;
 let ranch3DUI: Ranch3DUI | null = null;
 let village3DUI: Village3DUI | null = null;
+let inVillage = false;
 let chatUI: ChatUI | null = null;
 let optionsMenuUI: OptionsMenuUI | null = null;
 let inBattle = false;
@@ -330,9 +331,11 @@ function startRenderLoop() {
         gameUI.dispose();
       }
     } else if (gameUI && gameState) {
-      // Only draw GameUI when NO other menu is active AND modal is not showing
+      // Only draw GameUI when NO other menu is active AND modal is not showing AND village is not open
       if (modalUI && modalUI.isShowing()) {
         // Skip drawing GameUI when modal is open (e.g., Vila menu)
+      } else if (inVillage) {
+        // Skip drawing GameUI when village is open
       } else {
         gameUI.draw();
       }
@@ -1429,6 +1432,8 @@ function closeTemple() {
 function openVillage() {
   if (!gameState) return;
 
+  inVillage = true;
+
   if (gameUI) {
     gameUI.hide3DViewer();
     console.log('[Main] Village opened - 3D viewer hidden');
@@ -1464,12 +1469,10 @@ function openVillage() {
     village3DUI.onOpenCraft = () => openCraft();
     village3DUI.onOpenDungeons = () => openDungeon();
     village3DUI.onOpenRanch = () => {
-      if (village3DUI) {
-        village3DUI.hide();
-      }
-      if (gameUI) {
-        gameUI.show3DViewer();
-      }
+      closeVillage();
+    };
+    village3DUI.onClose = () => {
+      closeVillage();
     };
 
     console.log('[Main] Village 3D UI created');
@@ -1480,14 +1483,19 @@ function openVillage() {
 }
 
 function closeVillage() {
+  inVillage = false;
+  
   if (village3DUI) {
     village3DUI.hide();
   }
   
-  // Show 3D viewer when returning to ranch
-  if (gameUI) {
+  // Force recreation of ranch 3D scene when returning from village
+  if (gameUI && gameState && gameState.activeBeast) {
+    // Force cleanup and recreation by clearing the ranch scene
+    gameUI.cleanupRanchScene3D();
+    // Show 3D viewer will recreate it on next draw
     gameUI.show3DViewer();
-    console.log('[Main] Village closed - 3D viewer shown');
+    console.log('[Main] Village closed - forcing ranch 3D recreation');
   }
 }
 
