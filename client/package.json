@@ -1,7 +1,7 @@
 {
   "name": "beast-keepers",
-  "version": "1.0.0",
-  "description": "Beast Keepers - 2D top-down game using vanilla TypeScript and Web APIs",
+  "version": "0.6.5",
+  "description": "Crie, treine e batalhe com criaturas místicas no mundo de Aurath.",
   "type": "module",
   "scripts": {
     "dev": "vite",
