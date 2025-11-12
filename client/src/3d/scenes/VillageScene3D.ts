@@ -67,12 +67,25 @@ export class VillageScene3D {
   private dungeonGroup: THREE.Group | null = null;
   private dungeonBaseY: number = 0;
   private dungeonFloatTime: number = 0;
+  
+  // Sistema de colisão
+  private collisionZones: Array<{ x: number; z: number; radius: number }> = [];
+  
+  // Sistema de loading
+  private isLoading: boolean = false;
+  private loadingProgress: number = 0;
+  private totalAssets: number = 0;
+  private loadedAssets: number = 0;
+  private onLoadingProgress?: (progress: number) => void;
+  private onLoadingComplete?: () => void;
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
 
   public onBuildingClick?: (building: VillageBuildingConfig) => void;
   public onBuildingHover?: (building: VillageBuildingConfig | null) => void;
+  public onLoadingProgress?: (progress: number) => void;
+  public onLoadingComplete?: () => void;
 
   constructor(
     container: HTMLElement,
@@ -103,12 +116,14 @@ export class VillageScene3D {
 
     this.setupLights();
     this.createGround();
-    this.createDecoration();
-    this.setBuildings(buildings);
     this.setupEventListeners();
     this.lastFrameTime = typeof performance !== 'undefined' ? performance.now() : 0;
     this.nextRainTime = this.getRandomRainDelay();
     this.animate();
+    
+    // setBuildings será chamado de forma async pelo Village3DUI após criar a cena
+    // Não chamar aqui para evitar duplicação
+    
     console.log('[VillageScene3D] Vila 3D inicializada');
   }
 
@@ -117,8 +132,25 @@ export class VillageScene3D {
     return 600 + Math.random() * 3000;
   }
 
-  public setBuildings(buildings: VillageBuildingConfig[]): void {
+  public async setBuildings(buildings: VillageBuildingConfig[]): Promise<void> {
     this.clearBuildings();
+    this.isLoading = true;
+    this.loadedAssets = 0;
+
+    // Contar total de assets a carregar
+    const uniqueVariants = new Set(buildings.map(b => b.variant));
+    let assetCount = 0;
+    if (uniqueVariants.has('house') || uniqueVariants.has('guild')) assetCount++;
+    if (uniqueVariants.has('shop')) assetCount++;
+    if (uniqueVariants.has('alchemy')) assetCount++;
+    if (uniqueVariants.has('temple')) assetCount++;
+    if (uniqueVariants.has('tavern')) assetCount++;
+    if (uniqueVariants.has('dungeon')) assetCount++;
+    assetCount += 3; // Árvores + flores + rochas
+    this.totalAssets = assetCount;
+
+    // Pré-carregar todos os assets necessários
+    await this.preloadAllAssets(buildings);
 
     for (const config of buildings) {
       const group = this.createBuildingMesh(config);
@@ -167,16 +199,154 @@ export class VillageScene3D {
         this.dungeonGroup = group;
         this.dungeonBaseY = config.position.y;
       }
+
+      // Adicionar zona de colisão para esta casa (raio padrão de 4 unidades)
+      this.collisionZones.push({
+        x: config.position.x,
+        z: config.position.z,
+        radius: 4.0, // Raio de colisão padrão para casas
+      });
     }
 
     console.log(`[VillageScene3D] Carregado ${this.buildings.length} edifícios.`);
     this.rebuildVillagers();
+    
+    // Recriar decoração com sistema de colisão (agora que temos as zonas de colisão das casas)
+    this.createDecoration();
+    
+    this.isLoading = false;
+    if (this.onLoadingComplete) {
+      this.onLoadingComplete();
+    }
+  }
+
+  /**
+   * Pré-carrega todos os assets necessários e rastreia progresso
+   */
+  private async preloadAllAssets(buildings: VillageBuildingConfig[]): Promise<void> {
+    const loadPromises: Promise<any>[] = [];
+    const uniqueVariants = new Set(buildings.map(b => b.variant));
+
+    // Carregar prefabs de edifícios
+    if (uniqueVariants.has('house') || uniqueVariants.has('guild')) {
+      loadPromises.push(
+        this.loadHousePrefabs().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+    if (uniqueVariants.has('shop')) {
+      loadPromises.push(
+        this.loadMarketPrefab().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+    if (uniqueVariants.has('alchemy')) {
+      loadPromises.push(
+        this.loadCraftPrefab().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+    if (uniqueVariants.has('temple')) {
+      loadPromises.push(
+        this.loadTemplePrefab().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+    if (uniqueVariants.has('tavern')) {
+      loadPromises.push(
+        this.loadTavernPrefab().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+    if (uniqueVariants.has('dungeon')) {
+      loadPromises.push(
+        this.loadDungeonPrefab().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+
+    // Carregar assets de ambiente
+    loadPromises.push(
+      this.loadTreePrefabs().then(() => {
+        this.updateLoadingProgress();
+      })
+    );
+    loadPromises.push(
+      this.loadFlowerPrefabs().then(() => {
+        this.updateLoadingProgress();
+      })
+    );
+    loadPromises.push(
+      this.loadRockPrefabs().then(() => {
+        this.updateLoadingProgress();
+      })
+    );
+
+    await Promise.all(loadPromises);
+  }
+
+  /**
+   * Atualiza progresso de loading
+   */
+  private updateLoadingProgress(): void {
+    this.loadedAssets++;
+    this.loadingProgress = Math.min(this.loadedAssets / this.totalAssets, 1.0);
+    if (this.onLoadingProgress) {
+      this.onLoadingProgress(this.loadingProgress);
+    }
+  }
+
+  /**
+   * Verifica se uma posição está livre (não colide com casas ou outras árvores)
+   */
+  private isPositionFree(x: number, z: number, radius: number = 2.0): boolean {
+    // Verificar colisão com casas
+    for (const zone of this.collisionZones) {
+      const dx = x - zone.x;
+      const dz = z - zone.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      if (distance < zone.radius + radius) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Encontra uma posição livre próxima à posição desejada
+   */
+  private findFreePosition(desiredX: number, desiredZ: number, radius: number = 2.0, maxAttempts: number = 10): [number, number] | null {
+    // Primeiro, tentar a posição desejada
+    if (this.isPositionFree(desiredX, desiredZ, radius)) {
+      return [desiredX, desiredZ];
+    }
+
+    // Tentar posições próximas em círculo
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const angle = (attempt / maxAttempts) * Math.PI * 2;
+      const offset = radius * 2 * attempt;
+      const newX = desiredX + Math.cos(angle) * offset;
+      const newZ = desiredZ + Math.sin(angle) * offset;
+      
+      if (this.isPositionFree(newX, newZ, radius)) {
+        return [newX, newZ];
+      }
+    }
+
+    return null; // Não encontrou posição livre
   }
 
   private clearBuildings(): void {
     this.dungeonGroup = null;
     this.dungeonBaseY = 0;
     this.dungeonFloatTime = 0;
+    this.collisionZones = [];
     for (const building of this.buildings) {
       this.disposeObject(building.group);
       this.disposeObject(building.highlight);
@@ -284,10 +454,25 @@ export class VillageScene3D {
       [10, -18], // Ajustada: estava muito próxima de Eryon (12, -10)
     ];
 
-    treePositions.forEach(([x, z], index) => {
-      const tree = this.createTree(index);
-      tree.position.set(x, 0, z);
-      root.add(tree);
+    // Usar sistema de colisão para posicionar árvores
+    const validTreePositions: Array<[number, number]> = [];
+    treePositions.forEach(([desiredX, desiredZ], index) => {
+      const freePos = this.findFreePosition(desiredX, desiredZ, 2.0);
+      if (freePos) {
+        validTreePositions.push(freePos);
+        const tree = this.createTree(index);
+        tree.position.set(freePos[0], 0, freePos[1]);
+        root.add(tree);
+        
+        // Adicionar zona de colisão para esta árvore
+        this.collisionZones.push({
+          x: freePos[0],
+          z: freePos[1],
+          radius: 2.0,
+        });
+      } else {
+        console.warn(`[VillageScene3D] Não foi possível encontrar posição livre para árvore ${index} em (${desiredX}, ${desiredZ})`);
+      }
     });
 
     const flowerPositions: Array<[number, number]> = [

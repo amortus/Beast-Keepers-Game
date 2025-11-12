@@ -72,16 +72,6 @@ export const VILLAGE_BLUEPRINT: VillageBuildingBlueprint[] = [
     highlightColor: 0xffeccc,
   },
   {
-    id: 'npc:toran',
-    icon: '📜',
-    variant: 'guild',
-    position: { x: -8, y: 0, z: -14 },
-    color: 0xe1a95f,
-    npcId: 'toran',
-    label: 'Salão do Toran',
-    highlightColor: 0xfff1d6,
-  },
-  {
     id: 'npc:eryon',
     icon: '🎻',
     variant: 'tavern',

@@ -1429,7 +1429,7 @@ function closeTemple() {
 
 // ===== NPC & DIALOGUE SYSTEM =====
 
-function openVillage() {
+async function openVillage() {
   if (!gameState) return;
 
   inVillage = true;
@@ -1479,7 +1479,7 @@ function openVillage() {
   }
 
   village3DUI.setBuildings(buildings);
-  village3DUI.show();
+  await village3DUI.show();
 }
 
 function closeVillage() {
@@ -1686,14 +1686,20 @@ function closeShop() {
   shopUI = null;
   inShop = false;
 
+  // Clear canvas to remove shop UI remnants
+  ctx.fillStyle = '#0f0f1e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
 
-  // Update main UI
+  // Update main UI and force redraw
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
+    // Force immediate redraw
+    gameUI.draw();
   }
 }
 
@@ -1794,14 +1800,20 @@ function closeInventory() {
   inventoryUI = null;
   inInventory = false;
 
+  // Clear canvas to remove inventory UI remnants
+  ctx.fillStyle = '#0f0f1e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
 
-  // Update main UI
+  // Update main UI and force redraw
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
+    // Force immediate redraw
+    gameUI.draw();
   }
 }
 
@@ -1898,14 +1910,20 @@ function closeCraft() {
   craftUI = null;
   inCraft = false;
 
+  // Clear canvas to remove craft UI remnants
+  ctx.fillStyle = '#0f0f1e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
 
-  // Update main UI
+  // Update main UI and force redraw
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
+    // Force immediate redraw
+    gameUI.draw();
   }
 }
 
@@ -1998,14 +2016,20 @@ function closeQuests() {
   questsUI = null;
   inQuests = false;
 
+  // Clear canvas to remove quests UI remnants
+  ctx.fillStyle = '#0f0f1e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
 
-  // Update main UI
+  // Update main UI and force redraw
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
+    // Force immediate redraw
+    gameUI.draw();
   }
 }
 
@@ -2068,14 +2092,20 @@ function closeDungeon() {
   inDungeon = false;
   isDungeonBattle = false; // Limpar flag de batalha de dungeon
 
+  // Clear canvas to remove dungeon UI remnants
+  ctx.fillStyle = '#0f0f1e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
 
-  // Update main UI
+  // Update main UI and force redraw
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
+    // Force immediate redraw
+    gameUI.draw();
   }
   
   console.log('[Dungeon] Dungeon UI closed');
@@ -2578,14 +2608,20 @@ function closeAchievements() {
   achievementsUI = null;
   inAchievements = false;
 
+  // Clear canvas to remove achievements UI remnants
+  ctx.fillStyle = '#0f0f1e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
 
-  // Update main UI
+  // Update main UI and force redraw
   if (gameUI && gameState) {
     gameUI.updateGameState(gameState);
+    // Force immediate redraw
+    gameUI.draw();
   }
 }
 
