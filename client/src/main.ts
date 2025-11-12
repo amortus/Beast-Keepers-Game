@@ -1527,6 +1527,11 @@ function closeVillage() {
 function openDialogueWith(npcId: string) {
   if (!gameState) return;
 
+  // Close village if open (dialogue can be opened from village)
+  if (inVillage) {
+    closeVillage();
+  }
+
   const npc = NPCS[npcId];
   if (!npc || !npc.unlocked) {
     showMessage('NPC não disponível!', '⚠️ Erro');
@@ -1634,11 +1639,18 @@ function closeDialogue() {
   if (dialogueUI) {
     dialogueUI.close();
   }
+  dialogueUI = null;
 
   // Show 3D viewer when returning to ranch
   if (gameUI) {
     gameUI.show3DViewer();
   }
+
+  // Update main UI - o canvas será limpo e redesenhado no próximo frame do render loop
+  if (gameUI && gameState) {
+    gameUI.updateGameState(gameState);
+  }
+  
   console.log('[Main] inDialogue set to FALSE');
 }
 
