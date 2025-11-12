@@ -50,6 +50,8 @@ export class VillageScene3D {
   private craftPrefabPromise: Promise<THREE.Group> | null = null;
   private environmentGroup: THREE.Group | null = null;
   private ranchPrefabCache = new Map<string, THREE.Group>();
+  private housePrefabs: THREE.Group[] = [];
+  private housePrefabsPromise: Promise<THREE.Group[]> | null = null;
 
   private mouseMoveHandler: (event: MouseEvent) => void;
   private clickHandler: (event: MouseEvent) => void;
@@ -326,23 +328,31 @@ export class VillageScene3D {
     });
 
     const mountainPositions: Array<{ position: [number, number, number]; rotation?: number; scale?: number }> = [
-      { position: [-40, 0, -32], rotation: Math.PI * 0.4, scale: 1.2 },
-      { position: [42, 0, -30], rotation: -Math.PI * 0.35, scale: 1.25 },
-      { position: [-26, 0, 28], rotation: Math.PI * 0.15, scale: 0.95 },
-      { position: [28, 0, 30], rotation: -Math.PI * 0.18, scale: 1.05 },
+      { position: [-34, 0, -30], rotation: Math.PI * 0.32, scale: 1.08 },
+      { position: [-20, 0, -38], rotation: Math.PI * 0.18, scale: 1.1 },
+      { position: [0, 0, -42], rotation: 0, scale: 1.12 },
+      { position: [20, 0, -38], rotation: -Math.PI * 0.2, scale: 1.08 },
+      { position: [34, 0, -30], rotation: -Math.PI * 0.32, scale: 1.05 },
+      { position: [40, 0, -12], rotation: -Math.PI * 0.45, scale: 1.1 },
+      { position: [40, 0, 12], rotation: Math.PI * 0.45, scale: 1.12 },
+      { position: [34, 0, 30], rotation: Math.PI * 0.32, scale: 1.08 },
+      { position: [20, 0, 38], rotation: Math.PI * 0.18, scale: 1.1 },
+      { position: [0, 0, 42], rotation: 0, scale: 1.12 },
+      { position: [-20, 0, 38], rotation: -Math.PI * 0.18, scale: 1.1 },
+      { position: [-34, 0, 30], rotation: -Math.PI * 0.32, scale: 1.08 },
+      { position: [-40, 0, 12], rotation: -Math.PI * 0.45, scale: 1.1 },
+      { position: [-40, 0, -12], rotation: Math.PI * 0.45, scale: 1.12 },
     ];
 
     mountainPositions.forEach((cfg, index) => {
-      const wrapper = this.spawnRanchPrefab('/assets/3d/Ranch/Mountain/Mountain1.glb', {
+      this.spawnRanchPrefab('/assets/3d/Ranch/Mountain/Mountain1.glb', {
         name: `village-mountain-${index}`,
-        position: cfg.position,
+        position: [cfg.position[0], -1.8, cfg.position[2]],
         rotationY: cfg.rotation,
-        targetHeight: 26 * (cfg.scale ?? 1),
-        verticalOffset: -1.8,
+        targetHeight: 28 * (cfg.scale ?? 1),
+        verticalOffset: -1.4,
+        scaleMultiplier: cfg.scale ?? 1,
       });
-      if (wrapper && cfg.scale) {
-        wrapper.scale.setScalar(cfg.scale);
-      }
     });
 
     const houseAssets = [
@@ -520,6 +530,93 @@ export class VillageScene3D {
     model.position.y += size.y / 2;
 
     model.rotation.y = Math.random() * Math.PI * 2;
+  }
+
+  private loadHousePrefabs(): Promise<THREE.Group[]> {
+    if (this.housePrefabs.length > 0) {
+      return Promise.resolve(this.housePrefabs);
+    }
+
+    if (this.housePrefabsPromise) {
+      return this.housePrefabsPromise;
+    }
+
+    const houseFiles = [
+      '/assets/3d/Ranch/House/House1.glb',
+      '/assets/3d/Ranch/House/House2.glb',
+      '/assets/3d/Ranch/House/House3.glb',
+    ];
+
+    this.housePrefabsPromise = Promise.all(
+      houseFiles.map(
+        (url) =>
+          new Promise<THREE.Group>((resolve, reject) => {
+            this.gltfLoader.load(
+              url,
+              (gltf) => {
+                const scene = gltf.scene;
+                scene.traverse((child) => {
+                  if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (child.material) {
+                      const materials = Array.isArray(child.material) ? child.material : [child.material];
+                      child.material = materials.map((mat) => {
+                        if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
+                          const cloned = mat.clone();
+                          cloned.needsUpdate = true;
+                          return cloned;
+                        }
+                        if ((mat as THREE.Material).clone) {
+                          return (mat as THREE.Material).clone();
+                        }
+                        return mat;
+                      }) as unknown as THREE.Material;
+                    }
+                  }
+                });
+                resolve(scene);
+              },
+              undefined,
+              (error) => reject(error),
+            );
+          }),
+      ),
+    )
+      .then((prefabs) => {
+        this.housePrefabs = prefabs;
+        return this.housePrefabs;
+      })
+      .catch((error) => {
+        this.housePrefabsPromise = null;
+        throw error;
+      });
+
+    return this.housePrefabsPromise;
+  }
+
+  private prepareHouseModel(model: THREE.Group) {
+    model.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+
+    const initialBox = new THREE.Box3().setFromObject(model);
+    const initialSize = initialBox.getSize(new THREE.Vector3());
+    const desiredHeight = 6.2;
+    if (initialSize.y > 0) {
+      const scale = desiredHeight / initialSize.y;
+      model.scale.setScalar(scale);
+    }
+
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    const minY = box.min.y;
+    model.position.sub(center);
+    model.position.y -= minY;
+    model.position.y += 0.02;
   }
 
   private createFlower(index: number): THREE.Group {
@@ -951,7 +1048,7 @@ export class VillageScene3D {
   private createBuildingMesh(config: VillageBuildingConfig): THREE.Group {
     switch (config.variant) {
       case 'shop':
-        return this.createShop(config);
+        return this.createPrefabHouse(config, 1);
       case 'alchemy':
         return this.createAlchemySanctum(config);
       case 'temple':
@@ -959,14 +1056,38 @@ export class VillageScene3D {
       case 'tavern':
         return this.createTavern(config);
       case 'guild':
-        return this.createGuildHall(config);
+        return this.createPrefabHouse(config, 2);
       case 'house':
       default:
-        return this.createHouse(config);
+        return this.createPrefabHouse(config, 0);
     }
   }
 
-  private createHouse(config: VillageBuildingConfig): THREE.Group {
+  private createPrefabHouse(config: VillageBuildingConfig, index: number): THREE.Group {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralHouse(config);
+    wrapper.add(fallback);
+
+    this.loadHousePrefabs()
+      .then((prefabs) => {
+        if (prefabs.length === 0) {
+          return;
+        }
+        const prefab = prefabs[Math.abs(index) % prefabs.length] ?? prefabs[0];
+        const clone = prefab.clone(true);
+        this.prepareHouseModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar House prefab, mantendo fallback procedural.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralHouse(config: VillageBuildingConfig): THREE.Group {
     const house = new THREE.Group();
 
     const walls = new THREE.Mesh(
@@ -1006,37 +1127,6 @@ export class VillageScene3D {
     house.add(rightWindow);
 
     return house;
-  }
-
-  private createShop(config: VillageBuildingConfig): THREE.Group {
-    const shop = this.createHouse(config);
-
-    const awning = new THREE.Mesh(
-      new THREE.BoxGeometry(3.4, 0.1, 1.4),
-      new THREE.MeshStandardMaterial({ color: 0xf5a65b, roughness: 0.6 }),
-    );
-    awning.position.set(0, 2.05, 1.76);
-    shop.add(awning);
-
-    const stripes = new THREE.Mesh(
-      new THREE.BoxGeometry(3.4, 0.01, 1.4),
-      new THREE.MeshStandardMaterial({ color: 0xffe1a6, roughness: 0.5 }),
-    );
-    stripes.position.set(0, 2.0, 1.77);
-    shop.add(stripes);
-
-    const sign = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.6, 0.2),
-      new THREE.MeshStandardMaterial({ color: 0x3c2f2f, roughness: 0.7 }),
-    );
-    sign.position.set(0, 2.7, 1.62);
-    shop.add(sign);
-
-    const signText = this.createBillboardText(config.icon, 0.4);
-    signText.position.set(0, 2.7, 1.78);
-    shop.add(signText);
-
-    return shop;
   }
 
   private createAlchemySanctum(config: VillageBuildingConfig): THREE.Group {
@@ -1312,9 +1402,22 @@ export class VillageScene3D {
   }
 
   private prepareTempleModel(model: THREE.Group) {
-    model.scale.set(3.2, 3.2, 3.2);
-    model.position.set(0, 0, 0);
+    const desiredHeight = 9.5;
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    if (size.y > 0) {
+      const scale = desiredHeight / size.y;
+      model.scale.setScalar(scale);
+    }
+
+    const scaledBox = new THREE.Box3().setFromObject(model);
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    const minY = scaledBox.min.y;
+    model.position.sub(center);
+    model.position.y -= minY;
+    model.position.y += 0.05;
     model.rotation.y = Math.PI;
+
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
@@ -1459,30 +1562,6 @@ export class VillageScene3D {
       });
 
     return wrapper;
-  }
-
-  private createGuildHall(config: VillageBuildingConfig): THREE.Group {
-    const hall = this.createHouse(config);
-
-    const roof = new THREE.Mesh(
-      new THREE.CylinderGeometry(0, 3.6, 2.6, 6),
-      new THREE.MeshStandardMaterial({ color: 0x9b6434, roughness: 0.7 }),
-    );
-    roof.position.y = 3.4;
-    hall.add(roof);
-
-    const sign = new THREE.Mesh(
-      new THREE.BoxGeometry(1.8, 0.6, 0.2),
-      new THREE.MeshStandardMaterial({ color: 0x3a2d2a, roughness: 0.7 }),
-    );
-    sign.position.set(0, 2.5, 1.7);
-    hall.add(sign);
-
-    const emblem = this.createBillboardText(config.icon, 0.38);
-    emblem.position.set(0, 2.5, 1.85);
-    hall.add(emblem);
-
-    return hall;
   }
 
   private createBillboardText(icon: string, scale: number): THREE.Mesh {
