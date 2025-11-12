@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VillageVillagers } from '../events/VillageVillagers';
 import { VillageCritters } from '../events/VillageCritters';
-import { getDayNightBlend, getAmbientLightIntensity, getSkyColor } from '../utils/day-night';
+import { getDayNightBlend, getAmbientLightIntensity, getSkyColor } from '../../utils/day-night';
 
 import type { VillageBuildingConfig } from '../../types/village';
 
