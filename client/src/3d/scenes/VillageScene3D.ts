@@ -359,42 +359,16 @@ export class VillageScene3D {
     });
 
     const rockPositions: Array<[number, number]> = [
+      // Apenas algumas pedras no meio da vila (reduzidas)
       [-6, 14],
       [6, 14],
       [-14, 4],
       [14, 4],
-      // Mais pedras espalhadas pelo chão verde
-      [-3, 10],
-      [3, 10],
       [-8, 7],
       [8, 7],
       [-12, 0],
       [12, 0],
-      [-16, -3],
-      [16, -3],
-      [-19, 6],
-      [19, 6],
-      [-22, -6],
-      [22, -6],
-      [-5, 17],
-      [5, 17],
-      [-10, 13],
-      [10, 13],
-      [-15, 9],
-      [15, 9],
-      [-20, 2],
-      [20, 2],
-      [-24, -4],
-      [24, -4],
-      [-1, 4],
-      [1, 4],
-      [-7, -1],
-      [7, -1],
-      [-11, 16],
-      [11, 16],
-      [-17, -7],
-      [17, -7],
-      // Pedras nas extremidades do chão verde
+      // Pedras nas extremidades do chão verde (aumentadas)
       [-38, 0],
       [38, 0],
       [0, -38],
@@ -415,6 +389,30 @@ export class VillageScene3D {
       [12, -42],
       [-12, 42],
       [12, 42],
+      [-45, -20],
+      [45, -20],
+      [-45, 20],
+      [45, 20],
+      [-20, -45],
+      [20, -45],
+      [-20, 45],
+      [20, 45],
+      [-35, -30],
+      [35, -30],
+      [-35, 30],
+      [35, 30],
+      [-30, -35],
+      [30, -35],
+      [-30, 35],
+      [30, 35],
+      [-40, -25],
+      [40, -25],
+      [-40, 25],
+      [40, 25],
+      [-25, -40],
+      [25, -40],
+      [-25, 40],
+      [25, 40],
     ];
 
     rockPositions.forEach(([x, z], index) => {
@@ -504,6 +502,27 @@ export class VillageScene3D {
       { position: [15, 0, -45], rotation: -Math.PI * 0.55 },
       { position: [-15, 0, 45], rotation: Math.PI * 0.65 },
       { position: [15, 0, 45], rotation: -Math.PI * 0.65 },
+      // Mais gramas nas extremidades
+      { position: [-50, 0, 0], rotation: Math.PI * 0.4 },
+      { position: [50, 0, 0], rotation: -Math.PI * 0.4 },
+      { position: [0, 0, -50], rotation: Math.PI * 0.7 },
+      { position: [0, 0, 50], rotation: -Math.PI * 0.7 },
+      { position: [-48, 0, -15], rotation: Math.PI * 0.35 },
+      { position: [48, 0, -15], rotation: -Math.PI * 0.35 },
+      { position: [-48, 0, 15], rotation: Math.PI * 0.45 },
+      { position: [48, 0, 15], rotation: -Math.PI * 0.45 },
+      { position: [-15, 0, -48], rotation: Math.PI * 0.55 },
+      { position: [15, 0, -48], rotation: -Math.PI * 0.55 },
+      { position: [-15, 0, 48], rotation: Math.PI * 0.65 },
+      { position: [15, 0, 48], rotation: -Math.PI * 0.65 },
+      { position: [-42, 0, -25], rotation: Math.PI * 0.38 },
+      { position: [42, 0, -25], rotation: -Math.PI * 0.38 },
+      { position: [-42, 0, 25], rotation: Math.PI * 0.48 },
+      { position: [42, 0, 25], rotation: -Math.PI * 0.48 },
+      { position: [-25, 0, -42], rotation: Math.PI * 0.58 },
+      { position: [25, 0, -42], rotation: -Math.PI * 0.58 },
+      { position: [-25, 0, 42], rotation: Math.PI * 0.68 },
+      { position: [25, 0, 42], rotation: -Math.PI * 0.68 },
     ];
 
     grassPatches.forEach((cfg, index) => {
@@ -1690,6 +1709,7 @@ export class VillageScene3D {
 
   private createTemple(config: VillageBuildingConfig): THREE.Group {
     const wrapper = new THREE.Group();
+    wrapper.rotation.y = Math.PI; // Rotação de 180 graus no wrapper
     const fallback = this.createProceduralTemple(config);
     wrapper.add(fallback);
 

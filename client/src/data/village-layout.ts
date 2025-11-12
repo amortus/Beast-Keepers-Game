@@ -72,16 +72,6 @@ export const VILLAGE_BLUEPRINT: VillageBuildingBlueprint[] = [
     highlightColor: 0xffeccc,
   },
   {
-    id: 'npc:alya',
-    icon: '⚔️',
-    variant: 'house',
-    position: { x: 18, y: 0, z: -9 },
-    color: 0xf28c8c,
-    npcId: 'alya',
-    label: 'Alya',
-    highlightColor: 0xffd6d6,
-  },
-  {
     id: 'npc:toran',
     icon: '📜',
     variant: 'guild',
