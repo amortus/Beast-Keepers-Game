@@ -191,26 +191,6 @@ export class VillageScene3D {
     base.receiveShadow = true;
     groundGroup.add(base);
 
-    const pathMaterial = new THREE.MeshStandardMaterial({ color: 0xe4cfa8, roughness: 0.78 });
-
-    const radialPaths: Array<{ size: [number, number, number]; position: [number, number, number]; rotation?: number }> = [
-      { size: [4, 0.12, 18], position: [0, 0.04, 9] }, // templo
-      { size: [12, 0.12, 3], position: [-12, 0.04, 4], rotation: Math.PI / 18 },
-      { size: [12, 0.12, 3], position: [12, 0.04, 4], rotation: -Math.PI / 18 },
-      { size: [4, 0.12, 14], position: [-8, 0.04, -9], rotation: -Math.PI / 12 },
-      { size: [4, 0.12, 14], position: [8, 0.04, -9], rotation: Math.PI / 12 },
-    ];
-
-    for (const path of radialPaths) {
-      const walkway = new THREE.Mesh(new THREE.BoxGeometry(...path.size), pathMaterial);
-      walkway.position.set(...path.position);
-      if (path.rotation) {
-        walkway.rotation.y = path.rotation;
-      }
-      walkway.receiveShadow = true;
-      groundGroup.add(walkway);
-    }
-
     this.scene.add(groundGroup);
   }
 
@@ -232,6 +212,16 @@ export class VillageScene3D {
       [32, 18],
       [-12, 26],
       [12, 26],
+      [-24, -8],
+      [24, -8],
+      [-20, 12],
+      [20, 12],
+      [-38, 4],
+      [38, 4],
+      [-16, -24],
+      [16, -24],
+      [-8, 20],
+      [8, 20],
     ];
 
     treePositions.forEach(([x, z], index) => {
@@ -245,6 +235,22 @@ export class VillageScene3D {
       [4, 11],
       [-11, -2],
       [11, -2],
+      [-7, 6],
+      [7, 6],
+      [-15, 1],
+      [15, 1],
+      [-2, -5],
+      [2, -5],
+      [-9, 15],
+      [9, 15],
+      [-18, -7],
+      [18, -7],
+      [-13, 9],
+      [13, 9],
+      [-5, -8],
+      [5, -8],
+      [-20, 3],
+      [20, 3],
     ];
 
     flowerPositions.forEach(([x, z], index) => {
@@ -272,6 +278,24 @@ export class VillageScene3D {
       { position: [-16, 0, -6], rotation: Math.PI * 0.4 },
       { position: [16, 0, -6], rotation: -Math.PI * 0.35 },
       { position: [0, 0, -10], rotation: Math.PI * 0.5 },
+      { position: [-6, 0, 5], rotation: Math.PI * 0.25 },
+      { position: [6, 0, 5], rotation: -Math.PI * 0.25 },
+      { position: [-14, 0, 2], rotation: Math.PI * 0.3 },
+      { position: [14, 0, 2], rotation: -Math.PI * 0.3 },
+      { position: [-8, 0, -4], rotation: Math.PI * 0.2 },
+      { position: [8, 0, -4], rotation: -Math.PI * 0.2 },
+      { position: [-12, 0, 12], rotation: Math.PI * 0.35 },
+      { position: [12, 0, 12], rotation: -Math.PI * 0.35 },
+      { position: [-20, 0, -2], rotation: Math.PI * 0.45 },
+      { position: [20, 0, -2], rotation: -Math.PI * 0.45 },
+      { position: [-3, 0, 9], rotation: Math.PI * 0.18 },
+      { position: [3, 0, 9], rotation: -Math.PI * 0.18 },
+      { position: [-18, 0, 6], rotation: Math.PI * 0.4 },
+      { position: [18, 0, 6], rotation: -Math.PI * 0.4 },
+      { position: [-22, 0, -8], rotation: Math.PI * 0.5 },
+      { position: [22, 0, -8], rotation: -Math.PI * 0.5 },
+      { position: [-5, 0, -12], rotation: Math.PI * 0.22 },
+      { position: [5, 0, -12], rotation: -Math.PI * 0.22 },
     ];
 
     grassPatches.forEach((cfg, index) => {
@@ -329,6 +353,18 @@ export class VillageScene3D {
       { position: [-62, 0, 18], rotation: -Math.PI * 0.4, scale: 0.9 },
       { position: [-64, 0, 0], rotation: Math.PI * 0.5, scale: 0.92 },
       { position: [-62, 0, -18], rotation: Math.PI * 0.4, scale: 0.9 },
+      { position: [-44, 0, -47], rotation: Math.PI * 0.24, scale: 0.88 },
+      { position: [-28, 0, -57], rotation: Math.PI * 0.15, scale: 0.98 },
+      { position: [28, 0, -57], rotation: -Math.PI * 0.15, scale: 0.98 },
+      { position: [44, 0, -47], rotation: -Math.PI * 0.24, scale: 0.88 },
+      { position: [58, 0, -9], rotation: -Math.PI * 0.45, scale: 0.88 },
+      { position: [60, 0, 9], rotation: Math.PI * 0.35, scale: 0.88 },
+      { position: [48, 0, 46], rotation: Math.PI * 0.24, scale: 0.88 },
+      { position: [28, 0, 57], rotation: Math.PI * 0.15, scale: 0.98 },
+      { position: [-28, 0, 57], rotation: -Math.PI * 0.15, scale: 0.98 },
+      { position: [-44, 0, 47], rotation: -Math.PI * 0.24, scale: 0.88 },
+      { position: [-58, 0, 9], rotation: -Math.PI * 0.35, scale: 0.88 },
+      { position: [-60, 0, -9], rotation: Math.PI * 0.45, scale: 0.88 },
     ];
 
     mountainPositions.forEach((cfg, index) => {
