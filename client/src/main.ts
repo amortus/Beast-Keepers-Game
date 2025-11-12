@@ -316,7 +316,7 @@ function startRenderLoop() {
       // Draw dialogue UI (Vila) - NO gameUI underneath!
       dialogueUI.draw();
     } else if (inShop && shopUI && gameState) {
-      if (frameCount % 60 === 0) console.log('[Render] Drawing shopUI');
+      if (frameCount % 60 === 0) console.log('[Render] Drawing shopUI', { inShop, hasShopUI: !!shopUI, hasGameState: !!gameState });
       shopUI.draw(gameState);
     } else if (inInventory && inventoryUI && gameState) {
       if (frameCount % 60 === 0) console.log('[Render] Drawing inventoryUI');
@@ -353,8 +353,10 @@ function startRenderLoop() {
       
       if (modalUI && modalUI.isShowing()) {
         // Skip drawing GameUI when modal is open (e.g., Vila menu)
+        if (frameCount % 60 === 0) console.log('[Render] gameUI.draw() blocked - modal is showing');
       } else if (inVillage) {
         // Skip drawing GameUI when village is open
+        if (frameCount % 60 === 0) console.log('[Render] gameUI.draw() blocked - village is open');
       } else if (hasActiveUI) {
         // Skip drawing GameUI when any other UI is active
         // Debug: log apenas quando há problema (primeira vez que detecta)
@@ -373,13 +375,19 @@ function startRenderLoop() {
           });
         }
       } else {
-        if (frameCount % 60 === 0) console.log('[Render] Drawing gameUI - all conditions met');
+        if (frameCount % 60 === 0) {
+          console.log('[Render] Drawing gameUI - all conditions met', {
+            hasActiveUI,
+            modalShowing: modalUI ? modalUI.isShowing() : false,
+            inVillage,
+          });
+        }
         gameUI.draw();
       }
     } else {
       // Debug: log quando gameUI ou gameState não existem
       if (frameCount % 60 === 0) {
-        console.warn('[Render] Cannot draw gameUI:', {
+        const debugInfo = {
           hasGameUI: !!gameUI,
           hasGameState: !!gameState,
           inAuth,
@@ -388,15 +396,25 @@ function startRenderLoop() {
           inTemple,
           inDialogue,
           inShop,
+          shopUI: !!shopUI,
           inInventory,
+          inventoryUI: !!inventoryUI,
           inCraft,
+          craftUI: !!craftUI,
           inQuests,
+          questsUI: !!questsUI,
           inAchievements,
+          achievementsUI: !!achievementsUI,
           inDungeon,
+          dungeonUI: !!dungeonUI,
           inExploration,
+          explorationUI: !!explorationUI,
           inRanch3D,
+          ranch3DUI: !!ranch3DUI,
           inVillage,
-        });
+          modalUI: modalUI ? modalUI.isShowing() : false,
+        };
+        console.warn('[Render] Cannot draw gameUI:', debugInfo);
       }
     }
 
