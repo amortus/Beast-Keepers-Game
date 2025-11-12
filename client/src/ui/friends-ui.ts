@@ -6,6 +6,7 @@
 
 import type { Friend, FriendRequest } from '../types';
 import { friendsApi } from '../api/friendsApi';
+import { showGameError } from './message-service';
 
 export class FriendsUI {
   private container: HTMLDivElement;
@@ -217,10 +218,10 @@ export class FriendsUI {
         await this.loadRequests();
         this.render();
       } else {
-        alert(response.error || 'Erro ao enviar pedido');
+        showGameError(response.error || 'Erro ao enviar pedido');
       }
     } catch (error: any) {
-      alert(error.message || 'Erro ao enviar pedido');
+      showGameError(error.message || 'Erro ao enviar pedido');
     }
   }
 

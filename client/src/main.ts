@@ -30,6 +30,7 @@ import { Ranch3DUI } from './ui/ranch-3d-ui';
 import { Village3DUI } from './ui/village-3d-ui';
 import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
+import { registerMessageHandler } from './ui/message-service';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge, recalculateDerivedStats } from './systems/beast';
@@ -419,6 +420,10 @@ async function init() {
 
     // Create Modal UI first
     modalUI = new ModalUI(canvas);
+    registerMessageHandler((message, options) => {
+      const title = options?.title ?? '💬 Beast Keepers';
+      showMessage(message, title, options?.onClose);
+    });
 
     // Create Auth UI
     authUI = new AuthUI(canvas);
