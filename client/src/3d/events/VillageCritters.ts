@@ -22,8 +22,8 @@ export class VillageCritters {
   private critters: Critter[] = [];
   private nextSpawnTime: number = 0;
   
-  // Área da vila (maior que o rancho)
-  private readonly VILLAGE_SIZE = 60; // Raio aproximado da vila
+  // Área da vila (ajustada para área visível da câmera)
+  private readonly VILLAGE_SIZE = 35; // Raio aproximado da vila (área visível)
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -103,14 +103,14 @@ export class VillageCritters {
   private spawnFly() {
     const flyGroup = new THREE.Group();
     
-    // Corpo minúsculo (esfera preta)
-    const bodyGeometry = new THREE.SphereGeometry(0.04, 4, 4);
+    // Corpo minúsculo (esfera preta) - um pouco maior para visibilidade
+    const bodyGeometry = new THREE.SphereGeometry(0.06, 4, 4);
     const bodyMaterial = new THREE.MeshToonMaterial({ color: 0x000000 });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     flyGroup.add(body);
     
-    // 2 asas (planos transparentes)
-    const wingGeometry = new THREE.PlaneGeometry(0.06, 0.03);
+    // 2 asas (planos transparentes) - um pouco maiores
+    const wingGeometry = new THREE.PlaneGeometry(0.08, 0.04);
     const wingMaterial = new THREE.MeshToonMaterial({ 
       color: 0xcccccc,
       transparent: true,
