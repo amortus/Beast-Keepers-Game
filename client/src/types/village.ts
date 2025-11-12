@@ -10,7 +10,8 @@ export type VillageBuildingVariant =
   | 'alchemy'
   | 'temple'
   | 'tavern'
-  | 'guild';
+  | 'guild'
+  | 'dungeon';
 
 export type VillageBuildingKind = 'npc' | 'facility';
 

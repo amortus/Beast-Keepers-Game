@@ -1432,6 +1432,7 @@ function openVillage() {
     village3DUI.onOpenShop = () => openShop();
     village3DUI.onOpenTemple = () => openTemple();
     village3DUI.onOpenCraft = () => openCraft();
+    village3DUI.onOpenDungeons = () => openDungeon();
     village3DUI.onOpenRanch = () => {
       if (village3DUI) {
         village3DUI.hide();

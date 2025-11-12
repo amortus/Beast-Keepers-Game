@@ -18,6 +18,7 @@ export class Village3DUI {
   public onOpenShop?: () => void;
   public onOpenTemple?: () => void;
   public onOpenCraft?: () => void;
+  public onOpenDungeons?: () => void;
   public onOpenRanch?: () => void;
 
   constructor() {
@@ -203,6 +204,9 @@ export class Village3DUI {
         break;
       case 'alchemy':
         this.onOpenCraft?.();
+        break;
+      case 'dungeons':
+        this.onOpenDungeons?.();
         break;
       case 'ranch':
         this.onOpenRanch?.();

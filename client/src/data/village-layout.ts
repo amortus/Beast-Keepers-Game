@@ -52,6 +52,16 @@ export const VILLAGE_BLUEPRINT: VillageBuildingBlueprint[] = [
     highlightColor: 0xdcc8ff,
   },
   {
+    id: 'facility:dungeon',
+    icon: '🌀',
+    variant: 'dungeon',
+    position: { x: 0, y: 0, z: -20 },
+    color: 0x4c6bd8,
+    facilityId: 'dungeons',
+    label: 'Portão das Profundezas',
+    highlightColor: 0xbdd2ff,
+  },
+  {
     id: 'npc:ruvian',
     icon: '🧙',
     variant: 'house',

@@ -49,6 +49,10 @@ export class VillageScene3D {
   private tavernPrefabPromise: Promise<THREE.Group> | null = null;
   private craftPrefab: THREE.Group | null = null;
   private craftPrefabPromise: Promise<THREE.Group> | null = null;
+  private marketPrefab: THREE.Group | null = null;
+  private marketPrefabPromise: Promise<THREE.Group> | null = null;
+  private dungeonPrefab: THREE.Group | null = null;
+  private dungeonPrefabPromise: Promise<THREE.Group> | null = null;
   private environmentGroup: THREE.Group | null = null;
   private ranchPrefabCache = new Map<string, THREE.Group>();
   private housePrefabs: THREE.Group[] = [];
@@ -406,6 +410,12 @@ export class VillageScene3D {
       switch (building.config.variant) {
         case 'temple':
           radius = 5.2;
+          break;
+        case 'shop':
+          radius = 3.8;
+          break;
+        case 'dungeon':
+          radius = 4.6;
           break;
         case 'guild':
           radius = 4;
@@ -1104,19 +1114,117 @@ export class VillageScene3D {
   private createBuildingMesh(config: VillageBuildingConfig): THREE.Group {
     switch (config.variant) {
       case 'shop':
-        return this.createPrefabHouse(config, 1);
+        return this.createMarket(config);
       case 'alchemy':
         return this.createAlchemySanctum(config);
       case 'temple':
         return this.createTemple(config);
       case 'tavern':
         return this.createTavern(config);
+      case 'dungeon':
+        return this.createDungeon(config);
       case 'guild':
         return this.createPrefabHouse(config, 2);
       case 'house':
       default:
         return this.createPrefabHouse(config, 0);
     }
+  }
+
+  private createMarket(config: VillageBuildingConfig): THREE.Group {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralMarket(config);
+    wrapper.add(fallback);
+
+    this.loadMarketPrefab()
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareMarketModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar Market.glb, usando fallback procedural.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralMarket(config: VillageBuildingConfig): THREE.Group {
+    const market = new THREE.Group();
+
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(4.2, 2.4, 3.6),
+      new THREE.MeshStandardMaterial({ color: config.color, roughness: 0.7 }),
+    );
+    base.position.y = 1.2;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    market.add(base);
+
+    const awning = new THREE.Mesh(
+      new THREE.BoxGeometry(4.4, 0.25, 3.8),
+      new THREE.MeshStandardMaterial({
+        color: 0xfff3c4,
+        roughness: 0.4,
+        emissive: 0x4f3b26,
+        emissiveIntensity: 0.08,
+      }),
+    );
+    awning.position.set(0, 2.4, 0.2);
+    awning.castShadow = true;
+    market.add(awning);
+
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(3.2, 1.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0x8c4f34, roughness: 0.6 }),
+    );
+    roof.position.y = 3.4;
+    roof.castShadow = true;
+    market.add(roof);
+
+    const stallMaterial = new THREE.MeshStandardMaterial({ color: 0xd9b27c, roughness: 0.55 });
+    for (let i = -1; i <= 1; i++) {
+      const stall = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.8), stallMaterial);
+      stall.position.set(i * 1.1, 0.4, 1.6);
+      stall.castShadow = true;
+      stall.receiveShadow = true;
+      market.add(stall);
+    }
+
+    const sign = this.createBillboardText(config.icon, 0.42);
+    sign.position.set(0, 2.6, 2.1);
+    market.add(sign);
+
+    return market;
+  }
+
+  private loadMarketPrefab(): Promise<THREE.Group> {
+    if (this.marketPrefab) {
+      return Promise.resolve(this.marketPrefab);
+    }
+    if (this.marketPrefabPromise) {
+      return this.marketPrefabPromise;
+    }
+
+    const candidates = ['/assets/3d/Village/Market.glb'];
+    this.marketPrefabPromise = this.loadVillagePrefabCandidates(candidates)
+      .then((prefab) => {
+        this.marketPrefab = prefab;
+        return prefab;
+      })
+      .catch((error) => {
+        this.marketPrefabPromise = null;
+        throw error;
+      });
+
+    return this.marketPrefabPromise;
+  }
+
+  private prepareMarketModel(model: THREE.Group) {
+    this.prepareStaticPrefab(model);
+    this.normaliseStaticModel(model, 6.0, 0);
   }
 
   private createPrefabHouse(config: VillageBuildingConfig, index: number): THREE.Group {
@@ -1388,6 +1496,123 @@ export class VillageScene3D {
     return wrapper;
   }
 
+  private createDungeon(config: VillageBuildingConfig): THREE.Group {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralDungeon(config);
+    wrapper.add(fallback);
+
+    this.loadDungeonPrefab()
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareDungeonModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar Dungeon.glb, usando fallback procedural.', error);
+      });
+
+    return wrapper;
+  }
+
+  private createProceduralDungeon(config: VillageBuildingConfig): THREE.Group {
+    const dungeon = new THREE.Group();
+
+    const foundation = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.4, 3.8, 1.2, 28),
+      new THREE.MeshStandardMaterial({ color: config.color, roughness: 0.72 }),
+    );
+    foundation.position.y = 0.6;
+    foundation.castShadow = true;
+    foundation.receiveShadow = true;
+    dungeon.add(foundation);
+
+    const plinth = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.8, 3.2, 0.5, 28),
+      new THREE.MeshStandardMaterial({ color: 0x334674, roughness: 0.58 }),
+    );
+    plinth.position.y = 1.1;
+    plinth.castShadow = true;
+    plinth.receiveShadow = true;
+    dungeon.add(plinth);
+
+    const archMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5a7de0,
+      roughness: 0.35,
+      metalness: 0.2,
+      emissive: 0x1c3ab4,
+      emissiveIntensity: 0.25,
+    });
+    const arch = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.28, 28, 64), archMaterial);
+    arch.position.y = 2.6;
+    arch.rotation.x = Math.PI / 2;
+    arch.castShadow = true;
+    dungeon.add(arch);
+
+    const portalMaterial = new THREE.MeshBasicMaterial({
+      color: 0x7dc9ff,
+      transparent: true,
+      opacity: 0.68,
+      side: THREE.DoubleSide,
+    });
+    const portal = new THREE.Mesh(new THREE.CircleGeometry(1.9, 48), portalMaterial);
+    portal.position.y = 2.6;
+    portal.rotation.x = Math.PI / 2;
+    dungeon.add(portal);
+
+    const swirlMaterial = new THREE.MeshBasicMaterial({
+      color: 0x4f9cff,
+      transparent: true,
+      opacity: 0.45,
+      side: THREE.DoubleSide,
+    });
+    const swirl = new THREE.Mesh(new THREE.RingGeometry(0.6, 2.3, 48, 1), swirlMaterial);
+    swirl.position.y = 2.62;
+    swirl.rotation.x = Math.PI / 2;
+    dungeon.add(swirl);
+
+    const obeliskMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1c2744,
+      roughness: 0.5,
+      metalness: 0.15,
+    });
+    for (const offset of [-1.4, 1.4]) {
+      const obelisk = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.6, 0.6), obeliskMaterial);
+      obelisk.position.set(offset, 1.9, 1.3);
+      obelisk.castShadow = true;
+      dungeon.add(obelisk);
+
+      const crystal = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.35),
+        new THREE.MeshStandardMaterial({
+          color: 0x90d2ff,
+          emissive: 0x60c1ff,
+          emissiveIntensity: 0.9,
+          transparent: true,
+          opacity: 0.85,
+        }),
+      );
+      crystal.position.set(offset, 3.15, 1.3);
+      dungeon.add(crystal);
+    }
+
+    const steps = new THREE.Mesh(
+      new THREE.BoxGeometry(3.6, 0.5, 2.6),
+      new THREE.MeshStandardMaterial({ color: 0x2c3556, roughness: 0.6 }),
+    );
+    steps.position.set(0, 0.25, 1.6);
+    steps.castShadow = true;
+    steps.receiveShadow = true;
+    dungeon.add(steps);
+
+    const emblem = this.createBillboardText(config.icon, 0.5);
+    emblem.position.set(0, 3.4, 0.12);
+    dungeon.add(emblem);
+
+    return dungeon;
+  }
+
   private createProceduralTemple(config: VillageBuildingConfig): THREE.Group {
     const temple = new THREE.Group();
 
@@ -1484,6 +1709,33 @@ export class VillageScene3D {
         child.receiveShadow = true;
       }
     });
+  }
+
+  private loadDungeonPrefab(): Promise<THREE.Group> {
+    if (this.dungeonPrefab) {
+      return Promise.resolve(this.dungeonPrefab);
+    }
+    if (this.dungeonPrefabPromise) {
+      return this.dungeonPrefabPromise;
+    }
+
+    const candidates = ['/assets/3d/Village/Dungeon.glb'];
+    this.dungeonPrefabPromise = this.loadVillagePrefabCandidates(candidates)
+      .then((prefab) => {
+        this.dungeonPrefab = prefab;
+        return prefab;
+      })
+      .catch((error) => {
+        this.dungeonPrefabPromise = null;
+        throw error;
+      });
+
+    return this.dungeonPrefabPromise;
+  }
+
+  private prepareDungeonModel(model: THREE.Group) {
+    this.prepareStaticPrefab(model);
+    this.normaliseStaticModel(model, 7.2, -0.05);
   }
 
   private loadTavernPrefab(): Promise<THREE.Group> {
