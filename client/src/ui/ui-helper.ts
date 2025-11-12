@@ -33,6 +33,8 @@ type ButtonOptions = {
   fontSize?: number;
   variant?: ButtonVariant;
   isActive?: boolean;
+  shadow?: boolean;
+  flat?: boolean;
 };
 
 type BarOptions = {
@@ -435,28 +437,52 @@ export function drawButton(
   const fontSize = options.fontSize ?? 14;
   const variant = options.variant ?? 'primary';
   const radius = GLASS_THEME.radius.lg;
+  const useShadow = options.shadow ?? true;
+  const isFlat = options.flat ?? false;
 
   const baseColor = resolveButtonBaseColor(options);
+  const lightenFactor = isFlat
+    ? isActive
+      ? 0.06
+      : isHovered
+        ? 0.08
+        : 0.05
+    : isActive
+      ? 0.12
+      : isHovered
+        ? 0.18
+        : 0.14;
+  const darkenFactor = isFlat
+    ? isActive
+      ? 0.12
+      : isHovered
+        ? 0.1
+        : 0.08
+    : isActive
+      ? 0.18
+      : isHovered
+        ? 0.14
+        : 0.1;
   const [gradientTop, gradientBottom] = [
     rgbaToString(
       isDisabled
-        ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.06)
-        : lightenColor(baseColor, isActive ? 0.12 : isHovered ? 0.18 : 0.14),
+        ? lightenColor(parseColor('rgba(22, 36, 60, 0.36)'), 0.04)
+        : lightenColor(baseColor, lightenFactor),
     ),
     rgbaToString(
       isDisabled
         ? parseColor('rgba(12, 24, 48, 0.22)')
-        : darkenColor(baseColor, isActive ? 0.18 : isHovered ? 0.14 : 0.1),
+        : darkenColor(baseColor, darkenFactor),
     ),
   ];
 
   ctx.save();
-  if (!isDisabled) {
+  if (!isDisabled && useShadow) {
     const shadow = GLASS_THEME.shadow.button;
-    ctx.shadowColor = withAlpha(shadow.color, isHovered ? 1 : 0.85);
-    ctx.shadowBlur = shadow.blur;
+    ctx.shadowColor = withAlpha(shadow.color, isHovered ? 0.95 : 0.75);
+    ctx.shadowBlur = isFlat ? shadow.blur * 0.6 : shadow.blur;
     ctx.shadowOffsetX = shadow.offsetX ?? 0;
-    ctx.shadowOffsetY = shadow.offsetY ?? 10;
+    ctx.shadowOffsetY = isFlat ? (shadow.offsetY ?? 10) * 0.6 : shadow.offsetY ?? 10;
   }
   const gradient = ctx.createLinearGradient(0, y, 0, y + height);
   gradient.addColorStop(0, gradientTop);
@@ -467,7 +493,7 @@ export function drawButton(
   ctx.restore();
 
   // Highlight droplet
-  if (!isDisabled) {
+  if (!isDisabled && !isFlat) {
     ctx.save();
     roundedRectPath(ctx, x, y, width, height, radius);
     ctx.clip();
