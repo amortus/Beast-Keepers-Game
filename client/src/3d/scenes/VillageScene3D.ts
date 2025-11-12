@@ -1143,6 +1143,10 @@ export class VillageScene3D {
     return wrapper;
   }
 
+  private createHouse(config: VillageBuildingConfig): THREE.Group {
+    return this.createPrefabHouse(config, 0);
+  }
+
   private createProceduralHouse(config: VillageBuildingConfig): THREE.Group {
     const house = new THREE.Group();
 
