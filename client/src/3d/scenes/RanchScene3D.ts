@@ -792,7 +792,7 @@ export class RanchScene3D {
             new THREE.SphereGeometry(0.18, 12, 12),
             new THREE.MeshBasicMaterial({
               color: this.skin.lamp.emissiveColor,
-              transparent: true,
+        transparent: true,
               opacity: 0.24,
             }),
           );
@@ -1248,7 +1248,7 @@ export class RanchScene3D {
     if (this.isPositionValid(centerCandidateX, centerCandidateZ, 0.6)) {
       return new THREE.Vector3(centerCandidateX, 0, centerCandidateZ);
     }
-
+    
     return null;
   }
 
@@ -1282,7 +1282,7 @@ export class RanchScene3D {
 
     if (this.beastModel.hasRiggedAnimations()) {
       this.playRigAnimation('idle');
-    } else {
+      } else {
       this.idleAnimation = this.beastModel.playIdleAnimation();
     }
   }

@@ -393,47 +393,39 @@ export class GameUI {
       action: () => this.onOpenSettings(),
     });
 
-    drawText(this.ctx, 'BEAST KEEPERS', 24, 24, {
-      font: 'bold 28px monospace',
-      color: GLASS_THEME.palette.text.highlight,
-    });
-
-    // Relógio e calendário visual (centralizado no header)
+    // Relógio e calendário visual (lado esquerdo, no lugar do título)
     const gameTime = getGameTime();
     const clockIcon = gameTime.timeOfDay.isNight ? '🌙' : '☀️';
     const clockText = `${clockIcon} ${gameTime.timeOfDay.timeString}`;
     const dateText = `📅 ${gameTime.calendar.dateString} - ${gameTime.calendar.dayOfWeekName}`;
     
-    // Calcular largura dos textos para centralizar
-    this.ctx.font = 'bold 16px monospace';
-    const clockTextWidth = this.ctx.measureText(clockText).width;
-    this.ctx.font = 'bold 13px monospace';
-    const dateTextWidth = this.ctx.measureText(dateText).width;
-    const maxTextWidth = Math.max(clockTextWidth, dateTextWidth);
+    const leftX = 24;
+    const clockY = 24;
     
-    // Centralizar no header (considerando espaço para título à esquerda e botões à direita)
-    const clockX = (this.canvas.width - maxTextWidth) / 2;
-    const clockY = 50;
-    
-    // Hora (centralizada)
-    drawText(this.ctx, clockText, clockX, clockY, {
+    // Hora
+    drawText(this.ctx, clockText, leftX, clockY, {
       font: 'bold 16px monospace',
       color: gameTime.timeOfDay.isNight ? GLASS_THEME.palette.accent.blue : GLASS_THEME.palette.accent.amber,
       shadow: false,
-      align: 'center',
     });
     
-    // Data (centralizada, abaixo da hora)
-    drawText(this.ctx, dateText, clockX + maxTextWidth / 2, clockY + 22, {
+    // Data (abaixo da hora)
+    drawText(this.ctx, dateText, leftX, clockY + 22, {
       font: 'bold 13px monospace',
       color: GLASS_THEME.palette.text.secondary,
       shadow: false,
-      align: 'center',
     });
 
+    // Explorações (ao lado do relógio/data)
     const beast = this.gameState.activeBeast;
     const explorationCount = beast?.explorationCount || 0;
-    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, 24, 88, {
+    
+    // Calcular posição X para explorações (após relógio/data)
+    this.ctx.font = 'bold 13px monospace';
+    const dateTextWidth = this.ctx.measureText(dateText).width;
+    const explorationX = leftX + dateTextWidth + 40; // Espaço entre relógio e explorações
+    
+    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, explorationX, clockY + 11, {
       font: 'bold 15px monospace',
       color: GLASS_THEME.palette.text.secondary,
       shadow: false,
