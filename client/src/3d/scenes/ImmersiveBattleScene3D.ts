@@ -1069,18 +1069,51 @@ export class ImmersiveBattleScene3D {
   }
 
   /**
-   * Load skybox with fallback (tries .jpg first, then .png)
+   * Load skybox with fallback (tries provided extension first, then .jpg, .png, .webp)
    */
   private loadSkyboxWithFallback(baseUrl: string): void {
-    // Remove extension if present
-    const urlWithoutExt = baseUrl.replace(/\.(jpg|jpeg|png)$/i, '');
-    
-    // Try .jpg first
-    const jpgUrl = `${urlWithoutExt}.jpg`;
     const loader = new THREE.TextureLoader();
     
+    // Extract extension from URL if present
+    const urlMatch = baseUrl.match(/\.(jpg|jpeg|png|webp)$/i);
+    const providedExt = urlMatch ? urlMatch[1].toLowerCase() : null;
+    const urlWithoutExt = baseUrl.replace(/\.(jpg|jpeg|png|webp)$/i, '');
+    
+    // Try provided extension first (if any), then try common formats
+    const extensionsToTry = providedExt 
+      ? [providedExt, 'jpg', 'png', 'webp'].filter(ext => ext !== providedExt)
+      : ['jpg', 'png', 'webp'];
+    
+    // Start with provided extension or first fallback
+    const firstUrl = providedExt ? baseUrl : `${urlWithoutExt}.${extensionsToTry[0]}`;
+    let currentIndex = providedExt ? 1 : 0;
+    
+    const tryNext = () => {
+      if (currentIndex >= extensionsToTry.length) {
+        // All formats failed, use fallback color
+        this.scene.background = new THREE.Color(0x87ceeb);
+        return;
+      }
+      
+      const nextUrl = `${urlWithoutExt}.${extensionsToTry[currentIndex]}`;
+      currentIndex++;
+      
+      loader.load(
+        nextUrl,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          this.skyboxTexture = texture;
+          this.scene.background = texture;
+        },
+        undefined,
+        tryNext // Try next format on error
+      );
+    };
+    
+    // Try first URL
     loader.load(
-      jpgUrl,
+      firstUrl,
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.mapping = THREE.EquirectangularReflectionMapping;
@@ -1088,24 +1121,7 @@ export class ImmersiveBattleScene3D {
         this.scene.background = texture;
       },
       undefined,
-      () => {
-        // .jpg failed, try .png
-        const pngUrl = `${urlWithoutExt}.png`;
-        loader.load(
-          pngUrl,
-          (texture) => {
-            texture.colorSpace = THREE.SRGBColorSpace;
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            this.skyboxTexture = texture;
-            this.scene.background = texture;
-          },
-          undefined,
-          () => {
-            // Both failed, use fallback color
-            this.scene.background = new THREE.Color(0x87ceeb);
-          }
-        );
-      }
+      tryNext // Try fallback formats on error
     );
   }
 }
