@@ -61,12 +61,21 @@ export class ImmersiveBattleScene3D {
   
   // Effects
   private attackEffects: THREE.Group[] = [];
+  
+  // Skybox
+  private skyboxTexture: THREE.Texture | null = null;
 
-  constructor(container: HTMLElement, width: number, height: number) {
+  constructor(container: HTMLElement, width: number, height: number, skyboxUrl?: string) {
     // Scene setup
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87ceeb); // Céu azul igual rancho
+    this.scene.background = new THREE.Color(0x87ceeb); // Céu azul igual rancho (fallback)
     this.scene.fog = new THREE.Fog(0xa0d8ef, 20, 50);
+    
+    // Carregar skybox se URL fornecida
+    if (skyboxUrl) {
+      // Tentar carregar skybox (suporta .jpg e .png)
+      this.loadSkyboxWithFallback(skyboxUrl);
+    }
     
     // Camera setup (estilo Pokémon)
     this.camera = new THREE.PerspectiveCamera(62, width / height, 0.1, 160);
@@ -806,6 +815,12 @@ export class ImmersiveBattleScene3D {
       // PS1Grass has its own dispose if needed
     }
     
+    // Dispose skybox texture
+    if (this.skyboxTexture) {
+      this.skyboxTexture.dispose();
+      this.skyboxTexture = null;
+    }
+    
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.geometry.dispose();
@@ -827,5 +842,87 @@ export class ImmersiveBattleScene3D {
    */
   public getCanvas(): HTMLCanvasElement {
     return this.renderer.domElement;
+  }
+
+  /**
+   * Load skybox from image (equirectangular or cubemap)
+   * Supports both single equirectangular image or 6 cubemap images
+   */
+  public loadSkybox(urlOrUrls: string | string[]): void {
+    const loader = new THREE.TextureLoader();
+    
+    if (Array.isArray(urlOrUrls)) {
+      // Cubemap: array de 6 URLs [px, nx, py, ny, pz, nz]
+      if (urlOrUrls.length === 6) {
+        const textures = urlOrUrls.map(url => {
+          const texture = loader.load(url);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          return texture;
+        });
+        
+        this.skyboxTexture = new THREE.CubeTexture(textures);
+        this.skyboxTexture.colorSpace = THREE.SRGBColorSpace;
+        this.scene.background = this.skyboxTexture;
+      } else {
+        console.warn('[ImmersiveBattle] Cubemap requires exactly 6 images');
+      }
+    } else {
+      // Equirectangular: single 360° image
+      const texture = loader.load(
+        urlOrUrls,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          this.skyboxTexture = texture;
+          this.scene.background = texture;
+        },
+        undefined,
+        (error) => {
+          // Fallback silencioso para cor azul (skybox opcional)
+          this.scene.background = new THREE.Color(0x87ceeb);
+        }
+      );
+    }
+  }
+
+  /**
+   * Load skybox with fallback (tries .jpg first, then .png)
+   */
+  private loadSkyboxWithFallback(baseUrl: string): void {
+    // Remove extension if present
+    const urlWithoutExt = baseUrl.replace(/\.(jpg|jpeg|png)$/i, '');
+    
+    // Try .jpg first
+    const jpgUrl = `${urlWithoutExt}.jpg`;
+    const loader = new THREE.TextureLoader();
+    
+    loader.load(
+      jpgUrl,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        this.skyboxTexture = texture;
+        this.scene.background = texture;
+      },
+      undefined,
+      () => {
+        // .jpg failed, try .png
+        const pngUrl = `${urlWithoutExt}.png`;
+        loader.load(
+          pngUrl,
+          (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            this.skyboxTexture = texture;
+            this.scene.background = texture;
+          },
+          undefined,
+          () => {
+            // Both failed, use fallback color
+            this.scene.background = new THREE.Color(0x87ceeb);
+          }
+        );
+      }
+    );
   }
 }

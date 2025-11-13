@@ -92,7 +92,8 @@ export class BattleUI3D {
       this.scene3D = new ImmersiveBattleScene3D(
         this.scene3DContainer,
         viewport.width,
-        viewport.height
+        viewport.height,
+        '/assets/3d/skybox/battle-skybox.jpg' // Skybox equirectangular
       );
       // O canvas já é configurado para 100% dentro do ImmersiveBattleScene3D
       

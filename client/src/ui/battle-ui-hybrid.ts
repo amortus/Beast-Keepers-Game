@@ -172,7 +172,8 @@ export class BattleUIHybrid {
       this.arenaScene3D = new ImmersiveBattleScene3D(
         this.arenaScene3DContainer,
         containerWidth,
-        containerHeight
+        containerHeight,
+        '/assets/3d/skybox/battle-skybox.jpg' // Skybox equirectangular
       );
       
       // Load beasts

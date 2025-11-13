@@ -748,7 +748,48 @@ export class BeastModel {
     root.updateMatrixWorld(true);
   }
 
-  private loadAdditionalAnimation(url: string, name: string, defaults: RegisteredAnimationOptions) {
+  private async loadAdditionalAnimation(url: string, name: string, defaults: RegisteredAnimationOptions) {
+    // Verificar se o arquivo existe antes de tentar carregar (evita 404 no console)
+    // Usamos AbortController com timeout curto para evitar esperar muito tempo
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 segundo timeout
+    
+    try {
+      // Tentar HEAD primeiro (mais leve), se falhar, tentar GET
+      let response: Response;
+      try {
+        response = await fetch(url, { 
+          method: 'HEAD',
+          signal: controller.signal,
+          cache: 'no-cache'
+        });
+      } catch (headError: any) {
+        // Se HEAD falhar (alguns servidores não suportam), tentar GET
+        if (headError?.name !== 'AbortError') {
+          response = await fetch(url, { 
+            method: 'GET',
+            signal: controller.signal,
+            cache: 'no-cache'
+          });
+        } else {
+          throw headError;
+        }
+      }
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        // Arquivo não existe (404, 403, etc.), ignorar silenciosamente (animação opcional)
+        return;
+      }
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      // Erro na verificação (404, rede, CORS, timeout, etc.), ignorar silenciosamente
+      // Não logar erros 404 pois são esperados para animações opcionais
+      return;
+    }
+
+    // Arquivo existe, carregar com GLTFLoader
     const loader = new GLTFLoader();
     loader.load(
       url,
@@ -759,7 +800,7 @@ export class BeastModel {
 
         const [clip] = gltf.animations ?? [];
         if (!clip) {
-          console.warn(`[BeastModel] No animation clip found in ${url}`);
+          // Não logar warning para animações opcionais
           return;
         }
 
@@ -767,12 +808,8 @@ export class BeastModel {
       },
       undefined,
       (error) => {
-        // Silently ignore missing animation files (404 errors)
-        // These animations are optional and may not exist for all beasts
-        if (error?.message?.includes('404') || error?.message?.includes('Not Found')) {
-          return;
-        }
-        console.error(`[BeastModel] Failed to load animation "${name}" from ${url}:`, error);
+        // Erro no carregamento, ignorar silenciosamente (animação opcional)
+        // Não logar erros 404 pois são esperados
       }
     );
   }
