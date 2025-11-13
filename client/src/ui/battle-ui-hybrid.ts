@@ -114,13 +114,9 @@ export class BattleUIHybrid {
     this.arenaScene3DContainer.style.border = 'none';
     
     this.arenaScene3D.resize(containerWidth, containerHeight);
-    
-    console.log('[BattleUI HYBRID] Arena 3D repositioned:', { top: containerTop, left: containerLeft, width: containerWidth, height: containerHeight });
   }
 
   private setup3DArena() {
-    console.log('[BattleUI HYBRID] Setting up 3D arena (full viewport)...');
-    
     // Obter tamanho VISUAL do canvas (não o lógico)
     const rect = this.canvas.getBoundingClientRect();
     const visualWidth = rect.width;
@@ -185,14 +181,6 @@ export class BattleUIHybrid {
       
       // Set camera MAIS PRÓXIMA (cinematic para batalha)
       this.arenaScene3D.setCameraAngle('cinematic');
-      
-      console.log('[BattleUI HYBRID] ✓ 3D arena created (full viewport)');
-      console.log('[BattleUI HYBRID] Container position:', {
-        top: containerTop,
-        left: containerLeft,
-        width: containerWidth,
-        height: containerHeight
-      });
     } catch (error) {
       console.error('[BattleUI HYBRID] Failed to create 3D arena:', error);
       this.arenaScene3D = null;
@@ -200,24 +188,13 @@ export class BattleUIHybrid {
   }
 
   private handleClick() {
-    console.log('[Battle UI] Click detected at:', this.mouseX, this.mouseY);
-    console.log('[Battle UI] Current phase:', this.battle.phase);
-    console.log('[Battle UI] Buttons registered:', this.buttons.size);
-    
-    let clickedAny = false;
-    this.buttons.forEach((button, key) => {
+    this.buttons.forEach((button) => {
       if (isMouseOver(this.mouseX, this.mouseY, button.x, button.y, button.width, button.height)) {
-        console.log('[Battle UI] Button clicked:', key);
-        clickedAny = true;
         if (button.action) {
           button.action();
         }
       }
     });
-    
-    if (!clickedAny) {
-      console.log('[Battle UI] No button was clicked');
-    }
   }
 
   public draw() {
@@ -225,11 +202,6 @@ export class BattleUIHybrid {
     
     // Reposicionar arena 3D a cada frame (garante que está sempre no lugar certo)
     this.repositionArena3D();
-    
-    // Debug log a cada 60 frames
-    if (this.animationFrame % 60 === 0) {
-      console.log('[BattleUI HYBRID] Drawing frame', this.animationFrame, '- Canvas visible:', this.canvas.style.display !== 'none');
-    }
     
     // 3D arena tem seu próprio loop interno (startAnimationLoop)
     // Não precisa de update() manual aqui
@@ -275,12 +247,7 @@ export class BattleUIHybrid {
     if (this.battle.phase === 'player_turn' && !this.isAutoBattle) {
       this.drawActionMenu();
     } else if (this.battle.phase === 'player_turn' && this.isAutoBattle) {
-      console.log('[Battle UI] Player turn but auto-battle is active, skipping action menu');
-    } else if (this.battle.phase !== 'player_turn') {
-      // Debug: log why action menu is not shown
-      if (this.animationFrame % 60 === 0) { // Log every 60 frames to avoid spam
-        console.log('[Battle UI] Action menu not shown - Phase:', this.battle.phase, 'Auto:', this.isAutoBattle);
-      }
+      // Auto-battle is active, skipping action menu
     }
 
     // Draw end screen
@@ -708,11 +675,6 @@ export class BattleUIHybrid {
     // List techniques
     const techniques = this.battle.player.beast.techniques;
     
-    console.log('[BattleUI] Drawing technique menu');
-    console.log('[BattleUI] Beast:', this.battle.player.beast.name);
-    console.log('[BattleUI] Techniques array:', techniques);
-    console.log('[BattleUI] Techniques count:', techniques.length);
-    
     const techBtnWidth = 180;
     const techBtnHeight = 30;
     const techSpacing = 5;
@@ -732,7 +694,6 @@ export class BattleUIHybrid {
     }
 
     techniques.forEach((tech, i) => {
-      console.log(`[BattleUI] Technique ${i}:`, tech);
       const col = i % techPerRow;
       const row = Math.floor(i / techPerRow);
       const techBtnX = x + 10 + col * (techBtnWidth + techSpacing);
@@ -818,10 +779,7 @@ export class BattleUIHybrid {
       action: () => {
         // Verificar se a batalha realmente terminou ANTES de chamar onBattleEnd
         if (this.battle.phase === 'victory' || this.battle.phase === 'defeat' || this.battle.phase === 'fled') {
-          console.log('[Battle UI] ✓ Calling onBattleEnd with phase:', this.battle.phase);
           this.onBattleEnd();
-        } else {
-          console.error('[Battle UI] ❌ Cannot call onBattleEnd - invalid phase:', this.battle.phase);
         }
       },
     });
@@ -851,13 +809,10 @@ export class BattleUIHybrid {
     this.isAutoBattle = !this.isAutoBattle;
     
     if (this.isAutoBattle) {
-      console.log('[Battle UI] Auto battle ENABLED');
       // Se estiver no turno do jogador, executa ação automática
       if (this.battle.phase === 'player_turn') {
         this.executeAutoBattleAction();
       }
-    } else {
-      console.log('[Battle UI] Auto battle DISABLED');
     }
   }
 
@@ -893,8 +848,6 @@ export class BattleUIHybrid {
   }
 
   private createPlayerViewer3D() {
-    console.log('[Battle UI] Creating player 3D viewer for:', this.battle.player.beast.name);
-    
     // Create container
     this.playerViewer3DContainer = document.createElement('div');
     this.playerViewer3DContainer.id = 'battle-player-viewer-3d';
@@ -916,15 +869,12 @@ export class BattleUIHybrid {
         80, // Initial size, will be updated in drawPlayerBeast
         80
       );
-      console.log('[Battle UI] ✓ Player 3D viewer created');
     } catch (error) {
-      console.error('[Battle UI] ❌ Failed to create player viewer:', error);
+      console.error('[Battle UI] Failed to create player viewer:', error);
     }
   }
 
   private createEnemyViewer3D() {
-    console.log('[Battle UI] Creating enemy 3D viewer for:', this.battle.enemy.beast.name);
-    
     // Create container
     this.enemyViewer3DContainer = document.createElement('div');
     this.enemyViewer3DContainer.id = 'battle-enemy-viewer-3d';
@@ -946,9 +896,8 @@ export class BattleUIHybrid {
         80, // Initial size, will be updated in drawEnemyBeast
         80
       );
-      console.log('[Battle UI] ✓ Enemy 3D viewer created');
     } catch (error) {
-      console.error('[Battle UI] ❌ Failed to create enemy viewer:', error);
+      console.error('[Battle UI] Failed to create enemy viewer:', error);
     }
   }
 
@@ -1001,26 +950,21 @@ export class BattleUIHybrid {
   }
 
   public dispose() {
-    console.log('[BattleUI HYBRID] Disposing...');
-    
     // CRÍTICO: Remover event listeners do canvas
     if (this.mouseMoveHandler) {
       this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
       this.mouseMoveHandler = null;
-      console.log('[BattleUI HYBRID] ✓ MouseMove listener removed');
     }
     
     if (this.mouseDownHandler) {
       this.canvas.removeEventListener('mousedown', this.mouseDownHandler);
       this.mouseDownHandler = null;
-      console.log('[BattleUI HYBRID] ✓ MouseDown listener removed');
     }
     
     // Remove resize listener
     if (this.resizeHandler) {
       window.removeEventListener('resize', this.resizeHandler);
       this.resizeHandler = null;
-      console.log('[BattleUI HYBRID] ✓ Resize listener removed');
     }
     
     // Cleanup 3D arena (principal)
@@ -1051,8 +995,6 @@ export class BattleUIHybrid {
       this.enemyViewer3DContainer.remove();
       this.enemyViewer3DContainer = null;
     }
-    
-    console.log('[BattleUI HYBRID] ✓ Cleanup complete');
   }
 
   // Callbacks
