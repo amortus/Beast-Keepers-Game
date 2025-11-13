@@ -81,4 +81,14 @@ export const VILLAGE_BLUEPRINT: VillageBuildingBlueprint[] = [
     label: 'Taverna da Eryon',
     highlightColor: 0xdff5df,
   },
+  {
+    id: 'facility:quests',
+    icon: '📜',
+    variant: 'mission',
+    position: { x: 0, y: 0, z: -10 },
+    color: 0x8b7355,
+    facilityId: 'quests',
+    label: 'Quadro de Missões',
+    highlightColor: 0xfff3c4,
+  },
 ];

@@ -22,6 +22,7 @@ export class Village3DUI {
   public onOpenTemple?: () => void;
   public onOpenCraft?: () => void;
   public onOpenDungeons?: () => void;
+  public onOpenQuests?: () => void;
   public onOpenRanch?: () => void;
   public onClose?: () => void;
 
@@ -359,6 +360,9 @@ export class Village3DUI {
         break;
       case 'dungeons':
         this.onOpenDungeons?.();
+        break;
+      case 'quests':
+        this.onOpenQuests?.();
         break;
       case 'ranch':
         this.onOpenRanch?.();

@@ -56,6 +56,8 @@ export class VillageScene3D {
   private marketPrefabPromise: Promise<THREE.Group> | null = null;
   private dungeonPrefab: THREE.Group | null = null;
   private dungeonPrefabPromise: Promise<THREE.Group> | null = null;
+  private missionPrefab: THREE.Group | null = null;
+  private missionPrefabPromise: Promise<THREE.Group> | null = null;
   private environmentGroup: THREE.Group | null = null;
   private ranchPrefabCache = new Map<string, THREE.Group>();
   private housePrefabs: THREE.Group[] = [];
@@ -273,6 +275,13 @@ export class VillageScene3D {
     if (uniqueVariants.has('tavern')) {
       loadPromises.push(
         this.loadTavernPrefab().then(() => {
+          this.updateLoadingProgress();
+        })
+      );
+    }
+    if (uniqueVariants.has('mission')) {
+      loadPromises.push(
+        this.loadMissionPrefab().then(() => {
           this.updateLoadingProgress();
         })
       );
@@ -855,16 +864,6 @@ export class VillageScene3D {
         light.position.set(0, 2.2, 0);
         wrapper.add(light);
       }
-    });
-
-    // Quadro de Missões (mission board)
-    const missionBoard = this.spawnRanchPrefab('/assets/3d/Village/Mission.glb', {
-      name: 'village-mission-board',
-      position: [0, 0, -10], // Posicionado entre o templo e o centro da vila
-      rotationY: 0,
-      targetHeight: 3.5,
-      verticalOffset: 0,
-      scaleMultiplier: 1.0,
     });
 
     // Montanhas formando um círculo uniforme e completo ao redor da vila
@@ -1662,6 +1661,8 @@ export class VillageScene3D {
         return this.createTavern(config);
       case 'dungeon':
         return this.createDungeon(config);
+      case 'mission':
+        return this.createMissionBoard(config);
       case 'guild':
         return this.createPrefabHouse(config, 2);
       case 'house':
@@ -1685,6 +1686,8 @@ export class VillageScene3D {
         return await this.createTavernAsync(config);
       case 'dungeon':
         return await this.createDungeonAsync(config);
+      case 'mission':
+        return await this.createMissionBoardAsync(config);
       case 'guild':
         return await this.createPrefabHouseAsync(config, 2);
       case 'house':
@@ -1952,6 +1955,83 @@ export class VillageScene3D {
     }
 
     return wrapper;
+  }
+
+  private createMissionBoard(config: VillageBuildingConfig): THREE.Group {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralMissionBoard(config);
+    fallback.visible = false; // Esconder fallback até que prefab carregue ou falhe
+    wrapper.add(fallback);
+
+    this.loadMissionPrefab()
+      .then((prefab) => {
+        const clone = prefab.clone(true);
+        this.prepareMissionModel(clone);
+        wrapper.remove(fallback);
+        this.disposeObject(fallback);
+        wrapper.add(clone);
+      })
+      .catch((error) => {
+        console.error('[VillageScene3D] Falha ao carregar Mission.glb, usando fallback procedural.', error);
+        fallback.visible = true; // Mostrar fallback se prefab falhar
+      });
+
+    return wrapper;
+  }
+
+  private async createMissionBoardAsync(config: VillageBuildingConfig): Promise<THREE.Group> {
+    const wrapper = new THREE.Group();
+    const fallback = this.createProceduralMissionBoard(config);
+    fallback.visible = false;
+    wrapper.add(fallback);
+
+    try {
+      const prefab = await this.loadMissionPrefab();
+      const clone = prefab.clone(true);
+      this.prepareMissionModel(clone);
+      wrapper.remove(fallback);
+      this.disposeObject(fallback);
+      wrapper.add(clone);
+    } catch (error) {
+      console.error('[VillageScene3D] Falha ao carregar Mission.glb, usando fallback procedural.', error);
+      fallback.visible = true;
+    }
+
+    return wrapper;
+  }
+
+  private createProceduralMissionBoard(config: VillageBuildingConfig): THREE.Group {
+    const board = new THREE.Group();
+
+    // Poste de madeira
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.15, 3.5, 8),
+      new THREE.MeshStandardMaterial({ color: 0x6b4e3d, roughness: 0.8 }),
+    );
+    post.position.y = 1.75;
+    post.castShadow = true;
+    post.receiveShadow = true;
+    board.add(post);
+
+    // Placa de madeira
+    const boardMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2.5, 1.8, 0.15),
+      new THREE.MeshStandardMaterial({ color: config.color, roughness: 0.7 }),
+    );
+    boardMesh.position.set(0, 3.2, 0);
+    boardMesh.castShadow = true;
+    boardMesh.receiveShadow = true;
+    board.add(boardMesh);
+
+    // Moldura da placa
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(2.6, 1.9, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.6 }),
+    );
+    frame.position.set(0, 3.2, -0.02);
+    board.add(frame);
+
+    return board;
   }
 
   private createProceduralAlchemy(config: VillageBuildingConfig): THREE.Group {
@@ -2421,6 +2501,33 @@ export class VillageScene3D {
   private prepareDungeonModel(model: THREE.Group) {
     this.prepareStaticPrefab(model);
     this.normaliseStaticModel(model, 7.2, -0.05);
+  }
+
+  private loadMissionPrefab(): Promise<THREE.Group> {
+    if (this.missionPrefab) {
+      return Promise.resolve(this.missionPrefab);
+    }
+    if (this.missionPrefabPromise) {
+      return this.missionPrefabPromise;
+    }
+
+    const candidates = ['/assets/3d/Village/Mission.glb'];
+    this.missionPrefabPromise = this.loadVillagePrefabCandidates(candidates)
+      .then((prefab) => {
+        this.missionPrefab = prefab;
+        return prefab;
+      })
+      .catch((error) => {
+        this.missionPrefabPromise = null;
+        throw error;
+      });
+
+    return this.missionPrefabPromise;
+  }
+
+  private prepareMissionModel(model: THREE.Group) {
+    this.prepareStaticPrefab(model);
+    this.normaliseStaticModel(model, 3.5, 0);
   }
 
   private loadTavernPrefab(): Promise<THREE.Group> {

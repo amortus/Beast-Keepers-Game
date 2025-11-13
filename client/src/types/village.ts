@@ -11,7 +11,8 @@ export type VillageBuildingVariant =
   | 'temple'
   | 'tavern'
   | 'guild'
-  | 'dungeon';
+  | 'dungeon'
+  | 'mission';
 
 export type VillageBuildingKind = 'npc' | 'facility';
 
