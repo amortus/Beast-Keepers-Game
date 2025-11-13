@@ -5,6 +5,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Grass } from '../vegetation/PS1Grass';
 
@@ -64,6 +65,12 @@ export class ImmersiveBattleScene3D {
   
   // Skybox
   private skyboxTexture: THREE.Texture | null = null;
+  
+  // Asset loaders
+  private gltfLoader: GLTFLoader = new GLTFLoader();
+  private treePrefabs: THREE.Group[] = [];
+  private flowerPrefab: THREE.Group | null = null;
+  private prefabCache: Map<string, THREE.Group> = new Map();
 
   constructor(container: HTMLElement, width: number, height: number, skyboxUrl?: string) {
     // Scene setup
@@ -130,6 +137,9 @@ export class ImmersiveBattleScene3D {
     
     // Adicionar nuvens no céu
     this.createClouds();
+    
+    // Carregar assets de árvores e flores
+    this.loadForestAssets();
   }
 
   private createBattleArena() {
@@ -175,11 +185,7 @@ export class ImmersiveBattleScene3D {
     // Pedras ao redor (igual rancho)
     this.createRocks();
     
-    // Árvores de fundo (igual rancho)
-    this.createBackgroundTrees();
-    
-    // Flores esparsas (igual rancho)
-    this.createFlowers();
+    // Árvores e flores serão criadas após carregar os assets (em loadForestAssets)
     
     this.scene.add(this.arena);
   }
@@ -218,20 +224,136 @@ export class ImmersiveBattleScene3D {
     });
   }
 
+  private loadForestAssets() {
+    // Carregar árvores
+    const treeUrls = [
+      '/assets/3d/Ranch/Tree/Tree1.glb',
+      '/assets/3d/Ranch/Tree/Tree2.glb',
+    ];
+    
+    Promise.all(treeUrls.map(url => this.loadPrefab(url)))
+      .then((trees) => {
+        this.treePrefabs = trees;
+        // Após carregar árvores, criar floresta
+        this.createBackgroundTrees();
+      })
+      .catch((error) => {
+        console.error('[ImmersiveBattle] Failed to load tree assets:', error);
+        // Fallback para árvores procedurais
+        this.createProceduralTrees();
+      });
+    
+    // Carregar flor
+    this.loadPrefab('/assets/3d/Ranch/Flower/Sunlit_Blossom_1111142848_texture.glb')
+      .then((flower) => {
+        this.flowerPrefab = flower;
+        // Após carregar flor, criar flores
+        this.createFlowers();
+      })
+      .catch((error) => {
+        console.error('[ImmersiveBattle] Failed to load flower asset:', error);
+        // Fallback para flores procedurais
+        this.createProceduralFlowers();
+      });
+  }
+  
+  private loadPrefab(url: string): Promise<THREE.Group> {
+    const cached = this.prefabCache.get(url);
+    if (cached) {
+      return Promise.resolve(cached.clone(true));
+    }
+    
+    return new Promise((resolve, reject) => {
+      this.gltfLoader.load(
+        url,
+        (gltf) => {
+          const scene = gltf.scene;
+          scene.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          this.prefabCache.set(url, scene);
+          resolve(scene.clone(true));
+        },
+        undefined,
+        (error) => reject(error)
+      );
+    });
+  }
+
   private createBackgroundTrees() {
+    // Se ainda não carregou os assets, usar fallback procedural
+    if (this.treePrefabs.length === 0) {
+      this.createProceduralTrees();
+      return;
+    }
+    
+    // Criar uma floresta densa ao redor da arena
+    const treePositions: Array<[number, number, number]> = [
+      // Anel interno (próximo da arena)
+      [-18, 0, -14], [-14, 0, -18], [-16, 0, -16],
+      [18, 0, -14], [14, 0, -18], [16, 0, -16],
+      [-18, 0, 14], [-14, 0, 18], [-16, 0, 16],
+      [18, 0, 14], [14, 0, 18], [16, 0, 16],
+      
+      // Anel médio
+      [-22, 0, -10], [-10, 0, -22], [-20, 0, -20],
+      [22, 0, -10], [10, 0, -22], [20, 0, -20],
+      [-22, 0, 10], [-10, 0, 22], [-20, 0, 20],
+      [22, 0, 10], [10, 0, 22], [20, 0, 20],
+      
+      // Anel externo (fundo)
+      [-26, 0, -6], [-6, 0, -26], [-24, 0, -24],
+      [26, 0, -6], [6, 0, -26], [24, 0, -24],
+      [-26, 0, 6], [-6, 0, 26], [-24, 0, 24],
+      [26, 0, 6], [6, 0, 26], [24, 0, 24],
+      
+      // Árvores laterais (esquerda e direita)
+      [-28, 0, 0], [-30, 0, -8], [-30, 0, 8],
+      [28, 0, 0], [30, 0, -8], [30, 0, 8],
+      
+      // Árvores frontais e traseiras
+      [0, 0, -28], [-8, 0, -30], [8, 0, -30],
+      [0, 0, 28], [-8, 0, 30], [8, 0, 30],
+    ];
+    
+    treePositions.forEach(([x, y, z], index) => {
+      const treePrefab = this.treePrefabs[index % this.treePrefabs.length];
+      const tree = treePrefab.clone(true);
+      
+      // Normalizar altura (ajustar escala)
+      const box = new THREE.Box3().setFromObject(tree);
+      const size = box.getSize(new THREE.Vector3());
+      if (size.y > 0) {
+        const targetHeight = 4 + Math.random() * 2; // Altura variável entre 4-6
+        const scale = targetHeight / size.y;
+        tree.scale.setScalar(scale);
+      }
+      
+      // Rotação aleatória
+      tree.rotation.y = Math.random() * Math.PI * 2;
+      
+      // Pequena variação de escala para variedade
+      const scaleVariation = 0.8 + Math.random() * 0.4; // 0.8 a 1.2
+      tree.scale.multiplyScalar(scaleVariation);
+      
+      tree.position.set(x, y, z);
+      this.arena.add(tree);
+    });
+  }
+  
+  private createProceduralTrees() {
+    // Fallback: árvores procedurais se assets não carregarem
     const treePositions = [
-      [-16, 0, -12],
-      [-12, 0, -16],
-      [16, 0, -12],
-      [12, 0, -16],
-      [-14, 0, 12],
-      [14, 0, 12],
+      [-16, 0, -12], [-12, 0, -16], [16, 0, -12],
+      [12, 0, -16], [-14, 0, 12], [14, 0, 12],
     ];
     
     treePositions.forEach(([x, y, z]) => {
       const tree = new THREE.Group();
       
-      // Trunk
       const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 2, 6);
       const trunkMaterial = new THREE.MeshStandardMaterial({
         color: 0x4a3520,
@@ -243,7 +365,6 @@ export class ImmersiveBattleScene3D {
       trunk.castShadow = true;
       tree.add(trunk);
       
-      // Foliage (sphere)
       const foliageGeometry = new THREE.SphereGeometry(1.2, 8, 6);
       const foliageMaterial = new THREE.MeshStandardMaterial({
         color: 0x2d7a3e,
@@ -261,6 +382,52 @@ export class ImmersiveBattleScene3D {
   }
 
   private createFlowers() {
+    // Se ainda não carregou o asset, usar fallback procedural
+    if (!this.flowerPrefab) {
+      this.createProceduralFlowers();
+      return;
+    }
+    
+    // Criar flores espalhadas pela arena (mais densas perto das bordas)
+    const flowerCount = 60;
+    
+    for (let i = 0; i < flowerCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      // Mais flores nas bordas (radius entre 5-15)
+      const radius = 5 + Math.random() * 10;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      
+      // Evitar área central da arena (onde as bestas lutam)
+      if (Math.abs(x) < 6 && Math.abs(z) < 6) {
+        continue;
+      }
+      
+      const flower = this.flowerPrefab.clone(true);
+      
+      // Normalizar altura
+      const box = new THREE.Box3().setFromObject(flower);
+      const size = box.getSize(new THREE.Vector3());
+      if (size.y > 0) {
+        const targetHeight = 0.5 + Math.random() * 0.3; // Altura variável
+        const scale = targetHeight / size.y;
+        flower.scale.setScalar(scale);
+      }
+      
+      // Rotação aleatória
+      flower.rotation.y = Math.random() * Math.PI * 2;
+      
+      // Pequena variação de escala
+      const scaleVariation = 0.7 + Math.random() * 0.6; // 0.7 a 1.3
+      flower.scale.multiplyScalar(scaleVariation);
+      
+      flower.position.set(x, 0, z);
+      this.arena.add(flower);
+    }
+  }
+  
+  private createProceduralFlowers() {
+    // Fallback: flores procedurais se asset não carregar
     const flowerCount = 40;
     
     for (let i = 0; i < flowerCount; i++) {
@@ -269,7 +436,6 @@ export class ImmersiveBattleScene3D {
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius;
       
-      // Caule
       const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
       const stemMaterial = new THREE.MeshStandardMaterial({
         color: 0x228b22,
@@ -279,7 +445,6 @@ export class ImmersiveBattleScene3D {
       stem.position.set(x, 0.12, z);
       this.arena.add(stem);
       
-      // Flor (círculo)
       const flowerGeometry = new THREE.CircleGeometry(0.15, 6);
       const flowerColors = [0xff69b4, 0xffff00, 0xff6347, 0x9370db];
       const flowerColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
