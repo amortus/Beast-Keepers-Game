@@ -79,46 +79,89 @@ export class BattleUIHybrid {
   private repositionArena3D() {
     if (!this.arenaScene3DContainer || !this.arenaScene3D) return;
     
+    // Obter tamanho VISUAL do canvas (não o lógico)
     const rect = this.canvas.getBoundingClientRect();
-    const arenaY = 150;
-    const arenaHeight = 200;
+    const visualWidth = rect.width;
+    const visualHeight = rect.height;
     
-    const containerTop = rect.top + (arenaY / this.canvas.height) * rect.height;
-    const containerHeight = (arenaHeight / this.canvas.height) * rect.height;
+    // Calcular escala entre lógico e visual
+    const scaleX = visualWidth / this.canvas.width;
+    const scaleY = visualHeight / this.canvas.height;
+    
+    // Arena 3D ocupa TODO o espaço disponível do canvas VISUAL
+    // Começa logo abaixo do indicador de turno e vai até o painel de ações
+    const topLogical = 100; // Logo abaixo do indicador de turno (coordenada lógica)
+    const actionPanelTopLogical = 620; // Painel de ações começa aqui (coordenada lógica)
+    
+    // Converter para coordenadas visuais
+    const top = topLogical * scaleY;
+    const actionPanelTop = actionPanelTopLogical * scaleY;
+    const bottomMargin = 0; // Sem margem inferior, vai até o painel
+    const horizontalMargin = 0; // Sem margem horizontal, ocupa toda largura
+    
+    const containerTop = rect.top + top;
+    const containerLeft = rect.left + horizontalMargin;
+    const containerWidth = visualWidth - (horizontalMargin * 2);
+    const containerHeight = Math.max(200 * scaleY, actionPanelTop - top - bottomMargin);
     
     this.arenaScene3DContainer.style.top = `${containerTop}px`;
-    this.arenaScene3DContainer.style.left = `${rect.left}px`;
-    this.arenaScene3DContainer.style.width = `${rect.width}px`;
+    this.arenaScene3DContainer.style.left = `${containerLeft}px`;
+    this.arenaScene3DContainer.style.width = `${containerWidth}px`;
     this.arenaScene3DContainer.style.height = `${containerHeight}px`;
+    this.arenaScene3DContainer.style.margin = '0';
+    this.arenaScene3DContainer.style.padding = '0';
+    this.arenaScene3DContainer.style.boxSizing = 'border-box';
+    this.arenaScene3DContainer.style.border = 'none';
     
-    this.arenaScene3D.resize(rect.width, containerHeight);
+    this.arenaScene3D.resize(containerWidth, containerHeight);
     
-    console.log('[BattleUI HYBRID] Arena 3D repositioned:', { top: containerTop, left: rect.left, width: rect.width, height: containerHeight });
+    console.log('[BattleUI HYBRID] Arena 3D repositioned:', { top: containerTop, left: containerLeft, width: containerWidth, height: containerHeight });
   }
 
   private setup3DArena() {
-    console.log('[BattleUI HYBRID] Setting up 3D arena in beast area...');
+    console.log('[BattleUI HYBRID] Setting up 3D arena (full viewport)...');
     
-    // Garante que o canvas permite transparência
+    // Obter tamanho VISUAL do canvas (não o lógico)
     const rect = this.canvas.getBoundingClientRect();
-    const arenaY = 150; // mesma posição do drawArena()
-    const arenaHeight = 200;
+    const visualWidth = rect.width;
+    const visualHeight = rect.height;
     
-    // Calcula posição absoluta na tela
-    const containerTop = rect.top + (arenaY / this.canvas.height) * rect.height;
-    const containerHeight = (arenaHeight / this.canvas.height) * rect.height;
+    // Calcular escala entre lógico e visual
+    const scaleX = visualWidth / this.canvas.width;
+    const scaleY = visualHeight / this.canvas.height;
+    
+    // Arena 3D ocupa TODO o espaço disponível do canvas VISUAL
+    // Começa logo abaixo do indicador de turno e vai até o painel de ações
+    const topLogical = 100; // Logo abaixo do indicador de turno (coordenada lógica)
+    const actionPanelTopLogical = 620; // Painel de ações começa aqui (coordenada lógica)
+    
+    // Converter para coordenadas visuais
+    const top = topLogical * scaleY;
+    const actionPanelTop = actionPanelTopLogical * scaleY;
+    const bottomMargin = 0; // Sem margem inferior, vai até o painel
+    const horizontalMargin = 0; // Sem margem horizontal, ocupa toda largura
+    
+    const containerTop = rect.top + top;
+    const containerLeft = rect.left + horizontalMargin;
+    const containerWidth = visualWidth - (horizontalMargin * 2);
+    const containerHeight = Math.max(200 * scaleY, actionPanelTop - top - bottomMargin);
     
     this.arenaScene3DContainer = document.createElement('div');
     this.arenaScene3DContainer.id = 'battle-arena-3d-hybrid';
     this.arenaScene3DContainer.style.cssText = `
       position: fixed;
       top: ${containerTop}px;
-      left: ${rect.left}px;
-      width: ${rect.width}px;
+      left: ${containerLeft}px;
+      width: ${containerWidth}px;
       height: ${containerHeight}px;
       z-index: 1;
       pointer-events: none;
       background: transparent;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      border: none;
+      overflow: hidden;
     `;
     
     // Canvas 2D deve ficar ACIMA (z-index maior) mas NÃO modificar posição
@@ -132,7 +175,7 @@ export class BattleUIHybrid {
     try {
       this.arenaScene3D = new ImmersiveBattleScene3D(
         this.arenaScene3DContainer,
-        rect.width,
+        containerWidth,
         containerHeight
       );
       
@@ -143,11 +186,11 @@ export class BattleUIHybrid {
       // Set camera MAIS PRÓXIMA (cinematic para batalha)
       this.arenaScene3D.setCameraAngle('cinematic');
       
-      console.log('[BattleUI HYBRID] ✓ 3D arena created in beast area');
+      console.log('[BattleUI HYBRID] ✓ 3D arena created (full viewport)');
       console.log('[BattleUI HYBRID] Container position:', {
         top: containerTop,
-        left: rect.left,
-        width: rect.width,
+        left: containerLeft,
+        width: containerWidth,
         height: containerHeight
       });
     } catch (error) {
@@ -180,6 +223,9 @@ export class BattleUIHybrid {
   public draw() {
     this.animationFrame++;
     
+    // Reposicionar arena 3D a cada frame (garante que está sempre no lugar certo)
+    this.repositionArena3D();
+    
     // Debug log a cada 60 frames
     if (this.animationFrame % 60 === 0) {
       console.log('[BattleUI HYBRID] Drawing frame', this.animationFrame, '- Canvas visible:', this.canvas.style.display !== 'none');
@@ -191,16 +237,16 @@ export class BattleUIHybrid {
     // IMPORTANTE: Clear ANTES de desenhar qualquer coisa
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
-    // Desenha fundo escuro em TUDO (exceto área da arena)
+    // Desenha fundo escuro em TUDO (exceto área da arena 3D)
     this.ctx.fillStyle = COLORS.bg.dark;
     
-    // Fundo superior (acima da arena)
-    this.ctx.fillRect(0, 0, this.canvas.width, 150);
+    // Fundo superior (acima da arena 3D - até 100px)
+    this.ctx.fillRect(0, 0, this.canvas.width, 100);
     
-    // Fundo inferior (abaixo da arena)
-    this.ctx.fillRect(0, 350, this.canvas.width, this.canvas.height - 350);
+    // Fundo inferior (abaixo da arena 3D - a partir de 620px)
+    this.ctx.fillRect(0, 620, this.canvas.width, this.canvas.height - 620);
     
-    // Área da arena (150-350) fica TRANSPARENTE para ver 3D
+    // Área da arena 3D (100-620) fica TRANSPARENTE para ver 3D
 
     // Rebuild buttons
     this.buttons.clear();
@@ -247,8 +293,8 @@ export class BattleUIHybrid {
     // HÍBRIDO: Não desenha fundo cinza (3D arena aparece por baixo)
     // Arena background só aparece se 3D falhar
     if (!this.arenaScene3D) {
-      const arenaY = 150;
-      const arenaHeight = 200;
+      const arenaY = 100; // Mesma posição da arena 3D
+      const arenaHeight = 520; // Do indicador de turno até o painel de ações (620 - 100)
       
       drawPanel(this.ctx, 0, arenaY, this.canvas.width, arenaHeight, {
         bgColor: '#2d2d2d',
