@@ -78,7 +78,11 @@ export class BattleUI3D {
     this.scene3DContainer.style.pointerEvents = 'none';
     this.scene3DContainer.style.zIndex = '1';
     this.scene3DContainer.style.overflow = 'hidden';
-    this.scene3DContainer.style.borderRadius = '18px';
+    this.scene3DContainer.style.margin = '0';
+    this.scene3DContainer.style.padding = '0';
+    this.scene3DContainer.style.boxSizing = 'border-box';
+    this.scene3DContainer.style.border = 'none';
+    // Removido borderRadius para ocupar todo o espaço
 
     const parent = this.canvas.parentElement ?? document.body;
     parent.appendChild(this.scene3DContainer);
@@ -90,10 +94,7 @@ export class BattleUI3D {
         viewport.width,
         viewport.height
       );
-      this.scene3DContainer.firstElementChild?.setAttribute(
-        'style',
-        'width:100%;height:100%;display:block;'
-      );
+      // O canvas já é configurado para 100% dentro do ImmersiveBattleScene3D
       
       // Load beasts
       this.scene3D.setPlayerBeast(this.battle.player.beast.line);
@@ -737,20 +738,35 @@ export class BattleUI3D {
   }
 
   private getBattleViewportRect(): { x: number; y: number; width: number; height: number } {
-    const top = 96;
-    const actionPanelTop = 620;
-    const bottomMargin = 28;
-    const horizontalMargin = Math.max(16, this.canvas.width * 0.025);
+    // Obter tamanho VISUAL do canvas (não o lógico)
+    const rect = this.canvas.getBoundingClientRect();
+    const visualWidth = rect.width;
+    const visualHeight = rect.height;
+    
+    // Calcular escala entre lógico e visual
+    const scaleX = visualWidth / this.canvas.width;
+    const scaleY = visualHeight / this.canvas.height;
+    
+    // Cena 3D ocupa TODO o espaço disponível do canvas VISUAL
+    // Começa logo abaixo do indicador de turno e vai até o painel de ações
+    const topLogical = 100; // Logo abaixo do indicador de turno (coordenada lógica)
+    const actionPanelTopLogical = 620; // Painel de ações começa aqui (coordenada lógica)
+    
+    // Converter para coordenadas visuais
+    const top = topLogical * scaleY;
+    const actionPanelTop = actionPanelTopLogical * scaleY;
+    const bottomMargin = 0; // Sem margem inferior, vai até o painel
+    const horizontalMargin = 0; // Sem margem horizontal, ocupa toda largura
 
     const left = horizontalMargin;
-    const right = this.canvas.width - horizontalMargin;
-    const bottom = Math.max(top + 200, Math.min(this.canvas.height - 96, actionPanelTop - bottomMargin));
+    const right = visualWidth - horizontalMargin;
+    const bottom = actionPanelTop - bottomMargin;
 
     return {
       x: left,
       y: top,
       width: right - left,
-      height: Math.max(180, bottom - top),
+      height: Math.max(200 * scaleY, bottom - top), // Mínimo de 200px (escalado) de altura
     };
   }
 
@@ -768,10 +784,16 @@ export class BattleUI3D {
     const canvasLeft = rect.left + window.scrollX;
     const canvasTop = rect.top + window.scrollY;
 
+    // Posicionar container 3D exatamente sobre a área do canvas
     this.scene3DContainer.style.left = `${canvasLeft + viewport.x}px`;
     this.scene3DContainer.style.top = `${canvasTop + viewport.y}px`;
     this.scene3DContainer.style.width = `${viewport.width}px`;
     this.scene3DContainer.style.height = `${viewport.height}px`;
+    
+    // Garantir que não há margens ou padding
+    this.scene3DContainer.style.margin = '0';
+    this.scene3DContainer.style.padding = '0';
+    this.scene3DContainer.style.boxSizing = 'border-box';
 
     const viewportKey = `${viewport.width}x${viewport.height}`;
     if (force || viewportKey !== this.lastViewportKey) {

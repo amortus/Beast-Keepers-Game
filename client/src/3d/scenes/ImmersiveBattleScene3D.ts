@@ -87,7 +87,16 @@ export class ImmersiveBattleScene3D {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
-    container.appendChild(this.renderer.domElement);
+    // Garantir que o canvas ocupe 100% do container
+    const canvas = this.renderer.domElement;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    canvas.style.margin = '0';
+    canvas.style.padding = '0';
+    canvas.style.boxSizing = 'border-box';
+    
+    container.appendChild(canvas);
     
     this.clock = new THREE.Clock();
     this.arena = new THREE.Group();
@@ -770,6 +779,11 @@ export class ImmersiveBattleScene3D {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    
+    // Garantir que o canvas continue ocupando 100% do container
+    const canvas = this.renderer.domElement;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
   }
 
   /**
