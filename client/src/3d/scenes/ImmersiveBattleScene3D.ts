@@ -339,7 +339,14 @@ export class ImmersiveBattleScene3D {
       const scaleVariation = 0.8 + Math.random() * 0.4; // 0.8 a 1.2
       tree.scale.multiplyScalar(scaleVariation);
       
-      tree.position.set(x, y, z);
+      // Ajustar posição Y para que a base da árvore fique no chão
+      const scaledBox = new THREE.Box3().setFromObject(tree);
+      const scaledSize = scaledBox.getSize(new THREE.Vector3());
+      const minY = scaledBox.min.y;
+      // Posicionar base no chão (y=0) com pequeno offset para garantir que não fique enterrada
+      const verticalOffset = -0.1; // Pequeno offset para garantir que fique sobre o chão
+      tree.position.set(x, -minY + verticalOffset, z);
+      
       this.arena.add(tree);
     });
   }
@@ -421,7 +428,12 @@ export class ImmersiveBattleScene3D {
       const scaleVariation = 0.7 + Math.random() * 0.6; // 0.7 a 1.3
       flower.scale.multiplyScalar(scaleVariation);
       
-      flower.position.set(x, 0, z);
+      // Ajustar posição Y para que a base da flor fique no chão
+      const scaledBox = new THREE.Box3().setFromObject(flower);
+      const minY = scaledBox.min.y;
+      const verticalOffset = -0.05; // Pequeno offset para garantir que fique sobre o chão
+      flower.position.set(x, -minY + verticalOffset, z);
+      
       this.arena.add(flower);
     }
   }
