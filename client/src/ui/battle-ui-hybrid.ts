@@ -173,7 +173,7 @@ export class BattleUIHybrid {
         this.arenaScene3DContainer,
         containerWidth,
         containerHeight,
-        '/assets/3d/skybox/battle-skybox.jpg' // Skybox equirectangular
+        '/assets/3d/skybox/Skybox2.jpg' // Skybox equirectangular
       );
       
       // Load beasts
