@@ -803,7 +803,20 @@ export class BattleUIHybrid {
   }
 
   public updateBattle(battle: BattleContext) {
+    const previousPhase = this.battle?.phase;
     this.battle = battle;
+    
+    // Sincronizar animações com o estado da batalha
+    if (this.arenaScene3D) {
+      // Se a batalha terminou em derrota, setar animação de derrota no player
+      if (battle.phase === 'defeat' && previousPhase !== 'defeat' && this.arenaScene3D) {
+        this.arenaScene3D.setPlayerAnimation('defeat');
+      }
+      // Se a batalha terminou em vitória, setar animação de vitória no player
+      else if (battle.phase === 'victory' && previousPhase !== 'victory' && this.arenaScene3D) {
+        this.arenaScene3D.setPlayerAnimation('victory');
+      }
+    }
   }
 
   private toggleAutoBattle() {

@@ -728,6 +728,25 @@ export class ImmersiveBattleScene3D {
   }
 
   /**
+   * Set animation for player or enemy beast
+   */
+  public setPlayerAnimation(animation: BattleAnimation) {
+    if (this.playerBeast) {
+      this.playerBeast.currentAnimation = animation;
+      this.playerBeast.animationTime = 0;
+      this.playerBeast.activeRigClip = null; // Force restart
+    }
+  }
+
+  public setEnemyAnimation(animation: BattleAnimation) {
+    if (this.enemyBeast) {
+      this.enemyBeast.currentAnimation = animation;
+      this.enemyBeast.animationTime = 0;
+      this.enemyBeast.activeRigClip = null; // Force restart
+    }
+  }
+
+  /**
    * Play attack animation (ESTILO POKÉMON PORTÁTIL)
    */
   public playAttackAnimation(attacker: 'player' | 'enemy', target: 'player' | 'enemy') {
@@ -887,8 +906,12 @@ export class ImmersiveBattleScene3D {
         break;
       
       case 'defeat':
-        // Fall down
-        const defeatProgress = Math.min(beast.animationTime / 2, 1);
+        // Fall down - limitar animationTime para não continuar incrementando
+        const maxDefeatTime = 2.0; // Duração máxima da animação de derrota
+        if (beast.animationTime > maxDefeatTime) {
+          beast.animationTime = maxDefeatTime; // Limitar para não continuar incrementando
+        }
+        const defeatProgress = Math.min(beast.animationTime / maxDefeatTime, 1);
         beast.group.rotation.x = defeatProgress * Math.PI / 2;
         beast.group.position.y = beast.basePosition.y * (1 - defeatProgress * 0.5);
         break;
@@ -911,6 +934,12 @@ export class ImmersiveBattleScene3D {
       }
     }
 
+    // Para animações de derrota, não reiniciar se já está tocando
+    if (beast.currentAnimation === 'defeat' && beast.activeRigClip === clipName) {
+      // Manter a animação de derrota sem reiniciar
+      return;
+    }
+
     const shouldRestart = beast.activeRigClip !== clipName;
     const played = beast.model.playAnimation(clipName, {
       loop: config.loop,
@@ -920,6 +949,10 @@ export class ImmersiveBattleScene3D {
 
     if (played) {
       beast.activeRigClip = clipName;
+      // Reset animationTime quando uma nova animação começa
+      if (shouldRestart) {
+        beast.animationTime = 0;
+      }
     }
 
     if (clipName === 'idle') {
@@ -998,9 +1031,13 @@ export class ImmersiveBattleScene3D {
       // PS1Grass has its own dispose if needed
     }
     
-    // Dispose skybox texture
-    if (this.skyboxTexture) {
-      this.skyboxTexture.dispose();
+    // Dispose skybox texture (se não for CubeTexture, que não precisa dispose)
+    if (this.skyboxTexture && !(this.skyboxTexture instanceof THREE.CubeTexture)) {
+      try {
+        this.skyboxTexture.dispose();
+      } catch (error) {
+        // Ignorar erros de dispose (textura pode já ter sido descartada)
+      }
       this.skyboxTexture = null;
     }
     
