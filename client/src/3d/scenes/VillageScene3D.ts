@@ -391,6 +391,7 @@ export class VillageScene3D {
   private ambientLight: THREE.AmbientLight | null = null;
   private sunLight: THREE.DirectionalLight | null = null;
   private hemiLight: THREE.HemisphereLight | null = null;
+  private moonLight: THREE.DirectionalLight | null = null;
 
   private setupLights(): void {
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
@@ -411,6 +412,12 @@ export class VillageScene3D {
 
     this.hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x5c8a3a, 0.35);
     this.scene.add(this.hemiLight);
+
+    // Luz da lua (azul, só aparece à noite)
+    this.moonLight = new THREE.DirectionalLight(0x6b8cff, 0);
+    this.moonLight.position.set(-18, 35, -18);
+    this.moonLight.castShadow = false;
+    this.scene.add(this.moonLight);
     
     // Atualizar iluminação inicial
     this.updateDayNightLighting();
@@ -471,6 +478,15 @@ export class VillageScene3D {
       this.hemiLight.groundColor.setHex(
         Math.floor(dayGroundColor + (nightGroundColor - dayGroundColor) * blend)
       );
+    }
+
+    if (this.moonLight) {
+      // Lua: dia (0) -> noite (0.4, luz azul suave)
+      this.moonLight.intensity = blend * 0.4;
+      
+      // Posição da lua: oposta ao sol
+      const moonY = 35;
+      this.moonLight.position.y = moonY;
     }
   }
 
@@ -839,6 +855,16 @@ export class VillageScene3D {
         light.position.set(0, 2.2, 0);
         wrapper.add(light);
       }
+    });
+
+    // Quadro de Missões (mission board)
+    const missionBoard = this.spawnRanchPrefab('/assets/3d/Village/Mission.glb', {
+      name: 'village-mission-board',
+      position: [0, 0, -10], // Posicionado entre o templo e o centro da vila
+      rotationY: 0,
+      targetHeight: 3.5,
+      verticalOffset: 0,
+      scaleMultiplier: 1.0,
     });
 
     // Montanhas formando um círculo uniforme e completo ao redor da vila

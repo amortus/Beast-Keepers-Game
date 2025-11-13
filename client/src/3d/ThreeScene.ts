@@ -17,6 +17,7 @@ export class ThreeScene {
   private ambientLight: THREE.HemisphereLight | null = null;
   private keyLight: THREE.DirectionalLight | null = null;
   private rimLight: THREE.DirectionalLight | null = null;
+  private moonLight: THREE.DirectionalLight | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -80,6 +81,12 @@ export class ThreeScene {
     this.rimLight = new THREE.DirectionalLight(0xfff4d2, 0.35);
     this.rimLight.position.set(-6, 5, -4);
     this.scene.add(this.rimLight);
+
+    // Luz da lua (azul, só aparece à noite)
+    this.moonLight = new THREE.DirectionalLight(0x6b8cff, 0);
+    this.moonLight.position.set(-8, 10, -6);
+    this.moonLight.castShadow = false;
+    this.scene.add(this.moonLight);
     
     // Atualizar iluminação inicial
     this.updateDayNightLighting();
@@ -135,6 +142,15 @@ export class ThreeScene {
       this.rimLight.color.setHex(
         Math.floor(dayRimColor + (nightRimColor - dayRimColor) * blend)
       );
+    }
+
+    if (this.moonLight) {
+      // Lua: dia (0) -> noite (0.4, luz azul suave)
+      this.moonLight.intensity = blend * 0.4;
+      
+      // Posição da lua: oposta ao sol
+      const moonY = 10;
+      this.moonLight.position.y = moonY;
     }
   }
 

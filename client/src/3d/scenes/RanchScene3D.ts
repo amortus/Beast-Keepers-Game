@@ -10,7 +10,7 @@ import { ThreeScene } from '../ThreeScene';
 import { BeastModel } from '../models/BeastModel';
 import { PS1Water } from '../water/PS1Water';
 import { RanchCritters } from '../events/RanchCritters';
-import { getSkyColor } from '../../utils/day-night';
+import { getSkyColor, getDayNightBlend } from '../../utils/day-night';
 
 type Vec2 = [number, number];
 type Vec3 = [number, number, number];
@@ -924,6 +924,7 @@ export class RanchScene3D {
   }
 
   private applyWindowLighting(group: THREE.Group) {
+    // Apenas aplica emissive nas janelas, sem luz adicional
     const warmColor = new THREE.Color(this.skin.lamp.lightColor);
     const emissiveColor = warmColor.clone().multiplyScalar(0.65);
 
@@ -940,24 +941,6 @@ export class RanchScene3D {
         });
       }
     });
-
-    const windowLight = new THREE.PointLight(this.skin.lamp.lightColor, 0.6, 8, 2.2);
-    windowLight.position.set(0, 1.8, 1.3);
-    group.add(windowLight);
-
-    const windowGlow = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map: this.getGlowTexture(),
-        color: this.skin.lamp.lightColor,
-        transparent: true,
-        opacity: 0.4,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    );
-    windowGlow.scale.set(2.4, 2.0, 2.4);
-    windowGlow.position.set(0, 1.7, 1.25);
-    group.add(windowGlow);
   }
 
   private setupChimneySmoke(group: THREE.Group) {
@@ -982,9 +965,14 @@ export class RanchScene3D {
       return;
     }
 
+    // Verificar se é noite para aumentar intensidade das lanternas
+    const blend = getDayNightBlend(); // 0 = dia, 1 = noite
+    const nightBoost = 1 + (blend * 0.4); // Aumenta até 40% durante a noite
+
     for (const entry of this.lanternLights) {
       const flicker = Math.sin((this.elapsedTime + entry.offset) * 5.6) * 0.15 + (Math.random() - 0.5) * 0.04;
-      const intensity = Math.max(0.35, Math.min(entry.baseIntensity + flicker, 1.4));
+      const baseIntensityWithNight = entry.baseIntensity * nightBoost;
+      const intensity = Math.max(0.35, Math.min(baseIntensityWithNight + flicker, 1.8));
       entry.light.intensity = intensity;
 
       const spriteMaterial = entry.sprite.material as THREE.SpriteMaterial;
