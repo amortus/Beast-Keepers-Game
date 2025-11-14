@@ -1251,11 +1251,19 @@ export class RanchScene3D {
   }
 
   public setBeast(beastLine: string) {
+    // Limpar completamente o beast anterior
     if (this.beastGroup) {
       this.threeScene.removeObject(this.beastGroup);
-      this.beastModel?.dispose();
+    }
+    
+    if (this.beastModel) {
+      // Parar todas as animações antes de fazer dispose
+      this.beastModel.stopAnimations();
+      this.beastModel.dispose();
+      this.beastModel = null;
     }
 
+    // Criar novo beast model
     this.beastModel = new BeastModel(beastLine);
     this.beastGroup = this.beastModel.getGroup();
     this.needsFit = true;
@@ -1265,14 +1273,21 @@ export class RanchScene3D {
     this.nextMoveTime = 2 + Math.random() * 2;
     this.activeRigAnimation = null;
 
+    // Resetar posição e rotação
     this.beastGroup.position.set(0, 0, 0);
+    this.beastGroup.rotation.set(0, 0, 0);
+    this.beastGroup.scale.set(1, 1, 1);
+    
     this.threeScene.addObject(this.beastGroup);
 
-    if (this.beastModel.hasRiggedAnimations()) {
-      this.playRigAnimation('idle');
-      } else {
-      this.idleAnimation = this.beastModel.playIdleAnimation();
-    }
+    // Pequeno delay para garantir que o modelo está pronto antes de iniciar animação
+    setTimeout(() => {
+      if (this.beastModel && this.beastModel.hasRiggedAnimations()) {
+        this.playRigAnimation('idle');
+      } else if (this.beastModel) {
+        this.idleAnimation = this.beastModel.playIdleAnimation();
+      }
+    }, 50);
   }
 
   public update(delta: number) {

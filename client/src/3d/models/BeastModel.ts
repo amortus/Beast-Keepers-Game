@@ -1100,10 +1100,17 @@ export class BeastModel {
       return;
     }
 
+    // Parar todas as animações e resetar seus estados
     this.animations.forEach((action) => {
       action.stop();
+      action.reset();
+      action.enabled = false;
+      action.timeScale = 1.0; // Resetar timeScale para evitar animações rápidas
     });
     this.currentAnimationName = null;
+    
+    // Limpar o mixer completamente
+    this.mixer.stopAllAction();
   }
 
   // Simple idle animation
@@ -1126,16 +1133,23 @@ export class BeastModel {
   }
 
   public dispose() {
+    // Parar todas as animações primeiro
+    this.stopAnimations();
+    
     if (this.mixer) {
+      // Limpar completamente o mixer
       this.mixer.stopAllAction();
       this.mixer.uncacheRoot(this.group);
       this.mixer = null;
     }
+    
+    // Limpar todas as referências de animação
     this.animations.clear();
     this.animationDefaults.clear();
     this.currentAnimationName = null;
     this.isImportedModel = false;
 
+    // Limpar geometrias e materiais
     this.group.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.geometry.dispose();
@@ -1146,6 +1160,11 @@ export class BeastModel {
         }
       }
     });
+    
+    // Resetar posição e rotação do grupo
+    this.group.position.set(0, 0, 0);
+    this.group.rotation.set(0, 0, 0);
+    this.group.scale.set(1, 1, 1);
   }
 }
 
