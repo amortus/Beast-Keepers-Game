@@ -38,11 +38,11 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     // Allow localhost (development)
-    if (origin.includes('localhost')) {
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true);
     }
     
-    // Allow any Vercel deployment URL
+    // Allow any Vercel deployment URL (including vanilla-game.vercel.app)
     if (origin.includes('vercel.app')) {
       return callback(null, true);
     }
@@ -52,9 +52,15 @@ app.use(cors({
       return callback(null, true);
     }
     
+    // Log blocked origins for debugging
+    console.warn('[CORS] Blocked origin:', origin);
     callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Authorization'],
+  maxAge: 86400 // 24 hours
 }));
 
 // Body parsing
