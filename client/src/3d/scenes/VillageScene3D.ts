@@ -183,18 +183,6 @@ export class VillageScene3D {
       group.castShadow = true;
       group.receiveShadow = true;
       group.userData.buildingId = config.id;
-      group.userData.config = config; // Armazenar config para debug
-      
-      // Log para debug do Ruvian
-      if (config.id === 'npc:ruvian' || config.npcId === 'ruvian') {
-        console.log('[VillageScene3D] Criando casa do Mestre Ruvian:', {
-          id: config.id,
-          position: config.position,
-          variant: config.variant,
-          groupPosition: group.position,
-          groupVisible: group.visible,
-        });
-      }
 
       const highlight = this.createHighlightCircle(config);
       highlight.position.set(config.position.x, 0.05, config.position.z);
