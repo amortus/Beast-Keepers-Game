@@ -27,6 +27,7 @@ interface PrefabSpawnOptions {
   verticalOffset?: number;
   scaleMultiplier?: number;
   randomRotation?: boolean;
+  onLoaded?: (group: THREE.Group) => void;
 }
 
 export class VillageScene3D {
@@ -854,87 +855,102 @@ export class VillageScene3D {
       });
     });
 
-    // Posições das lanternas (evitando edifícios e espaçadas)
-    // Edifícios estão em: (0,0,-25), (-14,0,4), (14,0,4), (0,0,15), (-18,0,-9), (12,0,-10), (0,0,-10)
-    const lanternPositions: Array<{ position: [number, number, number]; rotation?: number }> = [
-      // Lanternas originais
-      { position: [-9, 0, 7], rotation: Math.PI * 0.08 },
-      { position: [9, 0, 7], rotation: -Math.PI * 0.08 },
-      { position: [-6, 0, -6], rotation: Math.PI * 0.12 },
-      { position: [6, 0, -6], rotation: -Math.PI * 0.12 },
-      // Novas lanternas adicionadas
-      { position: [-12, 0, -2], rotation: Math.PI * 0.1 },
-      { position: [12, 0, -2], rotation: -Math.PI * 0.1 },
-      { position: [-3, 0, 12], rotation: Math.PI * 0.15 },
-      { position: [3, 0, 12], rotation: -Math.PI * 0.15 },
-      { position: [-15, 0, -15], rotation: Math.PI * 0.05 },
-      { position: [15, 0, -15], rotation: -Math.PI * 0.05 },
-      { position: [0, 0, -18], rotation: Math.PI * 0.2 },
-      { position: [-7, 0, 10], rotation: Math.PI * 0.12 },
-      { position: [7, 0, 10], rotation: -Math.PI * 0.12 },
+    // Posições das lanternas baseadas nas posições dos edifícios
+    // Cada lanterna fica na frente do edifício, mas ao lado direito ou esquerdo
+    // Edifícios: Templo(0,0,-25), Shop(-14,0,4), Alchemy(14,0,4), Dungeon(0,0,15), 
+    //            Ruvian(-18,0,-9), Eryon(12,0,-10), Quests(0,0,-10)
+    const buildingPositions = [
+      { pos: { x: 0, z: -25 }, name: 'Templo', side: 'right' },      // Templo
+      { pos: { x: -14, z: 4 }, name: 'Shop', side: 'left' },        // Shop (esquerda)
+      { pos: { x: 14, z: 4 }, name: 'Alchemy', side: 'right' },     // Alchemy (direita)
+      { pos: { x: 0, z: 15 }, name: 'Dungeon', side: 'left' },     // Dungeon
+      { pos: { x: -18, z: -9 }, name: 'Ruvian', side: 'right' },   // Ruvian (casa)
+      { pos: { x: 12, z: -10 }, name: 'Eryon', side: 'left' },     // Eryon (taverna)
+      { pos: { x: 0, z: -10 }, name: 'Quests', side: 'right' },    // Quests (mission board)
     ];
 
+    const lanternPositions: Array<{ position: [number, number, number]; rotation?: number }> = [];
+    
+    buildingPositions.forEach((building, index) => {
+      // Calcular posição da lanterna: na frente do edifício (z mais próximo da câmera)
+      // mas ao lado direito ou esquerdo
+      const offsetX = building.side === 'right' ? 3.5 : -3.5; // 3.5 unidades ao lado
+      const offsetZ = building.pos.z > 0 ? -2.5 : 2.5; // Na frente (mais próximo da câmera)
+      
+      const lanternX = building.pos.x + offsetX;
+      const lanternZ = building.pos.z + offsetZ;
+      
+      // Rotação para a lanterna "olhar" para o edifício
+      const angleToBuilding = Math.atan2(building.pos.x - lanternX, building.pos.z - lanternZ);
+      const rotation = angleToBuilding + Math.PI; // Olhar para o edifício
+      
+      lanternPositions.push({
+        position: [lanternX, 0, lanternZ],
+        rotation: rotation,
+      });
+    });
+
     lanternPositions.forEach((cfg, index) => {
+      // Sistema de iluminação igual ao rancho
+      const lightColor = 0xfff3c4;
+      const emissiveColor = 0xffdf9a;
+      const baseIntensity = 0.62;
+      
+      // Calcular posição da luz proporcionalmente à altura da lanterna
+      // Rancho: altura 2.2, luz em 0.76 (34.5% da altura)
+      // Vila: altura 3.4, luz deve estar em 3.4 * 0.345 ≈ 1.17
+      const lightHeight = (3.4 / 2.2) * 0.76; // ~1.17
+      
       const wrapper = this.spawnRanchPrefab('/assets/3d/Ranch/Lantern/Lantern1.glb', {
         name: `village-lantern-${index}`,
         position: cfg.position,
         rotationY: cfg.rotation,
         targetHeight: 3.4,
         verticalOffset: -0.15,
+        onLoaded: (group) => {
+          // Adicionar luz após o modelo ser carregado e normalizado
+          // PointLight (posição relativa ao grupo da lanterna)
+          const light = new THREE.PointLight(lightColor, 0, 6.0, 1.4); // Intensidade inicial 0 (apagada)
+          light.position.set(0, lightHeight, 0); // Posição proporcional à altura da lanterna
+          group.add(light);
+
+          // Inner glow (esfera emissiva dentro da lanterna)
+          const innerGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 12, 12),
+            new THREE.MeshBasicMaterial({
+              color: emissiveColor,
+              transparent: true,
+              opacity: 0,
+            }),
+          );
+          innerGlow.position.set(0, lightHeight - 0.02, 0); // Ligeiramente abaixo da luz
+          group.add(innerGlow);
+
+          // Sprite de brilho (glow externo)
+          const sprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({
+              map: this.getGlowTexture(),
+              color: lightColor,
+              transparent: true,
+              opacity: 0,
+              depthWrite: false,
+              blending: THREE.AdditiveBlending,
+            }),
+          );
+          sprite.position.set(0, lightHeight, 0);
+          sprite.scale.set(1.08, 1.08, 1.08);
+          group.add(sprite);
+
+          this.villageLanternLights.push({
+            light,
+            sprite,
+            innerGlow,
+            baseIntensity,
+            offset: Math.random() * Math.PI * 2,
+            group: group,
+          });
+        },
       });
-
-      if (wrapper) {
-        // Sistema de iluminação igual ao rancho
-        const lightColor = 0xfff3c4;
-        const emissiveColor = 0xffdf9a;
-        const baseIntensity = 0.62;
-        
-        // Calcular posição da luz proporcionalmente à altura da lanterna
-        // Rancho: altura 2.2, luz em 0.76 (34.5% da altura)
-        // Vila: altura 3.4, luz deve estar em 3.4 * 0.345 ≈ 1.17
-        const lightHeight = (3.4 / 2.2) * 0.76; // ~1.17
-        
-        // PointLight (posição relativa ao grupo da lanterna)
-        const light = new THREE.PointLight(lightColor, 0, 6.0, 1.4); // Intensidade inicial 0 (apagada)
-        light.position.set(0, lightHeight, 0); // Posição proporcional à altura da lanterna
-        wrapper.add(light);
-
-        // Inner glow (esfera emissiva dentro da lanterna)
-        const innerGlow = new THREE.Mesh(
-          new THREE.SphereGeometry(0.18, 12, 12),
-          new THREE.MeshBasicMaterial({
-            color: emissiveColor,
-            transparent: true,
-            opacity: 0,
-          }),
-        );
-        innerGlow.position.set(0, lightHeight - 0.02, 0); // Ligeiramente abaixo da luz
-        wrapper.add(innerGlow);
-
-        // Sprite de brilho (glow externo)
-        const sprite = new THREE.Sprite(
-          new THREE.SpriteMaterial({
-            map: this.getGlowTexture(),
-            color: lightColor,
-            transparent: true,
-            opacity: 0,
-            depthWrite: false,
-            blending: THREE.AdditiveBlending,
-          }),
-        );
-        sprite.position.set(0, lightHeight, 0);
-        sprite.scale.set(1.08, 1.08, 1.08);
-        wrapper.add(sprite);
-
-        this.villageLanternLights.push({
-          light,
-          sprite,
-          innerGlow,
-          baseIntensity,
-          offset: Math.random() * Math.PI * 2,
-          group: wrapper,
-        });
-      }
     });
 
     // Montanhas formando um círculo uniforme e completo ao redor da vila
@@ -1575,6 +1591,11 @@ export class VillageScene3D {
         }
 
         wrapper.add(clone);
+        
+        // Chamar callback após o modelo ser adicionado
+        if (options.onLoaded) {
+          options.onLoaded(wrapper);
+        }
       })
       .catch((error) => {
         console.error(`[VillageScene3D] Falha ao carregar prefab ${url}:`, error);
