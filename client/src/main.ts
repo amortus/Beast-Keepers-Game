@@ -1492,6 +1492,10 @@ async function openVillage() {
       closeVillage();
       openQuests();
     };
+    village3DUI.onOpenExploration = () => {
+      closeVillage();
+      openExploration();
+    };
     village3DUI.onOpenRanch = () => {
       closeVillage();
     };

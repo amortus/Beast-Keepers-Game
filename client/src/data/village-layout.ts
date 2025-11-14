@@ -91,4 +91,14 @@ export const VILLAGE_BLUEPRINT: VillageBuildingBlueprint[] = [
     label: 'Quadro de Missões',
     highlightColor: 0xfff3c4,
   },
+  {
+    id: 'facility:exploration',
+    icon: '🗺️',
+    variant: 'house',
+    position: { x: -14, y: 0, z: 15 },
+    color: 0x6a4c93,
+    facilityId: 'exploration',
+    label: 'Portal de Exploração',
+    highlightColor: 0x9d7bb8,
+  },
 ];
