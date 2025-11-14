@@ -995,8 +995,10 @@ export class VillageScene3D {
       '/assets/3d/Ranch/House/House3.glb',
     ];
 
-    // Removida a casa em [-26, 0, -20] pois agora é a casa do Mestre Ruvian
+    // Restaurada a casa em [-26, 0, -20] - será usada como casa do Mestre Ruvian
+    // A casa do Ruvian (criada pelo sistema de edifícios) aparecerá na mesma posição
     const scenicHouses: Array<{ position: [number, number, number]; rotation?: number; index?: number }> = [
+      { position: [-26, 0, -20], rotation: Math.PI * 0.18, index: 0 }, // Casa do Mestre Ruvian
       { position: [26, 0, -22], rotation: -Math.PI * 0.22, index: 1 },
       { position: [-34, 0, 8], rotation: Math.PI * 0.08, index: 2 },
       { position: [34, 0, 10], rotation: -Math.PI * 0.1, index: 1 },
