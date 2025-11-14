@@ -74,7 +74,6 @@ export class VillageScene3D {
   private dungeonBaseY: number = 0;
   private dungeonFloatTime: number = 0;
   private explorationGroup: THREE.Group | null = null;
-  private explorationParticles: THREE.Points | null = null;
   private explorationLight: THREE.PointLight | null = null;
   
   // Sistema de colisão
@@ -2173,8 +2172,8 @@ export class VillageScene3D {
 
   private prepareExplorationModel(model: THREE.Group, config: VillageBuildingConfig): void {
     this.prepareStaticPrefab(model);
-    // Aumentar verticalOffset para levantar o portal do chão (0.5 para ficar acima da terra)
-    this.normaliseStaticModel(model, 4.0, 0.5);
+    // Aumentar verticalOffset para levantar o portal do chão (0.7 para ficar bem acima da terra)
+    this.normaliseStaticModel(model, 4.0, 0.7);
     
     // Dobrar o tamanho (scaleMultiplier: 2.0)
     model.scale.multiplyScalar(2.0);
@@ -2184,70 +2183,6 @@ export class VillageScene3D {
     centerLight.position.set(0, 2, 0);
     model.add(centerLight);
     this.explorationLight = centerLight;
-    
-    // Criar sistema de partículas mágicas
-    this.createExplorationParticles(model, config);
-  }
-
-  private createExplorationParticles(portalGroup: THREE.Group, config: VillageBuildingConfig): void {
-    const particleCount = 150;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    const sizes = new Float32Array(particleCount);
-    
-    const color1 = new THREE.Color(0x6a4c93); // Roxo
-    const color2 = new THREE.Color(0x9d7bb8); // Roxo claro
-    const color3 = new THREE.Color(0x4a90e2); // Azul mágico
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      // Posições iniciais dentro do portal (raio pequeno)
-      const radius = Math.random() * 0.8;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
-      
-      positions[i3] = Math.sin(phi) * Math.cos(theta) * radius;
-      positions[i3 + 1] = Math.cos(phi) * radius;
-      positions[i3 + 2] = Math.sin(phi) * Math.sin(theta) * radius;
-      
-      // Cores variadas
-      const colorChoice = Math.random();
-      let color: THREE.Color;
-      if (colorChoice < 0.4) {
-        color = color1;
-      } else if (colorChoice < 0.7) {
-        color = color2;
-      } else {
-        color = color3;
-      }
-      
-      colors[i3] = color.r;
-      colors[i3 + 1] = color.g;
-      colors[i3 + 2] = color.b;
-      
-      sizes[i] = Math.random() * 0.15 + 0.05;
-    }
-    
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-    
-    const material = new THREE.PointsMaterial({
-      size: 0.2,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    
-    const particles = new THREE.Points(geometry, material);
-    particles.position.set(0, 0.8, 0); // Centro do portal (mais baixo, no centro do asset)
-    portalGroup.add(particles);
-    
-    this.explorationParticles = particles;
   }
 
   private createProceduralExploration(config: VillageBuildingConfig): THREE.Group {
@@ -3078,9 +3013,6 @@ export class VillageScene3D {
     // Animar flutuação da dungeon
     this.updateDungeonFloat(delta);
 
-    // Animar partículas do portal de exploração
-    this.updateExplorationParticles(delta);
-
     this.renderer.render(this.scene, this.camera);
   };
 
@@ -3090,65 +3022,6 @@ export class VillageScene3D {
       // Movimento senoidal sutil: amplitude de 0.15 unidades, período de ~3 segundos
       const floatOffset = Math.sin(this.dungeonFloatTime * 2.0) * 0.15;
       this.dungeonGroup.position.y = this.dungeonBaseY + floatOffset;
-    }
-  }
-
-  private updateExplorationParticles(delta: number): void {
-    if (!this.explorationParticles) return;
-
-    const positions = this.explorationParticles.geometry.attributes.position;
-    const particleCount = positions.count;
-    const time = this.lastFrameTime * 0.001;
-
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      // Obter posição atual
-      let x = positions.getX(i);
-      let y = positions.getY(i);
-      let z = positions.getZ(i);
-      
-      // Calcular direção radial (de dentro para fora)
-      const distance = Math.sqrt(x * x + y * y + z * z);
-      const maxDistance = 0.6; // Raio máximo de expansão (reduzido em 80%: 3.0 * 0.2 = 0.6)
-      
-      if (distance < maxDistance) {
-        // Normalizar direção
-        const dirX = x / (distance + 0.001);
-        const dirY = y / (distance + 0.001);
-        const dirZ = z / (distance + 0.001);
-        
-        // Velocidade variável (mais rápido conforme se afasta)
-        const speed = 0.5 + (distance / maxDistance) * 1.5;
-        
-        // Mover partícula para fora
-        x += dirX * speed * delta;
-        y += dirY * speed * delta;
-        z += dirZ * speed * delta;
-        
-        // Se saiu do raio máximo, resetar para dentro
-        const newDistance = Math.sqrt(x * x + y * y + z * z);
-        if (newDistance >= maxDistance) {
-          // Resetar para posição aleatória dentro do portal
-          const radius = Math.random() * 0.8;
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.random() * Math.PI;
-          
-          x = Math.sin(phi) * Math.cos(theta) * radius;
-          y = Math.cos(phi) * radius;
-          z = Math.sin(phi) * Math.sin(theta) * radius;
-        }
-        
-        positions.setXYZ(i, x, y, z);
-      }
-    }
-    
-    positions.needsUpdate = true;
-    
-    // Pulsar a luz do portal
-    if (this.explorationLight) {
-      const pulse = Math.sin(time * 2.0) * 0.3 + 1.0;
-      this.explorationLight.intensity = 1.5 * pulse;
     }
   }
 
