@@ -1949,13 +1949,13 @@ export class VillageScene3D {
   private async createPrefabHouseAsync(config: VillageBuildingConfig, index: number): Promise<THREE.Group> {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralHouse(config);
-    fallback.visible = false;
+    fallback.visible = true; // Mostrar fallback imediatamente para garantir que a casa apareça
     wrapper.add(fallback);
 
     try {
       const prefabs = await this.loadHousePrefabs();
       if (prefabs.length === 0) {
-        fallback.visible = true;
+        // Já está visível
       } else {
         const prefab = prefabs[Math.abs(index) % prefabs.length] ?? prefabs[0];
         const clone = prefab.clone(true);
@@ -1966,7 +1966,18 @@ export class VillageScene3D {
       }
     } catch (error) {
       console.error('[VillageScene3D] Falha ao carregar House prefab, mantendo fallback procedural.', error);
-      fallback.visible = true;
+      // Já está visível
+    }
+
+    // Log para debug do Ruvian
+    if (config.id === 'npc:ruvian' || config.npcId === 'ruvian') {
+      console.log('[VillageScene3D] Casa do Ruvian criada:', {
+        id: config.id,
+        position: config.position,
+        wrapperVisible: wrapper.visible,
+        fallbackVisible: fallback.visible,
+        childrenCount: wrapper.children.length,
+      });
     }
 
     return wrapper;
