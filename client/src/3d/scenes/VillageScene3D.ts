@@ -2186,9 +2186,6 @@ export class VillageScene3D {
     
     // Criar sistema de partículas mágicas
     this.createExplorationParticles(model, config);
-    
-    // Armazenar referência para animação
-    this.explorationGroup = model;
   }
 
   private createExplorationParticles(portalGroup: THREE.Group, config: VillageBuildingConfig): void {
