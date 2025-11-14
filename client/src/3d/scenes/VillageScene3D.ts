@@ -59,8 +59,6 @@ export class VillageScene3D {
   private dungeonPrefabPromise: Promise<THREE.Group> | null = null;
   private missionPrefab: THREE.Group | null = null;
   private missionPrefabPromise: Promise<THREE.Group> | null = null;
-  private explorationPrefab: THREE.Group | null = null;
-  private explorationPrefabPromise: Promise<THREE.Group> | null = null;
   private environmentGroup: THREE.Group | null = null;
   private ranchPrefabCache = new Map<string, THREE.Group>();
   private housePrefabs: THREE.Group[] = [];
