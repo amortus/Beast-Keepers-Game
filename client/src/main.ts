@@ -2,12 +2,12 @@
  * Beast Keepers - Main Bootstrap
  * Online version with authentication
  * 
- * VERSION: 0.7.0
+ * VERSION: 0.7.4
  */
 
 // Log version immediately so we know if cache is working
 console.log('%c🔥 BEAST KEEPERS - CÓDIGO NOVO CARREGADO! 🔥', 'background: #00ff00; color: #000; font-size: 20px; padding: 10px; font-weight: bold;');
-console.log('%cVersão: 0.7.0', 'background: #0f3460; color: #fff; font-size: 14px; padding: 5px;');
+console.log('%cVersão: 0.7.4', 'background: #0f3460; color: #fff; font-size: 14px; padding: 5px;');
 console.log('%cSe você não vê este log verde, ainda está com cache antigo!', 'color: #ff0000; font-size: 12px;');
 
 import { GameUI } from './ui/game-ui';
