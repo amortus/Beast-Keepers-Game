@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { getCurrentTimeOfDay } from '../../utils/day-night';
 
 type Obstacle = {
   position: [number, number];
@@ -84,23 +85,39 @@ export class VillageVillagers {
 
   public update(delta: number): void {
     const safeDelta = Math.min(delta, 0.1);
-
+    
+    // Verificar horário (23:00 - 04:00 = NPCs dormindo)
+    const time = getCurrentTimeOfDay();
+    const isSleeping = time.hour >= 23 || time.hour < 4;
+    
+    // Esconder/mostrar NPCs baseado no horário
     for (const villager of this.villagers) {
-      villager.mixer.update(safeDelta);
+      if (isSleeping) {
+        // NPCs dormindo - esconder gradualmente
+        villager.root.visible = false;
+        villager.mixer.stopAllAction();
+      } else {
+        // NPCs acordados - mostrar e atualizar
+        villager.root.visible = true;
+        villager.mixer.update(safeDelta);
+      }
     }
 
-    for (const villager of this.villagers) {
-      if (villager.state === 'walk') {
-        this.updateWalkingVillager(villager, safeDelta);
-      } else {
-        villager.waitTime -= safeDelta;
-        if (villager.waitTime <= 0) {
-          const target = this.chooseTarget(villager);
-          if (target) {
-            villager.target = target;
-            this.setState(villager, 'walk');
-          } else {
-            villager.waitTime = 1 + Math.random() * 2;
+    // Só atualizar movimento se não estiver dormindo
+    if (!isSleeping) {
+      for (const villager of this.villagers) {
+        if (villager.state === 'walk') {
+          this.updateWalkingVillager(villager, safeDelta);
+        } else {
+          villager.waitTime -= safeDelta;
+          if (villager.waitTime <= 0) {
+            const target = this.chooseTarget(villager);
+            if (target) {
+              villager.target = target;
+              this.setState(villager, 'walk');
+            } else {
+              villager.waitTime = 1 + Math.random() * 2;
+            }
           }
         }
       }
@@ -162,6 +179,29 @@ export class VillageVillagers {
 
     const baseClone = clone(variant.baseScene) as THREE.Group;
     this.normaliseModel(baseClone);
+    
+    // Ajustar materiais para responder à iluminação
+    baseClone.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        // Converter MeshBasicMaterial para MeshStandardMaterial para responder à iluminação
+        if (child.material instanceof THREE.MeshBasicMaterial) {
+          const oldMat = child.material;
+          const newMat = new THREE.MeshStandardMaterial({
+            color: oldMat.color,
+            map: oldMat.map,
+            transparent: oldMat.transparent,
+            opacity: oldMat.opacity,
+            side: oldMat.side,
+          });
+          child.material = newMat;
+        } else if (child.material instanceof THREE.MeshStandardMaterial) {
+          // Garantir que já está configurado corretamente
+          child.material.needsUpdate = true;
+        }
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
 
     const spawn = this.findSpawnPosition(0.6);
     baseClone.position.set(spawn.x, 0, spawn.z);

@@ -5,9 +5,10 @@
  */
 
 import * as THREE from 'three';
+import { getCurrentTimeOfDay } from '../../utils/day-night';
 
 // Tipos de critters
-type CritterType = 'fly' | 'bee' | 'bird' | 'ant' | 'hummingbird' | 'leaf';
+type CritterType = 'fly' | 'bee' | 'bird' | 'ant' | 'hummingbird' | 'leaf' | 'owl' | 'bat';
 
 interface Critter {
   mesh: THREE.Group;
@@ -72,28 +73,59 @@ export class VillageCritters {
    * Spawnar critter aleatório
    */
   private spawnRandomCritter() {
-    const types: CritterType[] = ['fly', 'bee', 'bird', 'ant', 'hummingbird', 'leaf'];
-    const type = types[Math.floor(Math.random() * types.length)];
+    const time = getCurrentTimeOfDay();
+    const isNightTime = time.hour >= 19 || time.hour < 3; // 19:00 - 03:00
     
-    switch (type) {
-      case 'fly':
-        this.spawnFly();
-        break;
-      case 'bee':
-        this.spawnBee();
-        break;
-      case 'bird':
-        this.spawnBird();
-        break;
-      case 'ant':
-        this.spawnAnt();
-        break;
-      case 'hummingbird':
-        this.spawnHummingbird();
-        break;
-      case 'leaf':
-        this.spawnLeaf();
-        break;
+    // Durante a noite (19:00-03:00), substituir pássaros por corujas e morcegos
+    if (isNightTime) {
+      const nightTypes: CritterType[] = ['fly', 'bee', 'owl', 'bat', 'ant', 'leaf'];
+      const type = nightTypes[Math.floor(Math.random() * nightTypes.length)];
+      
+      switch (type) {
+        case 'fly':
+          this.spawnFly();
+          break;
+        case 'bee':
+          this.spawnBee();
+          break;
+        case 'owl':
+          this.spawnOwl();
+          break;
+        case 'bat':
+          this.spawnBat();
+          break;
+        case 'ant':
+          this.spawnAnt();
+          break;
+        case 'leaf':
+          this.spawnLeaf();
+          break;
+      }
+    } else {
+      // Durante o dia, usar critters normais
+      const dayTypes: CritterType[] = ['fly', 'bee', 'bird', 'ant', 'hummingbird', 'leaf'];
+      const type = dayTypes[Math.floor(Math.random() * dayTypes.length)];
+      
+      switch (type) {
+        case 'fly':
+          this.spawnFly();
+          break;
+        case 'bee':
+          this.spawnBee();
+          break;
+        case 'bird':
+          this.spawnBird();
+          break;
+        case 'ant':
+          this.spawnAnt();
+          break;
+        case 'hummingbird':
+          this.spawnHummingbird();
+          break;
+        case 'leaf':
+          this.spawnLeaf();
+          break;
+      }
     }
   }
   
@@ -264,6 +296,131 @@ export class VillageCritters {
       velocity,
       lifetime: 12, // Mais tempo para atravessar
       maxLifetime: 12
+    });
+  }
+  
+  /**
+   * Coruja - voa silenciosamente à noite
+   */
+  private spawnOwl() {
+    const owlGroup = new THREE.Group();
+    
+    // Corpo (marrom escuro/bege)
+    const bodyGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+    bodyGeometry.scale(1, 1.2, 1.3);
+    const bodyMaterial = new THREE.MeshToonMaterial({ color: 0x6b5b3d });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    owlGroup.add(body);
+    
+    // Cabeça (maior, redonda)
+    const headGeometry = new THREE.SphereGeometry(0.12, 8, 8);
+    const headMaterial = new THREE.MeshToonMaterial({ color: 0x8b7355 });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 0.15, 0.1);
+    owlGroup.add(head);
+    
+    // Olhos grandes (amarelos)
+    const eyeGeometry = new THREE.SphereGeometry(0.04, 6, 6);
+    const eyeMaterial = new THREE.MeshToonMaterial({ color: 0xffd700 });
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.04, 0.15, 0.18);
+    owlGroup.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.04, 0.15, 0.18);
+    owlGroup.add(rightEye);
+    
+    // Asas grandes (mais largas que pássaros)
+    const wingGeometry = new THREE.ConeGeometry(0.2, 0.4, 4);
+    const wingMaterial = new THREE.MeshToonMaterial({ color: 0x5a4a3a });
+    const wing1 = new THREE.Mesh(wingGeometry, wingMaterial);
+    wing1.rotation.z = Math.PI / 2;
+    wing1.position.set(-0.15, 0, 0);
+    owlGroup.add(wing1);
+    const wing2 = new THREE.Mesh(wingGeometry, wingMaterial);
+    wing2.rotation.z = -Math.PI / 2;
+    wing2.position.set(0.15, 0, 0);
+    owlGroup.add(wing2);
+    
+    // Posição alta (voa mais alto que pássaros)
+    const startX = Math.random() < 0.5 ? -this.VILLAGE_SIZE * 1.2 : this.VILLAGE_SIZE * 1.2;
+    const z = (Math.random() - 0.5) * this.VILLAGE_SIZE * 2;
+    
+    owlGroup.position.set(startX, 5 + Math.random() * 2, z);
+    this.scene.add(owlGroup);
+    
+    const velocity = new THREE.Vector3(
+      startX < 0 ? 2.5 : -2.5, // Voo silencioso (mais lento que pássaros)
+      Math.sin(Math.random() * Math.PI) * 0.2,
+      (Math.random() - 0.5) * 0.6
+    );
+    
+    this.critters.push({
+      mesh: owlGroup,
+      type: 'owl',
+      velocity,
+      lifetime: 15,
+      maxLifetime: 15
+    });
+  }
+  
+  /**
+   * Morcego - voa erraticamente à noite
+   */
+  private spawnBat() {
+    const batGroup = new THREE.Group();
+    
+    // Corpo pequeno (preto)
+    const bodyGeometry = new THREE.SphereGeometry(0.08, 6, 6);
+    bodyGeometry.scale(1, 0.6, 1.5);
+    const bodyMaterial = new THREE.MeshToonMaterial({ color: 0x1a1a1a });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    batGroup.add(body);
+    
+    // Asas de morcego (membranas triangulares grandes)
+    const wingGeometry = new THREE.ConeGeometry(0.18, 0.35, 3);
+    const wingMaterial = new THREE.MeshToonMaterial({ color: 0x2a2a2a, transparent: true, opacity: 0.8 });
+    const wing1 = new THREE.Mesh(wingGeometry, wingMaterial);
+    wing1.rotation.z = Math.PI / 2;
+    wing1.position.set(-0.12, 0, 0);
+    wing1.rotation.y = -Math.PI / 6;
+    batGroup.add(wing1);
+    const wing2 = new THREE.Mesh(wingGeometry, wingMaterial);
+    wing2.rotation.z = -Math.PI / 2;
+    wing2.position.set(0.12, 0, 0);
+    wing2.rotation.y = Math.PI / 6;
+    batGroup.add(wing2);
+    
+    // Orelhas pequenas
+    const earGeometry = new THREE.ConeGeometry(0.03, 0.06, 4);
+    const earMaterial = new THREE.MeshToonMaterial({ color: 0x1a1a1a });
+    const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+    leftEar.position.set(-0.04, 0.08, 0.05);
+    leftEar.rotation.x = -Math.PI / 4;
+    batGroup.add(leftEar);
+    const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+    rightEar.position.set(0.04, 0.08, 0.05);
+    rightEar.rotation.x = -Math.PI / 4;
+    batGroup.add(rightEar);
+    
+    // Posição média (voa entre árvores)
+    const startX = Math.random() < 0.5 ? -this.VILLAGE_SIZE : this.VILLAGE_SIZE;
+    const z = (Math.random() - 0.5) * this.VILLAGE_SIZE * 1.5;
+    
+    batGroup.position.set(startX, 2.5 + Math.random() * 1.5, z);
+    this.scene.add(batGroup);
+    
+    const velocity = new THREE.Vector3(
+      startX < 0 ? 2.8 : -2.8, // Voo rápido e errático
+      Math.sin(Math.random() * Math.PI * 2) * 0.5, // Movimento vertical errático
+      (Math.random() - 0.5) * 1.2
+    );
+    
+    this.critters.push({
+      mesh: batGroup,
+      type: 'bat',
+      velocity,
+      lifetime: 10,
+      maxLifetime: 10
     });
   }
   
@@ -449,6 +606,42 @@ export class VillageCritters {
           const flapAngle = Math.sin(critter.lifetime * 10) * 0.3;
           wing1.rotation.z = Math.PI / 2 + flapAngle;
           wing2.rotation.z = -Math.PI / 2 - flapAngle;
+        }
+        break;
+        
+      case 'owl':
+        // Voo silencioso e suave (ondulação leve)
+        critter.velocity.y = Math.sin(critter.lifetime * 3) * 0.15; // Movimento mais suave
+        
+        // Animar asas (batidas grandes e lentas)
+        if (critter.mesh.children.length > 4) {
+          const wing1 = critter.mesh.children[3];
+          const wing2 = critter.mesh.children[4];
+          const flapAngle = Math.sin(critter.lifetime * 6) * 0.4; // Batidas mais lentas e amplas
+          wing1.rotation.z = Math.PI / 2 + flapAngle;
+          wing2.rotation.z = -Math.PI / 2 - flapAngle;
+        }
+        break;
+        
+      case 'bat':
+        // Voo errático e rápido (movimento vertical variado)
+        critter.velocity.y = Math.sin(critter.lifetime * 5) * 0.6; // Movimento vertical mais errático
+        
+        // Animar asas (batidas rápidas)
+        if (critter.mesh.children.length > 2) {
+          const wing1 = critter.mesh.children[1];
+          const wing2 = critter.mesh.children[2];
+          const flapAngle = Math.sin(critter.lifetime * 15) * 0.5; // Batidas rápidas
+          wing1.rotation.z = Math.PI / 2 + flapAngle;
+          wing1.rotation.y = -Math.PI / 6 + flapAngle * 0.3;
+          wing2.rotation.z = -Math.PI / 2 - flapAngle;
+          wing2.rotation.y = Math.PI / 6 - flapAngle * 0.3;
+        }
+        
+        // Mudança de direção errática ocasional
+        if (Math.random() < delta * 2) {
+          critter.velocity.x += (Math.random() - 0.5) * 0.6;
+          critter.velocity.z += (Math.random() - 0.5) * 0.6;
         }
         break;
         
