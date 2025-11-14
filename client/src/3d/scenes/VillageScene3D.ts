@@ -2173,7 +2173,8 @@ export class VillageScene3D {
 
   private prepareExplorationModel(model: THREE.Group, config: VillageBuildingConfig): void {
     this.prepareStaticPrefab(model);
-    this.normaliseStaticModel(model, 4.0, 0);
+    // Aumentar verticalOffset para levantar o portal do chão (0.5 para ficar acima da terra)
+    this.normaliseStaticModel(model, 4.0, 0.5);
     
     // Dobrar o tamanho (scaleMultiplier: 2.0)
     model.scale.multiplyScalar(2.0);
@@ -2243,7 +2244,7 @@ export class VillageScene3D {
     });
     
     const particles = new THREE.Points(geometry, material);
-    particles.position.set(0, 1.5, 0); // Centro do portal
+    particles.position.set(0, 0.8, 0); // Centro do portal (mais baixo, no centro do asset)
     portalGroup.add(particles);
     
     this.explorationParticles = particles;
@@ -3109,7 +3110,7 @@ export class VillageScene3D {
       
       // Calcular direção radial (de dentro para fora)
       const distance = Math.sqrt(x * x + y * y + z * z);
-      const maxDistance = 3.0; // Raio máximo de expansão
+      const maxDistance = 0.6; // Raio máximo de expansão (reduzido em 80%: 3.0 * 0.2 = 0.6)
       
       if (distance < maxDistance) {
         // Normalizar direção
