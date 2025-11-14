@@ -490,8 +490,8 @@ export class VillageScene3D {
     }
 
     if (this.moonLight) {
-      // Lua: dia (0) -> noite (0.4, luz azul suave)
-      this.moonLight.intensity = blend * 0.4;
+      // Lua: dia (0) -> noite (0.7, luz azul mais forte)
+      this.moonLight.intensity = blend * 0.7;
       
       // Posição da lua: oposta ao sol
       const moonY = 35;

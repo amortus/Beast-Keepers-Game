@@ -441,10 +441,7 @@ export class GameUI {
       { id: 'inventory', label: '🎒 Inventário', action: () => this.onOpenInventory() },
       { id: 'arena', label: '🥊 Arena PVP', action: () => this.onOpenArenaPvp() },
       { id: 'exploration', label: '🗺️ Explorar', action: () => this.onOpenExploration() },
-      { id: 'dungeons', label: '⚔️ Dungeons', action: () => this.onOpenDungeons() },
-      { id: 'quests', label: '📜 Missões', action: () => this.onOpenQuests() },
       { id: 'achievements', label: '🏆 Conquistas', action: () => this.onOpenAchievements() },
-      { id: 'temple', label: '🏛️ Templo', action: () => this.onOpenTemple() },
     ];
 
     const btnSpacing = 4;
