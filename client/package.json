@@ -1,6 +1,6 @@
 {
   "name": "beast-keepers",
-  "version": "0.6.5",
+  "version": "0.7.0",
   "description": "Crie, treine e batalhe com criaturas místicas no mundo de Aurath.",
   "type": "module",
   "scripts": {
