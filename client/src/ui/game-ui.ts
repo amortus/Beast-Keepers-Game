@@ -14,7 +14,7 @@ import { canStartAction, getActionProgress, getActionName as getRealtimeActionNa
 import { formatTime } from '../utils/time-format';
 import { getGameTime } from '../utils/day-night';
 
-const HEADER_HEIGHT = 130; // Aumentado para acomodar data do calendário
+const HEADER_HEIGHT = 120; // Reduzido para dar mais espaço aos painéis
 const SIDE_PANEL_WIDTH = 510;
 const STATUS_PANEL_HEIGHT = 430;
 const SIDE_PANEL_GAP = 12;
@@ -447,12 +447,12 @@ export class GameUI {
       { id: 'temple', label: '🏛️ Templo', action: () => this.onOpenTemple() },
     ];
 
-    const btnSpacing = 6;
-    const btnWidth = 126;
-    const btnHeight = 36;
+    const btnSpacing = 4;
+    const btnWidth = 110;
+    const btnHeight = 32;
     const totalWidth = menuItems.length * (btnWidth + btnSpacing) - btnSpacing;
     const startX = Math.max(24, (this.canvas.width - totalWidth) / 2);
-    const menuY = 76;
+    const menuY = 80;
 
     menuItems.forEach((item, index) => {
       const x = startX + index * (btnWidth + btnSpacing);
@@ -837,14 +837,14 @@ export class GameUI {
       shadow: false,
     });
 
-    // Category buttons (2 colunas alinhadas ao centro)
-    const buttonWidth = 228;
-    const buttonHeight = 46;
-    const buttonSpacingX = 36;
+    // Category buttons (2 colunas alinhadas ao centro) - reduzidos para caber no painel
+    const buttonWidth = 200;
+    const buttonHeight = 40;
+    const buttonSpacingX = 20;
     const totalCategoryWidth = buttonWidth * 2 + buttonSpacingX;
     const buttonStartX = x + (width - totalCategoryWidth) / 2;
-    const buttonStartY = y + 34;
-    const buttonSpacingY = 56;
+    const buttonStartY = y + 30;
+    const buttonSpacingY = 48;
 
     // Grid 2x2 de botões de categoria (sem Torneio)
     const categories = [
@@ -899,8 +899,9 @@ export class GameUI {
 
     // Show actions for selected category
     if (this.actionCategory) {
-      const actionsStartY = buttonStartY + buttonSpacingY + buttonHeight + 36;
-      this.drawActionList(x + 10, actionsStartY, beast, serverTime);
+      const actionsStartY = buttonStartY + buttonSpacingY + buttonHeight + 24;
+      const availableHeight = (y + height) - actionsStartY - 10; // Altura disponível menos margem
+      this.drawActionList(x + 10, actionsStartY, beast, serverTime, availableHeight);
     }
   }
   
@@ -984,23 +985,34 @@ export class GameUI {
     }
   }
 
-  private drawActionList(x: number, y: number, beast: Beast, serverTime: number) {
+  private drawActionList(x: number, y: number, beast: Beast, serverTime: number, maxHeight?: number) {
     const actions = this.getActionsForCategory();
     
     const panelInnerWidth = SIDE_PANEL_WIDTH - 20;
 
     const columns = actions.length >= 6 ? 3 : Math.min(2, Math.max(1, actions.length));
-    const rows = Math.ceil(actions.length / columns);
-
     const spacingX = columns === 3 ? 10 : 12;
-    const spacingY = 12;
+    const spacingY = 10; // Reduzido de 12 para 10
 
     const buttonWidth = Math.floor((panelInnerWidth - spacingX * (columns - 1)) / columns);
-    const buttonHeight = 28;
+    const buttonHeight = 26; // Reduzido de 28 para 26
+
+    // Calcular quantas linhas cabem no espaço disponível
+    let maxRows = Math.ceil(actions.length / columns);
+    if (maxHeight) {
+      const maxRowsByHeight = Math.floor((maxHeight - 10) / (buttonHeight + spacingY)); // -10 para margem
+      maxRows = Math.min(maxRows, maxRowsByHeight);
+    }
 
     actions.forEach((action, index) => {
       const col = index % columns;
       const row = Math.floor(index / columns);
+      
+      // Não desenhar se exceder o espaço disponível
+      if (row >= maxRows) {
+        return;
+      }
+      
       const totalWidth = buttonWidth * columns + spacingX * (columns - 1);
       const startX = x + (panelInnerWidth - totalWidth) / 2;
       const buttonX = startX + col * (buttonWidth + spacingX);
