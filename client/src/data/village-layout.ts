@@ -65,7 +65,7 @@ export const VILLAGE_BLUEPRINT: VillageBuildingBlueprint[] = [
     id: 'npc:ruvian',
     icon: '🧙',
     variant: 'house',
-    position: { x: -18, y: 0, z: -9 },
+    position: { x: -26, y: 0, z: -20 },
     color: 0xd6c6a3,
     npcId: 'ruvian',
     label: 'Mestre Ruvian',

@@ -870,13 +870,13 @@ export class VillageScene3D {
     // Posições das lanternas baseadas nas posições dos edifícios
     // Cada lanterna fica na frente do edifício, mas ao lado direito ou esquerdo
     // Edifícios: Templo(0,0,-25), Shop(-14,0,4), Alchemy(14,0,4), Dungeon(0,0,15), 
-    //            Ruvian(-18,0,-9), Eryon(12,0,-10), Quests(0,0,-10)
+    //            Ruvian(-26,0,-20), Eryon(12,0,-10), Quests(0,0,-10)
     const buildingPositions = [
       { pos: { x: 0, z: -25 }, name: 'Templo', side: 'right' },      // Templo
       { pos: { x: -14, z: 4 }, name: 'Shop', side: 'left' },        // Shop (esquerda)
       { pos: { x: 14, z: 4 }, name: 'Alchemy', side: 'right' },     // Alchemy (direita)
       { pos: { x: 0, z: 15 }, name: 'Dungeon', side: 'left' },     // Dungeon
-      { pos: { x: -18, z: -9 }, name: 'Ruvian', side: 'right' },   // Ruvian (casa)
+      { pos: { x: -26, z: -20 }, name: 'Ruvian', side: 'right' },   // Ruvian (casa) - atualizada
       { pos: { x: 12, z: -10 }, name: 'Eryon', side: 'left' },     // Eryon (taverna)
       { pos: { x: 0, z: -10 }, name: 'Quests', side: 'right' },    // Quests (mission board)
     ];
@@ -911,7 +911,8 @@ export class VillageScene3D {
       // Calcular posição da luz proporcionalmente à altura da lanterna
       // Rancho: altura 2.2, luz em 0.76 (34.5% da altura)
       // Vila: altura 3.4, luz deve estar em 3.4 * 0.345 ≈ 1.17
-      const lightHeight = (3.4 / 2.2) * 0.76; // ~1.17
+      // Altura da luz: 95% da altura total da lanterna (3.4) para ficar no topo
+      const lightHeight = 3.4 * 0.95; // ~3.23 - no topo da lanterna
       
       const wrapper = this.spawnRanchPrefab('/assets/3d/Ranch/Lantern/Lantern1.glb', {
         name: `village-lantern-${index}`,
@@ -1006,8 +1007,8 @@ export class VillageScene3D {
       '/assets/3d/Ranch/House/House3.glb',
     ];
 
+    // Removida a casa em [-26, 0, -20] pois agora é a casa do Mestre Ruvian
     const scenicHouses: Array<{ position: [number, number, number]; rotation?: number; index?: number }> = [
-      { position: [-26, 0, -20], rotation: Math.PI * 0.18, index: 0 },
       { position: [26, 0, -22], rotation: -Math.PI * 0.22, index: 1 },
       { position: [-34, 0, 8], rotation: Math.PI * 0.08, index: 2 },
       { position: [34, 0, 10], rotation: -Math.PI * 0.1, index: 1 },
@@ -1949,13 +1950,13 @@ export class VillageScene3D {
   private async createPrefabHouseAsync(config: VillageBuildingConfig, index: number): Promise<THREE.Group> {
     const wrapper = new THREE.Group();
     const fallback = this.createProceduralHouse(config);
-    fallback.visible = true; // Mostrar fallback imediatamente para garantir que a casa apareça
+    fallback.visible = false;
     wrapper.add(fallback);
 
     try {
       const prefabs = await this.loadHousePrefabs();
       if (prefabs.length === 0) {
-        // Já está visível
+        fallback.visible = true;
       } else {
         const prefab = prefabs[Math.abs(index) % prefabs.length] ?? prefabs[0];
         const clone = prefab.clone(true);
@@ -1966,18 +1967,7 @@ export class VillageScene3D {
       }
     } catch (error) {
       console.error('[VillageScene3D] Falha ao carregar House prefab, mantendo fallback procedural.', error);
-      // Já está visível
-    }
-
-    // Log para debug do Ruvian
-    if (config.id === 'npc:ruvian' || config.npcId === 'ruvian') {
-      console.log('[VillageScene3D] Casa do Ruvian criada:', {
-        id: config.id,
-        position: config.position,
-        wrapperVisible: wrapper.visible,
-        fallbackVisible: fallback.visible,
-        childrenCount: wrapper.children.length,
-      });
+      fallback.visible = true;
     }
 
     return wrapper;
