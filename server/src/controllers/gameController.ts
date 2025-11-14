@@ -53,7 +53,7 @@ export async function initializeGame(req: AuthRequest, res: Response) {
     const gameSaveResult = await client.query(
       `INSERT INTO game_saves (user_id, player_name)
        VALUES ($1, $2)
-       RETURNING id, user_id, player_name, week, coronas, victories, current_title, created_at, updated_at`,
+       RETURNING id, user_id, player_name, coronas, victories, current_title, created_at, updated_at`,
       [userId, playerName.trim()]
     );
 
@@ -207,7 +207,7 @@ export async function initializeGame(req: AuthRequest, res: Response) {
           id: gameSave.id,
           userId: gameSave.user_id,
           playerName: gameSave.player_name,
-          week: gameSave.week,
+          // week removed in migration 004
           coronas: gameSave.coronas,
           victories: gameSave.victories,
           currentTitle: gameSave.current_title,
@@ -250,8 +250,9 @@ export async function getGameSave(req: AuthRequest, res: Response) {
     }
 
     // Get game save
+    // Note: 'week' column was removed in migration 004_realtime_system.sql
     const saveResult = await query(
-      `SELECT id, user_id, player_name, week, coronas, victories, current_title,
+      `SELECT id, user_id, player_name, coronas, victories, current_title,
               win_streak, lose_streak, total_trains, total_crafts, total_spent,
               created_at, updated_at
        FROM game_saves
@@ -316,22 +317,21 @@ export async function updateGameSave(req: AuthRequest, res: Response) {
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
 
-    const { week, coronas, victories, currentTitle, winStreak, loseStreak, totalTrains, totalCrafts, totalSpent } = req.body;
+    const { coronas, victories, currentTitle, winStreak, loseStreak, totalTrains, totalCrafts, totalSpent } = req.body;
 
     const result = await query(
       `UPDATE game_saves
-       SET week = COALESCE($2, week),
-           coronas = COALESCE($3, coronas),
-           victories = COALESCE($4, victories),
-           current_title = COALESCE($5, current_title),
-           win_streak = COALESCE($6, win_streak),
-           lose_streak = COALESCE($7, lose_streak),
-           total_trains = COALESCE($8, total_trains),
-           total_crafts = COALESCE($9, total_crafts),
-           total_spent = COALESCE($10, total_spent)
+       SET coronas = COALESCE($2, coronas),
+           victories = COALESCE($3, victories),
+           current_title = COALESCE($4, current_title),
+           win_streak = COALESCE($5, win_streak),
+           lose_streak = COALESCE($6, lose_streak),
+           total_trains = COALESCE($7, total_trains),
+           total_crafts = COALESCE($8, total_crafts),
+           total_spent = COALESCE($9, total_spent)
        WHERE user_id = $1
        RETURNING *`,
-      [userId, week, coronas, victories, currentTitle, winStreak, loseStreak, totalTrains, totalCrafts, totalSpent]
+      [userId, coronas, victories, currentTitle, winStreak, loseStreak, totalTrains, totalCrafts, totalSpent]
     );
 
     if (result.rows.length === 0) {
