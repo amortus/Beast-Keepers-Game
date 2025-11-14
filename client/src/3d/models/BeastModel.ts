@@ -627,8 +627,8 @@ export class BeastModel {
       animations: [
         { name: 'walk', file: 'Animation_Walking_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
         { name: 'run', file: 'Animation_Running_withSkin.glb', defaults: { loop: THREE.LoopRepeat } },
-        { name: 'skill', file: 'Animation_mage_soell_cast_6_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
-        { name: 'hit', file: 'Animation_mage_soell_cast_6_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
+        { name: 'skill', file: 'Animation_mage_soell_cast_4_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
+        { name: 'hit', file: 'Animation_mage_soell_cast_4_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: false } },
         { name: 'arise', file: 'Animation_Stand_Up7_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
         { name: 'dead', file: 'Animation_falling_down_withSkin.glb', defaults: { loop: THREE.LoopOnce, clampWhenFinished: true } },
       ],
