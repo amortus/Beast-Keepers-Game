@@ -59,6 +59,8 @@ export class VillageScene3D {
   private dungeonPrefabPromise: Promise<THREE.Group> | null = null;
   private missionPrefab: THREE.Group | null = null;
   private missionPrefabPromise: Promise<THREE.Group> | null = null;
+  private explorationPrefab: THREE.Group | null = null;
+  private explorationPrefabPromise: Promise<THREE.Group> | null = null;
   private environmentGroup: THREE.Group | null = null;
   private ranchPrefabCache = new Map<string, THREE.Group>();
   private housePrefabs: THREE.Group[] = [];
@@ -1014,6 +1016,16 @@ export class VillageScene3D {
         verticalOffset: -0.2,
         scaleMultiplier: 1.05,
       });
+    });
+
+    // Adicionar asset de Exploração do lado esquerdo da dungeon (dungeon está em x: 0, z: 15)
+    this.spawnRanchPrefab('/assets/3d/Village/Explorar.glb', {
+      name: 'village-exploration',
+      position: [-14, 0, 15], // Do lado esquerdo da dungeon
+      rotationY: 0,
+      targetHeight: 4,
+      verticalOffset: 0,
+      scaleMultiplier: 1.0,
     });
 
     this.rebuildVillagers();

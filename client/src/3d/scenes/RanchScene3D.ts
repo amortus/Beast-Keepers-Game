@@ -334,6 +334,7 @@ export class RanchScene3D {
     this.createMountains();
     this.createClouds();
     this.createHouse();
+    this.createMail();
 
     this.setupObstacles();
     
@@ -894,6 +895,21 @@ export class RanchScene3D {
       onLoaded: (group) => {
         this.houseModel = group;
         this.setupHouseLighting(group);
+      },
+    });
+  }
+
+  private createMail() {
+    // Mail do lado direito da casa, um pouco à frente do feno
+    // Casa está em [0, 0.2, -6.8], então mail em x: 3.5 (direita), z: -5.5 (um pouco à frente)
+    this.loadStaticModel('/assets/3d/Ranch/Mail/Mail.glb', {
+      position: [3.5, 0, -5.5],
+      rotationY: 0,
+      targetHeight: 1.5,
+      name: 'ranch-mail',
+      verticalOffset: 0,
+      onLoaded: (group) => {
+        // Mail criado com sucesso
       },
     });
   }
