@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VillageVillagers } from '../events/VillageVillagers';
 import { VillageCritters } from '../events/VillageCritters';
-import { getDayNightBlend, getAmbientLightIntensity, getSkyColor } from '../../utils/day-night';
+import { getDayNightBlend, getAmbientLightIntensity, getSkyColor, getCurrentTimeOfDay } from '../../utils/day-night';
 
 import type { VillageBuildingConfig } from '../../types/village';
 
@@ -75,6 +75,17 @@ export class VillageScene3D {
   
   // Sistema de colisão
   private collisionZones: Array<{ x: number; z: number; radius: number }> = [];
+  
+  // Sistema de lanternas (similar ao rancho)
+  private villageLanternLights: Array<{ 
+    light: THREE.PointLight; 
+    sprite: THREE.Sprite; 
+    innerGlow: THREE.Mesh;
+    baseIntensity: number; 
+    offset: number;
+    group: THREE.Group;
+  }> = [];
+  private glowTexture: THREE.Texture | null = null;
   
   // Sistema de loading
   private isLoading: boolean = false;
@@ -843,11 +854,24 @@ export class VillageScene3D {
       });
     });
 
+    // Posições das lanternas (evitando edifícios e espaçadas)
+    // Edifícios estão em: (0,0,-25), (-14,0,4), (14,0,4), (0,0,15), (-18,0,-9), (12,0,-10), (0,0,-10)
     const lanternPositions: Array<{ position: [number, number, number]; rotation?: number }> = [
+      // Lanternas originais
       { position: [-9, 0, 7], rotation: Math.PI * 0.08 },
       { position: [9, 0, 7], rotation: -Math.PI * 0.08 },
       { position: [-6, 0, -6], rotation: Math.PI * 0.12 },
       { position: [6, 0, -6], rotation: -Math.PI * 0.12 },
+      // Novas lanternas adicionadas
+      { position: [-12, 0, -2], rotation: Math.PI * 0.1 },
+      { position: [12, 0, -2], rotation: -Math.PI * 0.1 },
+      { position: [-3, 0, 12], rotation: Math.PI * 0.15 },
+      { position: [3, 0, 12], rotation: -Math.PI * 0.15 },
+      { position: [-15, 0, -15], rotation: Math.PI * 0.05 },
+      { position: [15, 0, -15], rotation: -Math.PI * 0.05 },
+      { position: [0, 0, -18], rotation: Math.PI * 0.2 },
+      { position: [-7, 0, 10], rotation: Math.PI * 0.12 },
+      { position: [7, 0, 10], rotation: -Math.PI * 0.12 },
     ];
 
     lanternPositions.forEach((cfg, index) => {
@@ -860,9 +884,56 @@ export class VillageScene3D {
       });
 
       if (wrapper) {
-        const light = new THREE.PointLight(0xfff3c4, 1.1, 11, 2);
-        light.position.set(0, 2.2, 0);
+        // Sistema de iluminação igual ao rancho
+        const lightColor = 0xfff3c4;
+        const emissiveColor = 0xffdf9a;
+        const baseIntensity = 0.62;
+        
+        // Calcular posição da luz proporcionalmente à altura da lanterna
+        // Rancho: altura 2.2, luz em 0.76 (34.5% da altura)
+        // Vila: altura 3.4, luz deve estar em 3.4 * 0.345 ≈ 1.17
+        const lightHeight = (3.4 / 2.2) * 0.76; // ~1.17
+        
+        // PointLight (posição relativa ao grupo da lanterna)
+        const light = new THREE.PointLight(lightColor, 0, 6.0, 1.4); // Intensidade inicial 0 (apagada)
+        light.position.set(0, lightHeight, 0); // Posição proporcional à altura da lanterna
         wrapper.add(light);
+
+        // Inner glow (esfera emissiva dentro da lanterna)
+        const innerGlow = new THREE.Mesh(
+          new THREE.SphereGeometry(0.18, 12, 12),
+          new THREE.MeshBasicMaterial({
+            color: emissiveColor,
+            transparent: true,
+            opacity: 0,
+          }),
+        );
+        innerGlow.position.set(0, lightHeight - 0.02, 0); // Ligeiramente abaixo da luz
+        wrapper.add(innerGlow);
+
+        // Sprite de brilho (glow externo)
+        const sprite = new THREE.Sprite(
+          new THREE.SpriteMaterial({
+            map: this.getGlowTexture(),
+            color: lightColor,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          }),
+        );
+        sprite.position.set(0, lightHeight, 0);
+        sprite.scale.set(1.08, 1.08, 1.08);
+        wrapper.add(sprite);
+
+        this.villageLanternLights.push({
+          light,
+          sprite,
+          innerGlow,
+          baseIntensity,
+          offset: Math.random() * Math.PI * 2,
+          group: wrapper,
+        });
       }
     });
 
@@ -2804,6 +2875,9 @@ export class VillageScene3D {
     // Atualizar iluminação dia/noite
     this.updateDayNightLighting();
 
+    // Atualizar lanternas (acender/apagar baseado no horário)
+    this.updateVillageLanterns(delta);
+
     // Sistema de chuva
     this.updateRain(delta);
 
@@ -2820,6 +2894,90 @@ export class VillageScene3D {
       const floatOffset = Math.sin(this.dungeonFloatTime * 2.0) * 0.15;
       this.dungeonGroup.position.y = this.dungeonBaseY + floatOffset;
     }
+  }
+
+  /**
+   * Atualizar lanternas da vila (acender/apagar baseado no horário 18:00-04:00)
+   */
+  private updateVillageLanterns(delta: number): void {
+    if (!this.villageLanternLights.length) {
+      return;
+    }
+
+    // Verificar horário (18:00 - 04:00 = lanternas acesas)
+    const time = getCurrentTimeOfDay();
+    const isNightTime = time.hour >= 18 || time.hour < 4;
+    const blend = getDayNightBlend(); // 0 = dia, 1 = noite
+    
+    // Intensidade baseada no blend (mais forte à noite)
+    const nightBoost = isNightTime ? 1 + (blend * 0.4) : 0; // Aumenta até 40% durante a noite
+
+    for (const entry of this.villageLanternLights) {
+      if (isNightTime) {
+        // Lanternas acesas durante a noite
+        const flicker = Math.sin((this.lastFrameTime * 0.001 + entry.offset) * 5.6) * 0.15 + (Math.random() - 0.5) * 0.04;
+        const baseIntensityWithNight = entry.baseIntensity * nightBoost;
+        const intensity = Math.max(0.35, Math.min(baseIntensityWithNight + flicker, 1.8));
+        entry.light.intensity = intensity;
+
+        // Atualizar sprite de brilho
+        const spriteMaterial = entry.sprite.material as THREE.SpriteMaterial;
+        spriteMaterial.opacity = 0.35 + intensity * 0.22;
+        const scale = 1.1 + intensity * 0.45;
+        entry.sprite.scale.set(scale, scale, scale);
+
+        // Atualizar inner glow
+        const glowMaterial = entry.innerGlow.material as THREE.MeshBasicMaterial;
+        glowMaterial.opacity = 0.24 * (intensity / entry.baseIntensity);
+      } else {
+        // Lanternas apagadas durante o dia
+        entry.light.intensity = 0;
+        const spriteMaterial = entry.sprite.material as THREE.SpriteMaterial;
+        spriteMaterial.opacity = 0;
+        const glowMaterial = entry.innerGlow.material as THREE.MeshBasicMaterial;
+        glowMaterial.opacity = 0;
+      }
+    }
+  }
+
+  /**
+   * Criar textura de brilho radial para sprites das lanternas
+   */
+  private getGlowTexture(): THREE.Texture {
+    if (!this.glowTexture) {
+      this.glowTexture = this.createRadialTexture(128, [
+        { offset: 0, color: 'rgba(255, 255, 255, 1)' },
+        { offset: 0.65, color: 'rgba(255, 255, 255, 0.5)' },
+        { offset: 1, color: 'rgba(255, 255, 255, 0)' },
+      ]);
+    }
+    return this.glowTexture;
+  }
+
+  /**
+   * Criar textura radial (usado para glow das lanternas)
+   */
+  private createRadialTexture(
+    size: number,
+    stops: Array<{ offset: number; color: string }>,
+  ): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to create canvas context');
+    }
+
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    for (const stop of stops) {
+      gradient.addColorStop(stop.offset, stop.color);
+    }
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
   }
 
   private updateRain(delta: number): void {
@@ -2921,6 +3079,23 @@ export class VillageScene3D {
     if (this.critters) {
       this.critters.dispose();
       this.critters = null;
+    }
+
+    // Limpar lanternas
+    this.villageLanternLights.forEach((entry) => {
+      entry.light.dispose();
+      if (entry.sprite.material) {
+        entry.sprite.material.dispose();
+      }
+      if (entry.innerGlow.material) {
+        entry.innerGlow.material.dispose();
+      }
+    });
+    this.villageLanternLights = [];
+    
+    if (this.glowTexture) {
+      this.glowTexture.dispose();
+      this.glowTexture = null;
     }
 
     this.removeAllRain();

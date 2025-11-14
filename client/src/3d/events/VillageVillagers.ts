@@ -192,10 +192,14 @@ export class VillageVillagers {
             transparent: oldMat.transparent,
             opacity: oldMat.opacity,
             side: oldMat.side,
+            emissive: 0x000000, // Remover emissão para não ficar brilhante
+            emissiveIntensity: 0,
           });
           child.material = newMat;
         } else if (child.material instanceof THREE.MeshStandardMaterial) {
-          // Garantir que já está configurado corretamente
+          // Garantir que não tem emissão e está configurado corretamente
+          child.material.emissive.setHex(0x000000);
+          child.material.emissiveIntensity = 0;
           child.material.needsUpdate = true;
         }
         child.castShadow = true;
