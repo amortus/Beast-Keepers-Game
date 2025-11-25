@@ -4419,11 +4419,3 @@ document.addEventListener('keydown', (e) => {
 
 // Start
 init();
-
-      location.reload();
-    }
-  }
-});
-
-// Start
-init();
