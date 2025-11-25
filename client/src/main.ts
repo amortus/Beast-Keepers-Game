@@ -3132,7 +3132,8 @@ function startExplorationBattle(enemy: WildEnemy) {
           try {
             if (typeof calculateExperienceGain === 'function' && typeof processExperienceGain === 'function') {
               const enemyLevel = currentEnemy?.level || 1;
-              const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel);
+              const enemyLine = currentEnemy?.line as BeastLine | undefined;
+              const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel, enemyLine);
               processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
               console.log(`[Exploration Battle] Beast gained ${xpGained} XP from victory`);
             } else {
@@ -3345,7 +3346,8 @@ function startExplorationBattle(enemy: WildEnemy) {
       try {
         if (typeof calculateExperienceGain === 'function' && typeof processExperienceGain === 'function') {
           const enemyLevel = currentEnemy?.level || 1;
-          const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel);
+          const enemyLine = currentEnemy?.line as BeastLine | undefined;
+          const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel, enemyLine);
           processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
           console.log(`[Exploration Battle] Beast gained ${xpGained} XP from victory`);
         } else {
@@ -3520,25 +3522,26 @@ async function collectTreasureInExploration(treasure: Item[]) {
     
     // NOVO: Adicionar XP por descobrir tesouro
     if (gameState.activeBeast) {
-      // XP baseado na raridade dos itens coletados
+      // XP baseado na raridade dos itens coletados (ajustado para ser menor que batalhas)
+      // Batalhas dão ~7-100 XP dependendo do nível, então tesouros devem dar menos
       let totalExp = 0;
       for (const item of treasure) {
-        // XP baseado na categoria/raridade do item
+        // XP baseado na categoria/raridade do item (valores pequenos, menores que batalhas)
         const itemRarity = (item as any).rarity || 'common';
         let itemExp = 0;
         
         switch (itemRarity) {
           case 'epic':
-            itemExp = 5000; // Multiplicado por 100
+            itemExp = 15; // XP menor que batalha nível 10 (~100 XP)
             break;
           case 'rare':
-            itemExp = 3000; // Multiplicado por 100
+            itemExp = 10; // XP menor que batalha nível 7 (~70 XP)
             break;
           case 'uncommon':
-            itemExp = 2000; // Multiplicado por 100
+            itemExp = 7; // XP menor que batalha nível 5 (~50 XP)
             break;
           default:
-            itemExp = 1000; // common - multiplicado por 100
+            itemExp = 5; // common - XP menor que batalha nível 1 (~7 XP)
         }
         
         // Multiplicar pela quantidade
@@ -3547,7 +3550,7 @@ async function collectTreasureInExploration(treasure: Item[]) {
       
       // Se não tiver raridade definida, usar XP fixo baseado no número de itens
       if (totalExp === 0) {
-        totalExp = treasure.length * 1500; // 1500 XP por item (multiplicado por 100)
+        totalExp = treasure.length * 5; // 5 XP por item (menor que batalha)
       }
       
       // Adicionar XP usando a função helper (com proteção contra erros - não bloqueia coleta)
@@ -3711,14 +3714,15 @@ function continueEventExploration() {
     // NOVO: Adicionar XP por descobrir evento (opcional - não quebra se houver erro)
     if (gameState.activeBeast && typeof processExperienceGain === 'function') {
       try {
-        // XP baseado no tipo de evento (eventos positivos dão mais XP) - multiplicado por 100
-        let eventExp = 1500; // XP base para eventos (multiplicado por 100)
+        // XP baseado no tipo de evento (ajustado para ser menor que batalhas)
+        // Batalhas dão ~7-100 XP dependendo do nível, então eventos devem dar menos
+        let eventExp = 8; // XP base para eventos (menor que batalha nível 1)
         
         const message = currentEncounter.eventMessage.toLowerCase();
         if (message.includes('fonte mágica') || message.includes('cristais') || message.includes('baú')) {
-          eventExp = 2500; // Eventos com recompensas dão mais XP (multiplicado por 100)
+          eventExp = 12; // Eventos com recompensas dão mais XP (ainda menor que batalha nível 10)
         } else if (message.includes('tempestade') || message.includes('nenhum material')) {
-          eventExp = 1000; // Eventos negativos dão menos XP (multiplicado por 100)
+          eventExp = 5; // Eventos negativos dão menos XP (menor que batalha nível 1)
         }
         
         processExperienceGain(gameState.activeBeast, eventExp, gameState.currentWeek);
@@ -4040,16 +4044,17 @@ function startTournamentBattle(rank: TournamentRank) {
           // NOVO: Adicionar XP por vencer torneio (com proteção)
           try {
             if (typeof processExperienceGain === 'function') {
-              // XP baseado no rank do torneio
+              // XP baseado no rank do torneio (ajustado para ser menor que batalhas)
+              // Batalhas dão ~7-100 XP, então torneios devem dar valores proporcionais
               const rankXpMap: Record<TournamentRank, number> = {
-                bronze: 10000, // Multiplicado por 100
-                silver: 20000, // Multiplicado por 100
-                gold: 30000, // Multiplicado por 100
-                platinum: 40000, // Multiplicado por 100
-                diamond: 50000, // Multiplicado por 100
-                master: 60000 // Multiplicado por 100
+                bronze: 20,    // ~2x batalha nível 1
+                silver: 40,   // ~4x batalha nível 1
+                gold: 60,     // ~6x batalha nível 1
+                platinum: 80, // ~8x batalha nível 1
+                diamond: 100, // ~10x batalha nível 1
+                master: 120   // ~12x batalha nível 1 (ainda menor que batalha nível 10)
               };
-              const xpGained = rankXpMap[rank] || 10000;
+              const xpGained = rankXpMap[rank] || 20;
               processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
               console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
             } else {
@@ -4113,14 +4118,14 @@ function startTournamentBattle(rank: TournamentRank) {
           try {
             if (typeof processExperienceGain === 'function') {
               const rankXpMap: Record<TournamentRank, number> = {
-                bronze: 10000, // Multiplicado por 100
-                silver: 20000, // Multiplicado por 100
-                gold: 30000, // Multiplicado por 100
-                platinum: 40000, // Multiplicado por 100
-                diamond: 50000, // Multiplicado por 100
-                master: 60000 // Multiplicado por 100
+                bronze: 20,    // ~2x batalha nível 1
+                silver: 40,   // ~4x batalha nível 1
+                gold: 60,     // ~6x batalha nível 1
+                platinum: 80, // ~8x batalha nível 1
+                diamond: 100, // ~10x batalha nível 1
+                master: 120   // ~12x batalha nível 1 (ainda menor que batalha nível 10)
               };
-              const xpGained = rankXpMap[rank] || 10000;
+              const xpGained = rankXpMap[rank] || 20;
               processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
               console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
             } else {
@@ -4192,14 +4197,14 @@ function startTournamentBattle(rank: TournamentRank) {
           try {
             if (typeof processExperienceGain === 'function') {
               const rankXpMap: Record<TournamentRank, number> = {
-                bronze: 100,
-                silver: 200,
-                gold: 300,
-                platinum: 400,
-                diamond: 500,
-                master: 600
+                bronze: 20,    // ~2x batalha nível 1
+                silver: 40,   // ~4x batalha nível 1
+                gold: 60,     // ~6x batalha nível 1
+                platinum: 80, // ~8x batalha nível 1
+                diamond: 100, // ~10x batalha nível 1
+                master: 120   // ~12x batalha nível 1 (ainda menor que batalha nível 10)
               };
-              const xpGained = rankXpMap[battle.rewards.rank] || 100;
+              const xpGained = rankXpMap[battle.rewards.rank] || 20;
               processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
               console.log(`[Tournament] Beast gained ${xpGained} XP from ${battle.rewards.rank} tournament victory`);
             } else {

@@ -15,8 +15,14 @@ import { addLifeEvent } from './beast';
 export type ExperienceGroup = 'fast' | 'medium_fast' | 'medium_slow' | 'slow';
 
 /**
- * Tabelas de experiência por grupo (baseado em Pokémon)
+ * Tabelas de experiência por grupo (baseado nas fórmulas exatas do Pokémon)
  * Retorna a experiência necessária para alcançar um nível específico
+ * 
+ * Fórmulas originais do Pokémon:
+ * - Fast: n³ * 0.8 (arredondado)
+ * - Medium Fast: n³
+ * - Medium Slow: (6/5 * n³) - (15 * n²) + (100 * n) - 140
+ * - Slow: n³ * 1.25 (arredondado)
  */
 export function getExperienceForLevel(level: number, group: ExperienceGroup): number {
   if (level <= 1) return 0;
@@ -24,23 +30,23 @@ export function getExperienceForLevel(level: number, group: ExperienceGroup): nu
 
   switch (group) {
     case 'fast':
-      // Fórmula: n³ * 0.8 * 100 (multiplicado por 100 para aumentar XP necessário)
-      return Math.floor(Math.pow(level, 3) * 0.8 * 100);
+      // Fórmula Pokémon Fast: n³ * 0.8 (arredondado)
+      return Math.floor(Math.pow(level, 3) * 0.8);
     
     case 'medium_fast':
-      // Fórmula: n³ * 100 (multiplicado por 100 para aumentar XP necessário)
-      return Math.floor(Math.pow(level, 3) * 100);
+      // Fórmula Pokémon Medium Fast: n³
+      return Math.floor(Math.pow(level, 3));
     
     case 'medium_slow':
-      // Fórmula: ((6/5 * n³) - (15 * n²) + (100 * n) - 140) * 100 (multiplicado por 100)
-      return Math.floor(((6/5 * Math.pow(level, 3)) - (15 * Math.pow(level, 2)) + (100 * level) - 140) * 100);
+      // Fórmula Pokémon Medium Slow: (6/5 * n³) - (15 * n²) + (100 * n) - 140
+      return Math.floor((6/5 * Math.pow(level, 3)) - (15 * Math.pow(level, 2)) + (100 * level) - 140);
     
     case 'slow':
-      // Fórmula: n³ * 1.25 * 100 (multiplicado por 100 para aumentar XP necessário)
-      return Math.floor(Math.pow(level, 3) * 1.25 * 100);
+      // Fórmula Pokémon Slow: n³ * 1.25 (arredondado)
+      return Math.floor(Math.pow(level, 3) * 1.25);
     
     default:
-      return Math.floor(Math.pow(level, 3) * 100); // Fallback para medium_fast
+      return Math.floor(Math.pow(level, 3)); // Fallback para medium_fast
   }
 }
 
@@ -472,31 +478,55 @@ export function syncTechniquesToLevel(beast: Beast): {
 }
 
 /**
+ * Retorna o Base Experience Yield de uma beast baseado no grupo de experiência
+ * Baseado no sistema do Pokémon onde cada grupo tem um baseExp típico
+ */
+function getBaseExperienceYield(line: BeastLine): number {
+  const group = getExperienceGroup(line);
+  
+  // BaseExp típico por grupo (baseado em Pokémon)
+  // Fast: geralmente 50-80 (ex: Abra, Gastly)
+  // Medium Fast: geralmente 50-100 (ex: Pidgey, Rattata)
+  // Medium Slow: geralmente 50-120 (ex: Bulbasaur, Squirtle)
+  // Slow: geralmente 50-125 (ex: Charmander, Geodude)
+  const baseExpMap: Record<ExperienceGroup, number> = {
+    fast: 65,        // Média de beasts mágicas
+    medium_fast: 50, // Média de beasts equilibradas
+    medium_slow: 60, // Média de beasts físicas/tanques
+    slow: 70,        // Média de beasts sombrias/complexas
+  };
+  
+  return baseExpMap[group];
+}
+
+/**
  * Calcula experiência ganha ao derrotar um inimigo
- * Baseado no nível do inimigo e diferença de níveis
+ * Baseado na fórmula do Pokémon: (BaseExp * Nível) / 7 * modificadores
  */
 export function calculateExperienceGain(
   playerLevel: number,
   enemyLevel: number,
-  baseExp: number = 35 // XP base por nível (25-50 XP por nível de inimigo)
+  enemyLine?: BeastLine
 ): number {
-  // Experiência base ajustada pelo nível do inimigo
-  // Variação aleatória para dar 25-50 XP por nível
-  const randomVariation = 25 + Math.floor(Math.random() * 26); // 25-50
-  let exp = randomVariation * enemyLevel;
-
-  // Bônus por derrotar inimigo mais forte
+  // Obter baseExp do inimigo (ou usar padrão se não especificado)
+  const baseExp = enemyLine ? getBaseExperienceYield(enemyLine) : 50;
+  
+  // Fórmula base do Pokémon: (BaseExp * Nível) / 7
+  let exp = Math.floor((baseExp * enemyLevel) / 7);
+  
+  // Modificadores do Pokémon:
+  // - Se o inimigo é mais forte: multiplicador baseado na diferença
+  // - Se o inimigo é muito mais fraco: redução
   if (enemyLevel > playerLevel) {
+    // Bônus por derrotar inimigo mais forte (similar ao Pokémon)
     const levelDiff = enemyLevel - playerLevel;
     exp = Math.floor(exp * (1 + levelDiff * 0.1)); // +10% por nível acima
-  }
-
-  // Penalidade por derrotar inimigo muito mais fraco
-  if (enemyLevel < playerLevel - 5) {
+  } else if (enemyLevel < playerLevel - 5) {
+    // Penalidade por derrotar inimigo muito mais fraco
     const levelDiff = playerLevel - enemyLevel - 5;
     exp = Math.floor(exp * Math.max(0.1, 1 - levelDiff * 0.1)); // -10% por nível abaixo
   }
-
+  
   return Math.max(1, Math.floor(exp));
 }
 

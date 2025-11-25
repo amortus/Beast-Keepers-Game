@@ -179,7 +179,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 1000,
-        experience: 50000, // Multiplicado por 100
+        experience: 50, // Baseado em 5 andares * ~10 XP por andar
       },
     },
   },
@@ -299,7 +299,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 1500,
-        experience: 80000, // Multiplicado por 100
+        experience: 80, // Baseado em 5 andares * ~16 XP por andar
       },
     },
   },
@@ -419,7 +419,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 2000,
-        experience: 120000, // Multiplicado por 100
+        experience: 120, // Baseado em 5 andares * ~24 XP por andar
       },
     },
   },
@@ -539,7 +539,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 3000,
-        experience: 200000, // Multiplicado por 100
+        experience: 200, // Baseado em 5 andares * ~40 XP por andar
       },
     },
   },
@@ -665,7 +665,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 5000,
-        experience: 500000, // Multiplicado por 100
+        experience: 500, // Baseado em 5 andares * ~100 XP por andar (dungeon final)
       },
     },
   },
