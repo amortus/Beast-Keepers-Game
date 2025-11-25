@@ -32,10 +32,10 @@ export const ACTION_DURATIONS = {
   
   // Cooldowns especiais
   tournament_cooldown: 4 * 60 * 60 * 1000,  // 4 horas entre torneios
-  exploration_cooldown: 2 * 60 * 60 * 1000, // 2 horas para resetar contador de explorações
+  // exploration_cooldown removido - usando apenas sistema de fadiga
 } as const;
 
-export const EXPLORATION_LIMIT = 10; // 10 explorações a cada 2 horas
+// EXPLORATION_LIMIT removido - usando apenas sistema de fadiga
 
 // ===== FUNÇÕES DE AÇÃO =====
 
@@ -86,18 +86,13 @@ export function canStartAction(
     };
   }
   
-  // Verificar cooldown de exploração
+  // Verificar fadiga para exploração (sistema baseado apenas em fadiga)
   if (actionType === 'exploration') {
-    const count = beast.explorationCount || 0;
-    const lastExploration = beast.lastExploration || 0;
-    const cooldownEnd = lastExploration + ACTION_DURATIONS.exploration_cooldown;
-    
-    // Se já explorou 10 vezes e ainda está no cooldown
-    if (count >= EXPLORATION_LIMIT && serverTime < cooldownEnd) {
+    // Verificar se a fadiga está muito alta (acima de 90)
+    if (beast.secondaryStats.fatigue > 90) {
       return {
         can: false,
-        reason: `Limite de ${EXPLORATION_LIMIT} explorações atingido. Aguarde o cooldown.`,
-        timeRemaining: cooldownEnd - serverTime,
+        reason: 'Besta muito cansada para explorar. Descanse primeiro!',
       };
     }
   }
@@ -159,10 +154,8 @@ export function completeAction(
     beast.lastTournament = Date.now();
   }
   
-  if (action.type === 'exploration') {
-    beast.explorationCount = (beast.explorationCount || 0) + 1;
-    beast.lastExploration = Date.now();
-  }
+  // explorationCount removido - usando apenas sistema de fadiga
+  // Fadiga é aumentada em 15% quando exploração inicia (em main.ts)
   
   return result;
 }
@@ -585,13 +578,9 @@ export function getActionName(actionType: BeastAction['type']): string {
 /**
  * Reseta o contador de explorações se o cooldown passou
  */
+// updateExplorationCounter removido - usando apenas sistema de fadiga
 export function updateExplorationCounter(beast: Beast, currentTime: number): void {
-  if (!beast.lastExploration) return;
-  
-  const cooldownPassed = currentTime - beast.lastExploration;
-  
-  if (cooldownPassed >= ACTION_DURATIONS.exploration_cooldown) {
-    beast.explorationCount = 0;
-  }
+  // Função mantida para compatibilidade, mas não faz nada
+  // Sistema de exploração agora usa apenas fadiga
 }
 

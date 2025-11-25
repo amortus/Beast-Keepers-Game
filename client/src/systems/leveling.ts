@@ -478,10 +478,12 @@ export function syncTechniquesToLevel(beast: Beast): {
 export function calculateExperienceGain(
   playerLevel: number,
   enemyLevel: number,
-  baseExp: number = 5000 // Multiplicado por 100 (era 50)
+  baseExp: number = 35 // XP base por nível (25-50 XP por nível de inimigo)
 ): number {
   // Experiência base ajustada pelo nível do inimigo
-  let exp = baseExp * enemyLevel;
+  // Variação aleatória para dar 25-50 XP por nível
+  const randomVariation = 25 + Math.floor(Math.random() * 26); // 25-50
+  let exp = randomVariation * enemyLevel;
 
   // Bônus por derrotar inimigo mais forte
   if (enemyLevel > playerLevel) {

@@ -417,20 +417,7 @@ export class GameUI {
       shadow: false,
     });
 
-    // Explorações (ao lado do relógio/data)
-    const beast = this.gameState.activeBeast;
-    const explorationCount = beast?.explorationCount || 0;
-    
-    // Calcular posição X para explorações (após relógio/data)
-    this.ctx.font = 'bold 13px monospace';
-    const dateTextWidth = this.ctx.measureText(dateText).width;
-    const explorationX = leftX + dateTextWidth + 40; // Espaço entre relógio e explorações
-    
-    drawText(this.ctx, `🗺️ Explorações: ${explorationCount}/10`, explorationX, clockY + 11, {
-      font: 'bold 15px monospace',
-      color: GLASS_THEME.palette.text.secondary,
-      shadow: false,
-    });
+    // Contador de explorações removido - usando apenas sistema de fadiga
 
     this.drawGlobalMenu();
   }
@@ -1106,19 +1093,12 @@ export class GameUI {
       borderWidth: 1.5,
     });
 
-    // Info em 2 linhas (mais legível)
+    // Info em 1 linha (contador de explorações removido)
     const ageInfo = calculateBeastAge(beast, serverTime);
-    const explorationCount = beast.explorationCount || 0;
     
     drawText(this.ctx, `${beast.name} - ${ageInfo.ageInDays} dias`, x + 16, y + 12, {
       font: 'bold 14px monospace',
       color: GLASS_THEME.palette.accent.lilac,
-      shadow: false,
-    });
-    
-    drawText(this.ctx, `Explorações: ${explorationCount}/10`, x + 16, y + 36, {
-      font: '13px monospace',
-      color: explorationCount >= 10 ? GLASS_THEME.palette.accent.danger : GLASS_THEME.palette.accent.emerald,
       shadow: false,
     });
     

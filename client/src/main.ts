@@ -2826,26 +2826,24 @@ function openExploration() {
     }
   }
   
-  // Verificar limite de explorações
+  // Verificar fadiga para exploração (sistema baseado apenas em fadiga)
   const serverTime = gameState.serverTime || Date.now();
   const explorationCheck = canStartAction(beast, 'exploration', serverTime);
   
   if (!explorationCheck.can) {
-    const timeMsg = explorationCheck.timeRemaining 
-      ? `\nTempo restante: ${formatTime(explorationCheck.timeRemaining)}`
-      : '';
     showMessage(
-      `${explorationCheck.reason}${timeMsg}`,
+      explorationCheck.reason || 'Não é possível explorar no momento.',
       '⚠️ Exploração Bloqueada'
     );
     return;
   }
   
-  // Incrementar contador APENAS após todas as validações passarem
-  beast.explorationCount = (beast.explorationCount || 0) + 1;
-  beast.lastExploration = Date.now();
+  // Aumentar fadiga em 15% do valor atual
+  const currentFatigue = beast.secondaryStats.fatigue || 0;
+  const fatigueIncrease = Math.floor(currentFatigue * 0.15);
+  beast.secondaryStats.fatigue = Math.min(100, currentFatigue + fatigueIncrease);
   
-  console.log(`[Exploration] Started exploration ${beast.explorationCount}/10 with ${beast.currentHp}/${beast.maxHp} HP`);
+  console.log(`[Exploration] Started exploration with ${beast.currentHp}/${beast.maxHp} HP. Fadiga: ${currentFatigue}% → ${beast.secondaryStats.fatigue}% (+${fatigueIncrease}%)`);
   
   // Salvar imediatamente
   saveGame(gameState);
@@ -3825,9 +3823,7 @@ async function finishExploration() {
   const beast = gameState.activeBeast;
   const materialCount = rewards.materials.length;
   const totalItems = rewards.materials.reduce((sum, m) => sum + (m.quantity || 0), 0);
-  const explorationInfo = beast.explorationCount >= 10 
-    ? `\n⚠️ Limite de explorações atingido (${beast.explorationCount}/10)! Aguarde 2h para resetar.`
-    : `\nExplorações: ${beast.explorationCount}/10`;
+  const fatigueInfo = `\nFadiga: ${beast.secondaryStats.fatigue}%`;
   
   // Save
   saveGame(gameState);
@@ -3841,7 +3837,7 @@ async function finishExploration() {
     `⚔️ Inimigos: ${rewards.enemiesDefeated}\n` +
     `💎 Materiais: ${totalItems} itens (${materialCount} tipos)\n` +
     `✅ Materiais salvos no inventário!` +
-    explorationInfo,
+    fatigueInfo,
     '🗺️ Exploração Finalizada',
     async () => {
       // Fechar exploração e voltar ao rancho APÓS fechar o modal
