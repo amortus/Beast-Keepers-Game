@@ -195,6 +195,25 @@ export function applyInheritance(newBeast: Beast, inheritance: InheritanceData):
     newBeast.traits.push('loyal'); // Trait de reencarnação
   }
   
+  // NOVO: Reencarnação mantém nível 1 mas pode começar com experiência bônus
+  // A experiência inicial pode ser baseada no nível do pai (opcional)
+  const parentLevel = inheritance.parentBeast.level || 1;
+  // Bônus de experiência inicial: 10% da experiência necessária para o nível do pai
+  // Isso dá uma vantagem mas não quebra o sistema
+  if (parentLevel > 1) {
+    // Importar função de experiência dinamicamente para evitar dependência circular
+    import('./leveling').then(({ getExperienceForLevel, getExperienceGroup }) => {
+      const group = getExperienceGroup(newBeast.line);
+      const parentExp = getExperienceForLevel(parentLevel, group);
+      const bonusExp = Math.floor(parentExp * 0.1); // 10% da experiência do pai
+      newBeast.experience = (newBeast.experience || 0) + bonusExp;
+    });
+  }
+  
+  // Garantir que level e experience estão definidos
+  if (!newBeast.level) newBeast.level = 1;
+  if (!newBeast.experience) newBeast.experience = 0;
+  
   // Marcar como reencarnada
   (newBeast as any).isReincarnated = true;
   (newBeast as any).parentId = inheritance.parentBeast.id;

@@ -94,7 +94,8 @@ export class Ranch3DUI {
     });
     
     // Beast info
-    drawText(this.ctx, `${this.beast.name}`, panelX + 20, panelY + 70, {
+    const level = this.beast.level || 1;
+    drawText(this.ctx, `${this.beast.name} - Nível ${level}`, panelX + 20, panelY + 70, {
       font: 'bold 18px monospace',
       color: COLORS.ui.text
     });
@@ -146,7 +147,8 @@ export class Ranch3DUI {
     this.ctx.strokeRect(nameBoxX, nameBoxY, nameBoxWidth, nameBoxHeight);
     
     // Beast name
-    drawText(this.ctx, this.beast.name, this.canvas.width / 2, nameBoxY + 35, {
+    const level = this.beast.level || 1;
+    drawText(this.ctx, `${this.beast.name} - Nível ${level}`, this.canvas.width / 2, nameBoxY + 35, {
       align: 'center',
       font: 'bold 32px monospace',
       color: COLORS.primary.gold

@@ -5,6 +5,7 @@
 
 import type { Beast, BeastAction, GameState } from '../types';
 import { emitTrained, emitRested, emitWorked } from './game-events';
+import { addExperience } from './leveling';
 
 // ===== DURAÇÕES DAS AÇÕES =====
 
@@ -216,40 +217,84 @@ function applyActionRewards(
   switch (action.type) {
     // ===== TREINO =====
     case 'train_might':
-      beast.attributes.might += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'might');
-      return { success: true, message: `💪 Treino completo! +${2}-${4} Força!` };
+      {
+        beast.attributes.might += Math.floor(Math.random() * 3) + 2;
+        beast.secondaryStats.fatigue += 15;
+        // NOVO: Adicionar XP por treino (menor que batalhas)
+        const xpGained = 10 + Math.floor(Math.random() * 5); // 10-15 XP
+        if (gameState.activeBeast) {
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+          // Nota: processExperienceGain será chamado do main.ts quando a ação completar
+          // para lidar com substituição de técnicas via modal
+        }
+        emitTrained(gameState, 'might');
+        return { success: true, message: `💪 Treino completo! +${2}-${4} Força! +${xpGained} XP` };
+      }
       
     case 'train_wit':
-      beast.attributes.wit += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'wit');
-      return { success: true, message: `🧠 Treino completo! +${2}-${4} Astúcia!` };
+      {
+        beast.attributes.wit += Math.floor(Math.random() * 3) + 2;
+        beast.secondaryStats.fatigue += 15;
+        const xpGained = 10 + Math.floor(Math.random() * 5);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
+        emitTrained(gameState, 'wit');
+        return { success: true, message: `🧠 Treino completo! +${2}-${4} Astúcia! +${xpGained} XP` };
+      }
       
     case 'train_focus':
-      beast.attributes.focus += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'focus');
-      return { success: true, message: `🎯 Treino completo! +${2}-${4} Foco!` };
+      {
+        beast.attributes.focus += Math.floor(Math.random() * 3) + 2;
+        beast.secondaryStats.fatigue += 15;
+        const xpGained = 10 + Math.floor(Math.random() * 5);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
+        emitTrained(gameState, 'focus');
+        return { success: true, message: `🎯 Treino completo! +${2}-${4} Foco! +${xpGained} XP` };
+      }
       
     case 'train_agility':
-      beast.attributes.agility += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'agility');
-      return { success: true, message: `⚡ Treino completo! +${2}-${4} Agilidade!` };
+      {
+        beast.attributes.agility += Math.floor(Math.random() * 3) + 2;
+        beast.secondaryStats.fatigue += 15;
+        const xpGained = 10 + Math.floor(Math.random() * 5);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
+        emitTrained(gameState, 'agility');
+        return { success: true, message: `⚡ Treino completo! +${2}-${4} Agilidade! +${xpGained} XP` };
+      }
       
     case 'train_ward':
-      beast.attributes.ward += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'ward');
-      return { success: true, message: `🛡️ Treino completo! +${2}-${4} Resistência!` };
+      {
+        beast.attributes.ward += Math.floor(Math.random() * 3) + 2;
+        beast.secondaryStats.fatigue += 15;
+        const xpGained = 10 + Math.floor(Math.random() * 5);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
+        emitTrained(gameState, 'ward');
+        return { success: true, message: `🛡️ Treino completo! +${2}-${4} Resistência! +${xpGained} XP` };
+      }
       
     case 'train_vitality':
-      beast.attributes.vitality += Math.floor(Math.random() * 3) + 2;
-      beast.secondaryStats.fatigue += 15;
-      emitTrained(gameState, 'vitality');
-      return { success: true, message: `❤️ Treino completo! +${2}-${4} Vitalidade!` };
+      {
+        beast.attributes.vitality += Math.floor(Math.random() * 3) + 2;
+        beast.secondaryStats.fatigue += 15;
+        const xpGained = 10 + Math.floor(Math.random() * 5);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
+        emitTrained(gameState, 'vitality');
+        return { success: true, message: `❤️ Treino completo! +${2}-${4} Vitalidade! +${xpGained} XP` };
+      }
     
     // ===== TRABALHO =====
     case 'work_warehouse':
@@ -272,11 +317,16 @@ function applyActionRewards(
         
         beast.secondaryStats.fatigue += 30;
         gameState.economy.coronas += 400;
+        // NOVO: Adicionar XP por trabalho (menor que treinos)
+        const xpGained = 8 + Math.floor(Math.random() * 4); // 8-12 XP
+        if (gameState.activeBeast) {
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
         emitWorked(gameState, 'warehouse', 400);
         
         return {
           success: true,
-          message: `📦 Trabalho completo! +400💰${bonusMsg}`,
+          message: `📦 Trabalho completo! +400💰 +${xpGained} XP${bonusMsg}`,
         };
       }
       
@@ -300,11 +350,16 @@ function applyActionRewards(
         
         beast.secondaryStats.fatigue += 30;
         gameState.economy.coronas += 350;
+        const xpGained = 8 + Math.floor(Math.random() * 4);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
         emitWorked(gameState, 'farm', 350);
         
         return {
           success: true,
-          message: `🌾 Trabalho completo! +350💰${bonusMsg}`,
+          message: `🌾 Trabalho completo! +350💰 +${xpGained} XP${bonusMsg}`,
         };
       }
       
@@ -329,11 +384,16 @@ function applyActionRewards(
         beast.secondaryStats.fatigue += 30;
         beast.secondaryStats.stress += 20;
         gameState.economy.coronas += 500;
+        const xpGained = 8 + Math.floor(Math.random() * 4);
+        if (gameState.activeBeast) {
+          const { addExperience } = require('./leveling');
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
         emitWorked(gameState, 'guard', 500);
         
         return {
           success: true,
-          message: `🛡️ Trabalho completo! +500💰${bonusMsg}`,
+          message: `🛡️ Trabalho completo! +500💰 +${xpGained} XP${bonusMsg}`,
         };
       }
       
@@ -358,11 +418,15 @@ function applyActionRewards(
         beast.secondaryStats.fatigue += 10;
         beast.secondaryStats.stress += 12;
         gameState.economy.coronas += 350;
+        const xpGained = 8 + Math.floor(Math.random() * 4);
+        if (gameState.activeBeast) {
+          addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
+        }
         emitWorked(gameState, 'library', 350);
         
         return {
           success: true,
-          message: `📚 Trabalho completo! +350💰${bonusMsg}`,
+          message: `📚 Trabalho completo! +350💰 +${xpGained} XP${bonusMsg}`,
         };
       }
     

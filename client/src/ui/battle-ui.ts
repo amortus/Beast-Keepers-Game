@@ -8,6 +8,7 @@ import { COLORS } from './colors';
 import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-helper';
 import { canUseTechnique } from '../systems/combat';
 import { BeastMiniViewer3D } from '../3d/BeastMiniViewer3D';
+import { getExperienceToNextLevel, getCurrentExperienceProgress } from '../systems/leveling';
 
 export class BattleUI {
   private canvas: HTMLCanvasElement;
@@ -204,15 +205,22 @@ export class BattleUI {
     const y = 370;
     const width = 300;
     
-    drawPanel(this.ctx, x, y, width, 120, {
+    drawPanel(this.ctx, x, y, width, 150, {
       bgColor: COLORS.bg.medium,
+    });
+
+    // Nome e Nível
+    const level = this.battle.player.beast.level || 1;
+    drawText(this.ctx, `${this.battle.player.beast.name} - Nível ${level}`, x + 10, y + 8, {
+      font: 'bold 14px monospace',
+      color: COLORS.primary.green,
     });
 
     // HP Bar
     drawBar(
       this.ctx,
       x + 10,
-      y + 10,
+      y + 25,
       width - 20,
       25,
       this.battle.player.currentHp,
@@ -227,7 +235,7 @@ export class BattleUI {
     drawBar(
       this.ctx,
       x + 10,
-      y + 45,
+      y + 55,
       width - 20,
       25,
       this.battle.player.currentEssence,
@@ -238,9 +246,28 @@ export class BattleUI {
       }
     );
 
+    // XP Bar (NOVO)
+    const expToNext = getExperienceToNextLevel(this.battle.player.beast);
+    const currentExp = getCurrentExperienceProgress(this.battle.player.beast);
+    if (level < 100 && expToNext > 0) {
+      drawBar(
+        this.ctx,
+        x + 10,
+        y + 85,
+        width - 20,
+        18,
+        currentExp,
+        expToNext,
+        {
+          fillColor: '#4a90e2',
+          label: `XP: ${currentExp}/${expToNext}`,
+        }
+      );
+    }
+
     // Status
     const status = this.battle.player.isDefending ? '🛡️ Defendendo' : '⚔️ Pronto';
-    drawText(this.ctx, status, x + 10, y + 85, {
+    drawText(this.ctx, status, x + 10, y + 115, {
       font: '14px monospace',
       color: this.battle.player.isDefending ? COLORS.ui.info : COLORS.ui.text,
     });

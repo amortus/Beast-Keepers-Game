@@ -132,6 +132,10 @@ export function createBeast(line: BeastLine, name: string, currentWeek: number =
     }],
     victories: 0,
     defeats: 0,
+    
+    // Sistema de level up
+    level: 1,
+    experience: 0,
   };
 
   return beast;

@@ -6,7 +6,7 @@
 import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver, drawOverlay } from './ui-helper';
 
-export type ModalType = 'message' | 'input' | 'choice' | 'npc-selection';
+export type ModalType = 'message' | 'input' | 'choice' | 'npc-selection' | 'technique-replacement';
 
 export interface ModalOptions {
   type: ModalType;
@@ -17,6 +17,9 @@ export interface ModalOptions {
   defaultValue?: string;
   onConfirm?: (value?: string) => void;
   onCancel?: () => void;
+  // Para técnica de substituição
+  techniques?: Array<{ id: string; name: string; description: string }>;
+  newTechnique?: { id: string; name: string; description: string };
 }
 
 export class ModalUI {
@@ -113,6 +116,9 @@ export class ModalUI {
         break;
       case 'npc-selection':
         this.drawNPCSelectionModal();
+        break;
+      case 'technique-replacement':
+        this.drawTechniqueReplacementModal();
         break;
     }
   }
@@ -357,6 +363,115 @@ export class ModalUI {
   private drawNPCSelectionModal() {
     // Similar ao choice modal, mas com estilo específico para NPCs
     this.drawChoiceModal();
+  }
+
+  private drawTechniqueReplacementModal() {
+    if (!this.currentModal || !this.currentModal.techniques || !this.currentModal.newTechnique) return;
+
+    const width = 700;
+    const techniqueCount = this.currentModal.techniques.length;
+    const height = 300 + (techniqueCount * 70) + 80; // Altura dinâmica baseada no número de técnicas
+    const x = (this.canvas.width - width) / 2;
+    const y = (this.canvas.height - height) / 2;
+
+    // Painel
+    drawPanel(this.ctx, x, y, width, height, {
+      variant: 'popup',
+      borderWidth: 1.5,
+    });
+
+    // Título
+    drawText(this.ctx, this.currentModal.title, x + width / 2, y + 30, {
+      align: 'center',
+      font: 'bold 24px monospace',
+      color: GLASS_THEME.palette.accent.lilac,
+    });
+
+    // Mensagem sobre a nova técnica
+    const newTech = this.currentModal.newTechnique;
+    this.drawWrappedText(
+      `${newTech.name} pode aprender ${newTech.name}!\n` +
+      `${newTech.description}\n\n` +
+      `Mas já conhece 4 técnicas. Escolha qual substituir:`,
+      x + 20,
+      y + 70,
+      width - 40,
+      22,
+      '14px monospace',
+      GLASS_THEME.palette.text.primary
+    );
+
+    // Lista de técnicas atuais
+    let techY = y + 180;
+    this.currentModal.techniques.forEach((technique, index) => {
+      const btnWidth = width - 60;
+      const btnHeight = 60;
+      const isHovered = isMouseOver(this.mouseX, this.mouseY, x + 30, techY, btnWidth, btnHeight);
+
+      // Card de técnica
+      drawPanel(this.ctx, x + 30, techY, btnWidth, btnHeight, {
+        variant: 'card',
+        borderColor: isHovered ? GLASS_THEME.palette.accent.cyan : 'rgba(185, 210, 255, 0.3)',
+        borderWidth: isHovered ? 2 : 1,
+        highlightIntensity: isHovered ? 0.8 : 0.3,
+      });
+
+      // Nome da técnica
+      drawText(this.ctx, technique.name, x + 50, techY + 15, {
+        font: 'bold 16px monospace',
+        color: GLASS_THEME.palette.text.highlight,
+      });
+
+      // Descrição da técnica (truncada)
+      const desc = technique.description.length > 60 
+        ? technique.description.substring(0, 60) + '...'
+        : technique.description;
+      drawText(this.ctx, desc, x + 50, techY + 38, {
+        font: '12px monospace',
+        color: GLASS_THEME.palette.text.secondary,
+      });
+
+      this.buttons.set(`tech_${index}`, {
+        x: x + 30,
+        y: techY,
+        width: btnWidth,
+        height: btnHeight,
+        action: () => {
+          if (this.currentModal?.onConfirm) {
+            this.currentModal.onConfirm(technique.id);
+          }
+          this.hide();
+        },
+      });
+
+      techY += btnHeight + 10;
+    });
+
+    // Botão Cancelar (não aprender a nova técnica)
+    const cancelBtnY = techY + 10;
+    const cancelBtnWidth = 200;
+    const cancelBtnHeight = 45;
+    const cancelBtnX = x + (width - cancelBtnWidth) / 2;
+    const cancelIsHovered = isMouseOver(this.mouseX, this.mouseY, cancelBtnX, cancelBtnY, cancelBtnWidth, cancelBtnHeight);
+
+    drawButton(this.ctx, cancelBtnX, cancelBtnY, cancelBtnWidth, cancelBtnHeight, 'Cancelar', {
+      variant: 'ghost',
+      bgColor: GLASS_THEME.palette.accent.lilac,
+      isHovered: cancelIsHovered,
+    });
+
+    this.buttons.set('cancel', {
+      x: cancelBtnX,
+      y: cancelBtnY,
+      width: cancelBtnWidth,
+      height: cancelBtnHeight,
+      action: () => {
+        if (this.currentModal?.onCancel) {
+          this.currentModal.onCancel();
+        }
+        this.hide();
+      },
+    });
   }
 
   private confirmInput() {

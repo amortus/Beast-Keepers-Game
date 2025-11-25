@@ -76,14 +76,15 @@ export class DungeonUI {
       color: COLORS.primary.purple,
     });
 
-    // Fadiga da beast ativa
+    // Fadiga e Nível da beast ativa
     const beast = gameState.activeBeast;
     if (beast) {
       const fatigue = beast.secondaryStats.fatigue;
       const maxFatigue = 100;
       const fatigueColor = fatigue < 50 ? COLORS.primary.green : fatigue < 80 ? COLORS.primary.gold : COLORS.ui.error;
+      const level = beast.level || 1;
       
-      drawText(this.ctx, `😓 Fadiga: ${fatigue}/${maxFatigue}`, panelX + panelWidth - 20, panelY + 30, {
+      drawText(this.ctx, `⭐ Nível ${level} | 😓 Fadiga: ${fatigue}/${maxFatigue}`, panelX + panelWidth - 20, panelY + 30, {
         align: 'right',
         font: 'bold 20px monospace',
         color: fatigueColor,

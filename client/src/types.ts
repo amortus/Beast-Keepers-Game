@@ -120,6 +120,10 @@ export interface Beast {
   essence: number;
   maxEssence: number;
   
+  // Sistema de level up
+  level?: number;        // Nível atual (1-100)
+  experience?: number;    // Experiência total acumulada
+  
   // Buffs ativos
   activeBuffs?: Array<{
     type: string;

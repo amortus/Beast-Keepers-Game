@@ -13,6 +13,7 @@ import { RanchScene3D } from '../3d/scenes/RanchScene3D';
 import { canStartAction, getActionProgress, getActionName as getRealtimeActionName } from '../systems/realtime-actions';
 import { formatTime } from '../utils/time-format';
 import { getGameTime } from '../utils/day-night';
+import { getExperienceToNextLevel, getCurrentExperienceProgress, getExperienceGroup } from '../systems/leveling';
 
 const HEADER_HEIGHT = 120; // Reduzido para dar mais espaço aos painéis
 const SIDE_PANEL_WIDTH = 510;
@@ -654,14 +655,27 @@ export class GameUI {
     // Idade em dias (atualizada a cada meia-noite)
     const ageInDays = beast.ageInDays || 0;
     
-    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias`, x + 16, y + 34, {
+    // Nível e experiência
+    const level = beast.level || 1;
+    const expToNext = getExperienceToNextLevel(beast);
+    const currentExp = getCurrentExperienceProgress(beast);
+    
+    drawText(this.ctx, `${phaseNames[phase]} • Idade: ${ageInDays} dias • Nível ${level}`, x + 16, y + 34, {
       font: '12px monospace',
       color: GLASS_THEME.palette.text.secondary,
       shadow: false,
     });
     
-    // Barras HP, Essência, Fadiga (compactas)
+    // Barra de Experiência (NOVO)
     let barY = y + 60;
+    drawBar(this.ctx, x + 16, barY, width - 32, 16, currentExp, expToNext, {
+      bgColor: 'rgba(12, 28, 56, 0.35)',
+      fillColor: '#4a90e2',
+      label: `XP ${currentExp}/${expToNext} (Nível ${level})`,
+    });
+    
+    // Barras HP, Essência, Fadiga (compactas)
+    barY += 28;
     drawBar(this.ctx, x + 16, barY, width - 32, 18, beast.currentHp, beast.maxHp, {
       bgColor: 'rgba(12, 28, 56, 0.35)',
       fillColor: COLORS.attributes.vitality,

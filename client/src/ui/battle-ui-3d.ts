@@ -10,6 +10,7 @@ import { drawPanel, drawText, drawBar, drawButton, isMouseOver } from './ui-help
 import { canUseTechnique } from '../systems/combat';
 import { TECHNIQUES } from '../data/techniques';
 import { ImmersiveBattleScene3D } from '../3d/scenes/ImmersiveBattleScene3D';
+import { getExperienceToNextLevel, getCurrentExperienceProgress } from '../systems/leveling';
 
 export class BattleUI3D {
   private canvas: HTMLCanvasElement;
@@ -177,7 +178,7 @@ export class BattleUI3D {
     const x = 50;
     const y = 400;
     const width = 300;
-    const height = 140;
+    const height = 170;
     
     drawPanel(this.ctx, x, y, width, height, {
       bgColor: 'rgba(26, 32, 44, 0.9)',

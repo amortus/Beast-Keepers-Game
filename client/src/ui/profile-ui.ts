@@ -36,7 +36,7 @@ export class ProfileUI {
     this.setupEventListeners();
   }
 
-  private calculateStats(gameState: GameState): PlayerStats {
+  private calculateStats(gameState: GameState): PlayerStats & { beastLevel?: number } {
     const totalVictories = gameState.victories || 0;
     const totalDefeats = gameState.defeats || 0;
     const totalBattles = totalVictories + totalDefeats;
@@ -56,6 +56,7 @@ export class ProfileUI {
       totalAchievements: gameState.achievements.length,
       currentStreak: gameState.winStreak || 0,
       longestStreak: (gameState as any).longestStreak || gameState.winStreak || 0,
+      beastLevel: gameState.activeBeast?.level || 1,
     };
   }
 
@@ -137,7 +138,8 @@ export class ProfileUI {
     y += 80;
     // Progressão
     this.drawStatBox(ctx, leftX, y, '🐾 Bestas Criadas', this.stats.beastsCreated.toString(), '#f39c12');
-    this.drawStatBox(ctx, rightX, y, '📅 Semana Atual', this.stats.currentWeek.toString(), '#16a085');
+    const beastLevel = (this.stats as any).beastLevel || 1;
+    this.drawStatBox(ctx, rightX, y, '⭐ Nível da Beast', beastLevel.toString(), '#16a085');
     
     y += 80;
     // Atividades
