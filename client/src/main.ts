@@ -3531,16 +3531,16 @@ async function collectTreasureInExploration(treasure: Item[]) {
         
         switch (itemRarity) {
           case 'epic':
-            itemExp = 50;
+            itemExp = 5000; // Multiplicado por 100
             break;
           case 'rare':
-            itemExp = 30;
+            itemExp = 3000; // Multiplicado por 100
             break;
           case 'uncommon':
-            itemExp = 20;
+            itemExp = 2000; // Multiplicado por 100
             break;
           default:
-            itemExp = 10; // common
+            itemExp = 1000; // common - multiplicado por 100
         }
         
         // Multiplicar pela quantidade
@@ -3549,7 +3549,7 @@ async function collectTreasureInExploration(treasure: Item[]) {
       
       // Se não tiver raridade definida, usar XP fixo baseado no número de itens
       if (totalExp === 0) {
-        totalExp = treasure.length * 15; // 15 XP por item
+        totalExp = treasure.length * 1500; // 1500 XP por item (multiplicado por 100)
       }
       
       // Adicionar XP usando a função helper (com proteção contra erros - não bloqueia coleta)
@@ -3713,14 +3713,14 @@ function continueEventExploration() {
     // NOVO: Adicionar XP por descobrir evento (opcional - não quebra se houver erro)
     if (gameState.activeBeast && typeof processExperienceGain === 'function') {
       try {
-        // XP baseado no tipo de evento (eventos positivos dão mais XP)
-        let eventExp = 15; // XP base para eventos
+        // XP baseado no tipo de evento (eventos positivos dão mais XP) - multiplicado por 100
+        let eventExp = 1500; // XP base para eventos (multiplicado por 100)
         
         const message = currentEncounter.eventMessage.toLowerCase();
         if (message.includes('fonte mágica') || message.includes('cristais') || message.includes('baú')) {
-          eventExp = 25; // Eventos com recompensas dão mais XP
+          eventExp = 2500; // Eventos com recompensas dão mais XP (multiplicado por 100)
         } else if (message.includes('tempestade') || message.includes('nenhum material')) {
-          eventExp = 10; // Eventos negativos dão menos XP
+          eventExp = 1000; // Eventos negativos dão menos XP (multiplicado por 100)
         }
         
         processExperienceGain(gameState.activeBeast, eventExp, gameState.currentWeek);
@@ -4046,14 +4046,14 @@ function startTournamentBattle(rank: TournamentRank) {
             if (typeof processExperienceGain === 'function') {
               // XP baseado no rank do torneio
               const rankXpMap: Record<TournamentRank, number> = {
-                bronze: 100,
-                silver: 200,
-                gold: 300,
-                platinum: 400,
-                diamond: 500,
-                master: 600
+                bronze: 10000, // Multiplicado por 100
+                silver: 20000, // Multiplicado por 100
+                gold: 30000, // Multiplicado por 100
+                platinum: 40000, // Multiplicado por 100
+                diamond: 50000, // Multiplicado por 100
+                master: 60000 // Multiplicado por 100
               };
-              const xpGained = rankXpMap[rank] || 100;
+              const xpGained = rankXpMap[rank] || 10000;
               processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
               console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
             } else {
@@ -4117,14 +4117,14 @@ function startTournamentBattle(rank: TournamentRank) {
           try {
             if (typeof processExperienceGain === 'function') {
               const rankXpMap: Record<TournamentRank, number> = {
-                bronze: 100,
-                silver: 200,
-                gold: 300,
-                platinum: 400,
-                diamond: 500,
-                master: 600
+                bronze: 10000, // Multiplicado por 100
+                silver: 20000, // Multiplicado por 100
+                gold: 30000, // Multiplicado por 100
+                platinum: 40000, // Multiplicado por 100
+                diamond: 50000, // Multiplicado por 100
+                master: 60000 // Multiplicado por 100
               };
-              const xpGained = rankXpMap[rank] || 100;
+              const xpGained = rankXpMap[rank] || 10000;
               processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
               console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
             } else {

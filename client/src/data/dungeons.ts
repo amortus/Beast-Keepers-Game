@@ -179,7 +179,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 1000,
-        experience: 500,
+        experience: 50000, // Multiplicado por 100
       },
     },
   },
@@ -299,7 +299,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 1500,
-        experience: 800,
+        experience: 80000, // Multiplicado por 100
       },
     },
   },
@@ -419,7 +419,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 2000,
-        experience: 1200,
+        experience: 120000, // Multiplicado por 100
       },
     },
   },
@@ -539,7 +539,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 3000,
-        experience: 2000,
+        experience: 200000, // Multiplicado por 100
       },
     },
   },
@@ -665,7 +665,7 @@ export const DUNGEONS: Dungeon[] = [
       },
       completionRewards: {
         coronas: 5000,
-        experience: 5000,
+        experience: 500000, // Multiplicado por 100
       },
     },
   },

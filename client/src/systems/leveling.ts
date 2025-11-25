@@ -24,23 +24,23 @@ export function getExperienceForLevel(level: number, group: ExperienceGroup): nu
 
   switch (group) {
     case 'fast':
-      // Fórmula: n³ * 0.8 (arredondado)
-      return Math.floor(Math.pow(level, 3) * 0.8);
+      // Fórmula: n³ * 0.8 * 100 (multiplicado por 100 para aumentar XP necessário)
+      return Math.floor(Math.pow(level, 3) * 0.8 * 100);
     
     case 'medium_fast':
-      // Fórmula: n³ (padrão)
-      return Math.floor(Math.pow(level, 3));
+      // Fórmula: n³ * 100 (multiplicado por 100 para aumentar XP necessário)
+      return Math.floor(Math.pow(level, 3) * 100);
     
     case 'medium_slow':
-      // Fórmula: (6/5 * n³) - (15 * n²) + (100 * n) - 140
-      return Math.floor((6/5 * Math.pow(level, 3)) - (15 * Math.pow(level, 2)) + (100 * level) - 140);
+      // Fórmula: ((6/5 * n³) - (15 * n²) + (100 * n) - 140) * 100 (multiplicado por 100)
+      return Math.floor(((6/5 * Math.pow(level, 3)) - (15 * Math.pow(level, 2)) + (100 * level) - 140) * 100);
     
     case 'slow':
-      // Fórmula: n³ * 1.25 (arredondado)
-      return Math.floor(Math.pow(level, 3) * 1.25);
+      // Fórmula: n³ * 1.25 * 100 (multiplicado por 100 para aumentar XP necessário)
+      return Math.floor(Math.pow(level, 3) * 1.25 * 100);
     
     default:
-      return Math.floor(Math.pow(level, 3)); // Fallback para medium_fast
+      return Math.floor(Math.pow(level, 3) * 100); // Fallback para medium_fast
   }
 }
 
@@ -478,7 +478,7 @@ export function syncTechniquesToLevel(beast: Beast): {
 export function calculateExperienceGain(
   playerLevel: number,
   enemyLevel: number,
-  baseExp: number = 50
+  baseExp: number = 5000 // Multiplicado por 100 (era 50)
 ): number {
   // Experiência base ajustada pelo nível do inimigo
   let exp = baseExp * enemyLevel;

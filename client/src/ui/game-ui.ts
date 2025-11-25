@@ -789,21 +789,7 @@ export class GameUI {
     
     yOffset += 25;
 
-    // CORREÇÃO: Tratar victories e defeats undefined
-    const victories = beast.victories ?? 0;
-    const defeats = beast.defeats ?? 0;
-    
-    drawText(this.ctx, `Vitórias: ${victories}`, col1X, yOffset, {
-      font: '14px monospace',
-      color: GLASS_THEME.palette.accent.emerald,
-      shadow: false,
-    });
-    
-    drawText(this.ctx, `Derrotas: ${defeats}`, col2X, yOffset, {
-      font: '14px monospace',
-      color: GLASS_THEME.palette.text.secondary,
-      shadow: false,
-    });
+    // Vitórias e derrotas removidas do painel de status
   }
 
   private drawActionMenu() {

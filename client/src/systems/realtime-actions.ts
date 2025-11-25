@@ -220,8 +220,8 @@ function applyActionRewards(
       {
         beast.attributes.might += Math.floor(Math.random() * 3) + 2;
         beast.secondaryStats.fatigue += 15;
-        // NOVO: Adicionar XP por treino (menor que batalhas)
-        const xpGained = 10 + Math.floor(Math.random() * 5); // 10-15 XP
+        // NOVO: Adicionar XP por treino (menor que batalhas) - multiplicado por 100
+        const xpGained = (10 + Math.floor(Math.random() * 5)) * 100; // 1000-1500 XP
         if (gameState.activeBeast) {
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
           // Nota: processExperienceGain será chamado do main.ts quando a ação completar
@@ -235,7 +235,7 @@ function applyActionRewards(
       {
         beast.attributes.wit += Math.floor(Math.random() * 3) + 2;
         beast.secondaryStats.fatigue += 15;
-        const xpGained = 10 + Math.floor(Math.random() * 5);
+        const xpGained = (10 + Math.floor(Math.random() * 5)) * 100; // 1000-1500 XP
         if (gameState.activeBeast) {
           const { addExperience } = require('./leveling');
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
@@ -248,7 +248,7 @@ function applyActionRewards(
       {
         beast.attributes.focus += Math.floor(Math.random() * 3) + 2;
         beast.secondaryStats.fatigue += 15;
-        const xpGained = 10 + Math.floor(Math.random() * 5);
+        const xpGained = (10 + Math.floor(Math.random() * 5)) * 100; // 1000-1500 XP
         if (gameState.activeBeast) {
           const { addExperience } = require('./leveling');
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
@@ -261,7 +261,7 @@ function applyActionRewards(
       {
         beast.attributes.agility += Math.floor(Math.random() * 3) + 2;
         beast.secondaryStats.fatigue += 15;
-        const xpGained = 10 + Math.floor(Math.random() * 5);
+        const xpGained = (10 + Math.floor(Math.random() * 5)) * 100; // 1000-1500 XP
         if (gameState.activeBeast) {
           const { addExperience } = require('./leveling');
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
@@ -274,7 +274,7 @@ function applyActionRewards(
       {
         beast.attributes.ward += Math.floor(Math.random() * 3) + 2;
         beast.secondaryStats.fatigue += 15;
-        const xpGained = 10 + Math.floor(Math.random() * 5);
+        const xpGained = (10 + Math.floor(Math.random() * 5)) * 100; // 1000-1500 XP
         if (gameState.activeBeast) {
           const { addExperience } = require('./leveling');
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
@@ -287,7 +287,7 @@ function applyActionRewards(
       {
         beast.attributes.vitality += Math.floor(Math.random() * 3) + 2;
         beast.secondaryStats.fatigue += 15;
-        const xpGained = 10 + Math.floor(Math.random() * 5);
+        const xpGained = (10 + Math.floor(Math.random() * 5)) * 100; // 1000-1500 XP
         if (gameState.activeBeast) {
           const { addExperience } = require('./leveling');
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
@@ -318,7 +318,7 @@ function applyActionRewards(
         beast.secondaryStats.fatigue += 30;
         gameState.economy.coronas += 400;
         // NOVO: Adicionar XP por trabalho (menor que treinos)
-        const xpGained = 8 + Math.floor(Math.random() * 4); // 8-12 XP
+        const xpGained = (8 + Math.floor(Math.random() * 4)) * 100; // 800-1200 XP
         if (gameState.activeBeast) {
           addExperience(gameState.activeBeast, xpGained, gameState.currentWeek);
         }
