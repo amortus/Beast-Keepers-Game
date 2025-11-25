@@ -65,6 +65,12 @@ import { gameApi } from './api/gameApi';
 import { TECHNIQUES, getStartingTechniques } from './data/techniques';
 import type { Technique } from './types';
 import { 
+  addExperience,
+  calculateExperienceGain,
+  processLevelUp,
+  replaceTechnique
+} from './systems/leveling';
+import { 
   emitGameEvent, 
   emitItemCrafted, 
   emitItemCollected, 
@@ -2687,22 +2693,33 @@ function processExperienceGain(
 ): void {
   if (!beast) return;
   
-  const result = addExperience(beast, xpAmount, currentWeek);
-  
-  // Verificar se subiu de nível
-  if (result.leveledUp) {
-    if (result.message) {
-      setTimeout(() => {
-        showMessage(result.message!, '🎉 Level Up!');
-      }, 500);
+  try {
+    // Verificar se addExperience está disponível
+    if (typeof addExperience !== 'function') {
+      console.error('[Leveling] addExperience is not available! Check imports.');
+      return;
     }
     
-    // Verificar se precisa de substituição de técnicas
-    if (result.techniquesNeedingReplacement && result.techniquesNeedingReplacement.length > 0) {
-      setTimeout(() => {
-        handleTechniqueReplacement(beast, result.techniquesNeedingReplacement!);
-      }, 1500);
+    const result = addExperience(beast, xpAmount, currentWeek);
+    
+    // Verificar se subiu de nível
+    if (result.leveledUp) {
+      if (result.message) {
+        setTimeout(() => {
+          showMessage(result.message!, '🎉 Level Up!');
+        }, 500);
+      }
+      
+      // Verificar se precisa de substituição de técnicas
+      if (result.techniquesNeedingReplacement && result.techniquesNeedingReplacement.length > 0) {
+        setTimeout(() => {
+          handleTechniqueReplacement(beast, result.techniquesNeedingReplacement!);
+        }, 1500);
+      }
     }
+  } catch (error) {
+    console.error('[Leveling] Error in processExperienceGain:', error);
+    // Não bloquear o fluxo se houver erro no XP
   }
 }
 
@@ -3491,8 +3508,16 @@ async function collectTreasureInExploration(treasure: Item[]) {
         totalExp = treasure.length * 15; // 15 XP por item
       }
       
-      processExperienceGain(gameState.activeBeast, totalExp, gameState.currentWeek);
-      console.log(`[Exploration] Beast gained ${totalExp} XP from treasure discovery`);
+      // Adicionar XP usando a função helper (com proteção contra erros - não bloqueia coleta)
+      try {
+        if (typeof processExperienceGain === 'function') {
+          processExperienceGain(gameState.activeBeast, totalExp, gameState.currentWeek);
+          console.log(`[Exploration] Beast gained ${totalExp} XP from treasure discovery`);
+        }
+      } catch (xpError) {
+        // Não bloquear a coleta de tesouro se houver erro no XP
+        console.warn('[Exploration] Failed to add XP from treasure (non-critical):', xpError);
+      }
     }
     
     // Limpar o encontro atual para continuar explorando
@@ -3500,14 +3525,17 @@ async function collectTreasureInExploration(treasure: Item[]) {
     
     explorationUI.updateState(explorationState);
 
+    // CRÍTICO: Resetar flag ANTES de mostrar mensagem para permitir próxima coleta
+    isCollectingTreasure = false;
+
     const treasureList = treasure.map(t => `${t.name} x${t.quantity}`).join(', ');
     showMessage(`Tesouro coletado: ${treasureList}`, '💎 Tesouro', () => {
       // Continua explorando após fechar mensagem
       continueExploration();
-      isCollectingTreasure = false;
     });
   } catch (error) {
     console.error('[Exploration] Error collecting treasure:', error);
+    // CRÍTICO: Sempre resetar flag mesmo em caso de erro
     isCollectingTreasure = false;
   }
 }
@@ -3638,20 +3666,25 @@ function continueEventExploration() {
   if (currentEncounter && currentEncounter.type === 'event' && currentEncounter.eventMessage) {
     processEventEffect(currentEncounter.eventMessage, gameState);
     
-    // NOVO: Adicionar XP por descobrir evento
-    if (gameState.activeBeast) {
-      // XP baseado no tipo de evento (eventos positivos dão mais XP)
-      let eventExp = 15; // XP base para eventos
-      
-      const message = currentEncounter.eventMessage.toLowerCase();
-      if (message.includes('fonte mágica') || message.includes('cristais') || message.includes('baú')) {
-        eventExp = 25; // Eventos com recompensas dão mais XP
-      } else if (message.includes('tempestade') || message.includes('nenhum material')) {
-        eventExp = 10; // Eventos negativos dão menos XP
+    // NOVO: Adicionar XP por descobrir evento (opcional - não quebra se houver erro)
+    if (gameState.activeBeast && typeof processExperienceGain === 'function') {
+      try {
+        // XP baseado no tipo de evento (eventos positivos dão mais XP)
+        let eventExp = 15; // XP base para eventos
+        
+        const message = currentEncounter.eventMessage.toLowerCase();
+        if (message.includes('fonte mágica') || message.includes('cristais') || message.includes('baú')) {
+          eventExp = 25; // Eventos com recompensas dão mais XP
+        } else if (message.includes('tempestade') || message.includes('nenhum material')) {
+          eventExp = 10; // Eventos negativos dão menos XP
+        }
+        
+        processExperienceGain(gameState.activeBeast, eventExp, gameState.currentWeek);
+        console.log(`[Exploration] Beast gained ${eventExp} XP from event discovery`);
+      } catch (xpError) {
+        // Não bloquear o evento se houver erro no XP
+        console.warn('[Exploration] Failed to add XP from event (non-critical):', xpError);
       }
-      
-      processExperienceGain(gameState.activeBeast, eventExp, gameState.currentWeek);
-      console.log(`[Exploration] Beast gained ${eventExp} XP from event discovery`);
     }
   }
   
@@ -4308,6 +4341,14 @@ document.addEventListener('keydown', (e) => {
     if (confirm('Resetar o jogo? (isso apagará todo o progresso)')) {
       localStorage.clear();
       indexedDB.deleteDatabase('beast_keepers');
+      location.reload();
+    }
+  }
+});
+
+// Start
+init();
+
       location.reload();
     }
   }

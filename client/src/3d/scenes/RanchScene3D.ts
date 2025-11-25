@@ -854,7 +854,7 @@ export class RanchScene3D {
       const cluster = new THREE.Group();
       const material = new THREE.MeshStandardMaterial({
         color: this.skin.cloudColor,
-        roughness: 0.6,
+      roughness: 0.6,
         metalness: 0,
       });
       material.transparent = true;
