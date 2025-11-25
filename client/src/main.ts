@@ -1260,22 +1260,31 @@ async function setupGame() {
         }
         console.log(`[Action Complete] ${result.message}`);
         
-        // NOVO: Verificar se subiu de nível após ação (treino/trabalho)
+        // NOVO: Verificar se subiu de nível após ação (treino/trabalho) - com proteção
         // O XP já foi adicionado em realtime-actions.ts, agora processamos level up
-        const levelUpCheck = processLevelUp(beast, gameState.currentWeek);
-        if (levelUpCheck.leveledUp) {
-          if (levelUpCheck.message) {
-            setTimeout(() => {
-              showMessage(levelUpCheck.message!, '🎉 Level Up!');
-            }, 1000);
+        try {
+          if (typeof processLevelUp === 'function') {
+            const levelUpCheck = processLevelUp(beast, gameState.currentWeek);
+            if (levelUpCheck.leveledUp) {
+              if (levelUpCheck.message) {
+                setTimeout(() => {
+                  showMessage(levelUpCheck.message!, '🎉 Level Up!');
+                }, 1000);
+              }
+              
+              // Verificar se precisa de substituição de técnicas
+              if (levelUpCheck.techniquesNeedingReplacement && levelUpCheck.techniquesNeedingReplacement.length > 0) {
+                setTimeout(() => {
+                  handleTechniqueReplacement(beast, levelUpCheck.techniquesNeedingReplacement!);
+                }, 2000);
+              }
+            }
+          } else {
+            console.warn('[Action] processLevelUp not available, skipping level up check');
           }
-          
-          // Verificar se precisa de substituição de técnicas
-          if (levelUpCheck.techniquesNeedingReplacement && levelUpCheck.techniquesNeedingReplacement.length > 0) {
-            setTimeout(() => {
-              handleTechniqueReplacement(beast, levelUpCheck.techniquesNeedingReplacement!);
-            }, 2000);
-          }
+        } catch (levelUpError) {
+          console.error('[Action] Error checking level up (non-critical):', levelUpError);
+          // Não bloquear a ação se houver erro no level up
         }
         
         // Enviar para servidor
@@ -2562,9 +2571,18 @@ function startDungeonBattle(dungeonId: string, floor: number) {
         // Dar recompensas
         const reward = dungeon.rewards.completionRewards;
         gameState.economy.coronas += reward.coronas;
-        // NOVO: Usar processExperienceGain para processar XP e level up
+        // NOVO: Usar processExperienceGain para processar XP e level up (com proteção)
         if (gameState.activeBeast && reward.experience) {
-          processExperienceGain(gameState.activeBeast, reward.experience, gameState.currentWeek);
+          try {
+            if (typeof processExperienceGain === 'function') {
+              processExperienceGain(gameState.activeBeast, reward.experience, gameState.currentWeek);
+            } else {
+              console.warn('[Dungeon] processExperienceGain not available, skipping XP');
+            }
+          } catch (xpError) {
+            console.error('[Dungeon] Error adding XP (non-critical):', xpError);
+            // Não bloquear a vitória se houver erro no XP
+          }
         }
 
         // Bonus de primeira vez
@@ -2652,20 +2670,28 @@ function handleTechniqueReplacement(
     },
     onConfirm: (oldTechniqueId?: string) => {
       if (oldTechniqueId) {
-        // Substituir técnica
-        const replaced = replaceTechnique(beast, oldTechniqueId, newTechnique);
-        if (replaced) {
-          const oldTech = beast.techniques.find(t => t.id === oldTechniqueId);
-          showMessage(
-            `✨ ${beast.name} esqueceu ${oldTech?.name || 'uma técnica'} e aprendeu ${newTechnique.name}!`,
-            '✨ Técnica Aprendida!'
-          );
-          
-          // Processar próximas técnicas se houver
-          const remaining = techniquesNeedingReplacement.slice(1);
-          if (remaining.length > 0) {
-            setTimeout(() => handleTechniqueReplacement(beast, remaining), 1000);
+        try {
+          // Substituir técnica (com proteção)
+          if (typeof replaceTechnique === 'function') {
+            const replaced = replaceTechnique(beast, oldTechniqueId, newTechnique);
+            if (replaced) {
+              const oldTech = beast.techniques.find(t => t.id === oldTechniqueId);
+              showMessage(
+                `✨ ${beast.name} esqueceu ${oldTech?.name || 'uma técnica'} e aprendeu ${newTechnique.name}!`,
+                '✨ Técnica Aprendida!'
+              );
+              
+              // Processar próximas técnicas se houver
+              const remaining = techniquesNeedingReplacement.slice(1);
+              if (remaining.length > 0) {
+                setTimeout(() => handleTechniqueReplacement(beast, remaining), 1000);
+              }
+            }
+          } else {
+            console.error('[Technique Replacement] replaceTechnique not available');
           }
+        } catch (error) {
+          console.error('[Technique Replacement] Error replacing technique:', error);
         }
       }
     },
@@ -3104,11 +3130,20 @@ function startExplorationBattle(enemy: WildEnemy) {
           gameState.activeBeast.essence = battle.player.currentEssence;
           console.log('[Exploration Battle] Beast HP after victory:', gameState.activeBeast.currentHp, '/', gameState.activeBeast.maxHp);
           
-          // NOVO: Adicionar XP por derrotar inimigo
-          const enemyLevel = currentEnemy?.level || 1;
-          const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel);
-          processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
-          console.log(`[Exploration Battle] Beast gained ${xpGained} XP from victory`);
+          // NOVO: Adicionar XP por derrotar inimigo (com proteção)
+          try {
+            if (typeof calculateExperienceGain === 'function' && typeof processExperienceGain === 'function') {
+              const enemyLevel = currentEnemy?.level || 1;
+              const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel);
+              processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
+              console.log(`[Exploration Battle] Beast gained ${xpGained} XP from victory`);
+            } else {
+              console.warn('[Exploration Battle] XP functions not available, skipping XP gain');
+            }
+          } catch (xpError) {
+            console.error('[Exploration Battle] Error adding XP (non-critical):', xpError);
+            // Não bloquear a vitória se houver erro no XP
+          }
         }
         
         emitBattleWon(gameState);
@@ -3307,12 +3342,21 @@ function startExplorationBattle(enemy: WildEnemy) {
     // Derrotou inimigo na exploração
     const drops = defeatEnemy(explorationState, currentEnemy);
 
-    // NOVO: Adicionar XP por derrotar inimigo
+    // NOVO: Adicionar XP por derrotar inimigo (com proteção)
     if (gameState.activeBeast) {
-      const enemyLevel = currentEnemy?.level || 1;
-      const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel);
-      processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
-      console.log(`[Exploration Battle] Beast gained ${xpGained} XP from victory`);
+      try {
+        if (typeof calculateExperienceGain === 'function' && typeof processExperienceGain === 'function') {
+          const enemyLevel = currentEnemy?.level || 1;
+          const xpGained = calculateExperienceGain(gameState.activeBeast.level || 1, enemyLevel);
+          processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
+          console.log(`[Exploration Battle] Beast gained ${xpGained} XP from victory`);
+        } else {
+          console.warn('[Exploration Battle] XP functions not available, skipping XP gain');
+        }
+      } catch (xpError) {
+        console.error('[Exploration Battle] Error adding XP (non-critical):', xpError);
+        // Não bloquear a vitória se houver erro no XP
+      }
     }
 
     // Mostrar drops
@@ -3997,19 +4041,28 @@ function startTournamentBattle(rank: TournamentRank) {
         if (gameState.activeBeast) {
           gameState.activeBeast.victories++;
           
-          // NOVO: Adicionar XP por vencer torneio
-          // XP baseado no rank do torneio
-          const rankXpMap: Record<TournamentRank, number> = {
-            bronze: 100,
-            silver: 200,
-            gold: 300,
-            platinum: 400,
-            diamond: 500,
-            master: 600
-          };
-          const xpGained = rankXpMap[rank] || 100;
-          processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
-          console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
+          // NOVO: Adicionar XP por vencer torneio (com proteção)
+          try {
+            if (typeof processExperienceGain === 'function') {
+              // XP baseado no rank do torneio
+              const rankXpMap: Record<TournamentRank, number> = {
+                bronze: 100,
+                silver: 200,
+                gold: 300,
+                platinum: 400,
+                diamond: 500,
+                master: 600
+              };
+              const xpGained = rankXpMap[rank] || 100;
+              processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
+              console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
+            } else {
+              console.warn('[Tournament] processExperienceGain not available, skipping XP');
+            }
+          } catch (xpError) {
+            console.error('[Tournament] Error adding XP (non-critical):', xpError);
+            // Não bloquear a vitória se houver erro no XP
+          }
         }
         
         emitBattleWon(gameState);
@@ -4060,18 +4113,27 @@ function startTournamentBattle(rank: TournamentRank) {
         if (gameState.activeBeast) {
           gameState.activeBeast.victories++;
           
-          // NOVO: Adicionar XP por vencer torneio
-          const rankXpMap: Record<TournamentRank, number> = {
-            bronze: 100,
-            silver: 200,
-            gold: 300,
-            platinum: 400,
-            diamond: 500,
-            master: 600
-          };
-          const xpGained = rankXpMap[rank] || 100;
-          processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
-          console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
+          // NOVO: Adicionar XP por vencer torneio (com proteção)
+          try {
+            if (typeof processExperienceGain === 'function') {
+              const rankXpMap: Record<TournamentRank, number> = {
+                bronze: 100,
+                silver: 200,
+                gold: 300,
+                platinum: 400,
+                diamond: 500,
+                master: 600
+              };
+              const xpGained = rankXpMap[rank] || 100;
+              processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
+              console.log(`[Tournament] Beast gained ${xpGained} XP from ${rank} tournament victory`);
+            } else {
+              console.warn('[Tournament] processExperienceGain not available, skipping XP');
+            }
+          } catch (xpError) {
+            console.error('[Tournament] Error adding XP (non-critical):', xpError);
+            // Não bloquear a vitória se houver erro no XP
+          }
         }
         
         emitBattleWon(gameState);
@@ -4090,35 +4152,35 @@ function startTournamentBattle(rank: TournamentRank) {
     
     // Setup 2D callbacks (original)
     battleUI.onPlayerAction = (action: CombatAction) => {
-    if (!gameState?.currentBattle) return;
-    
-    const result = executePlayerAction(gameState.currentBattle, action);
-    
-    if (result && battleUI) {
-      battleUI.updateBattle(gameState.currentBattle);
+      if (!gameState?.currentBattle) return;
       
-      // If enemy turn, execute automatically after delay
-      if (gameState.currentBattle.phase === 'enemy_turn') {
-        setTimeout(() => {
-          if (!gameState?.currentBattle || !battleUI) return;
-          
-          executeEnemyTurn(gameState.currentBattle);
-          battleUI.updateBattle(gameState.currentBattle);
-          
-          // Check if auto-battle is active and it's player turn now
-          if (gameState.currentBattle.phase === 'player_turn') {
-            setTimeout(() => {
-              if (battleUI) {
-                battleUI.checkAutoBattle();
-              }
-            }, 500); // Small delay before next auto action
-          }
-        }, 1500); // 1.5s delay
+      const result = executePlayerAction(gameState.currentBattle, action);
+      
+      if (result && battleUI) {
+        battleUI.updateBattle(gameState.currentBattle);
+        
+        // If enemy turn, execute automatically after delay
+        if (gameState.currentBattle.phase === 'enemy_turn') {
+          setTimeout(() => {
+            if (!gameState?.currentBattle || !battleUI) return;
+            
+            executeEnemyTurn(gameState.currentBattle);
+            battleUI.updateBattle(gameState.currentBattle);
+            
+            // Check if auto-battle is active and it's player turn now
+            if (gameState.currentBattle.phase === 'player_turn') {
+              setTimeout(() => {
+                if (battleUI) {
+                  battleUI.checkAutoBattle();
+                }
+              }, 500); // Small delay before next auto action
+            }
+          }, 1500); // 1.5s delay
+        }
       }
-    }
-  };
-  
-  battleUI.onBattleEnd = () => {
+    };
+    
+    battleUI.onBattleEnd = () => {
     if (!gameState?.currentBattle) return;
     
     const battle = gameState.currentBattle;
@@ -4129,19 +4191,28 @@ function startTournamentBattle(rank: TournamentRank) {
       if (gameState.activeBeast) {
         gameState.activeBeast.victories++;
         
-        // NOVO: Adicionar XP por vencer torneio
+        // NOVO: Adicionar XP por vencer torneio (com proteção)
         if (battle.rewards?.rank) {
-          const rankXpMap: Record<TournamentRank, number> = {
-            bronze: 100,
-            silver: 200,
-            gold: 300,
-            platinum: 400,
-            diamond: 500,
-            master: 600
-          };
-          const xpGained = rankXpMap[battle.rewards.rank] || 100;
-          processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
-          console.log(`[Tournament] Beast gained ${xpGained} XP from ${battle.rewards.rank} tournament victory`);
+          try {
+            if (typeof processExperienceGain === 'function') {
+              const rankXpMap: Record<TournamentRank, number> = {
+                bronze: 100,
+                silver: 200,
+                gold: 300,
+                platinum: 400,
+                diamond: 500,
+                master: 600
+              };
+              const xpGained = rankXpMap[battle.rewards.rank] || 100;
+              processExperienceGain(gameState.activeBeast, xpGained, gameState.currentWeek);
+              console.log(`[Tournament] Beast gained ${xpGained} XP from ${battle.rewards.rank} tournament victory`);
+            } else {
+              console.warn('[Tournament] processExperienceGain not available, skipping XP');
+            }
+          } catch (xpError) {
+            console.error('[Tournament] Error adding XP (non-critical):', xpError);
+            // Não bloquear a vitória se houver erro no XP
+          }
         }
       }
       
