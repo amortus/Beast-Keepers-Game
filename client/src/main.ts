@@ -3970,6 +3970,10 @@ function closeAllOverlays() {
   if (inAchievements) closeAchievements();
   if (inDungeon) closeDungeon(); // NOVO: Fechar dungeons também
   if (inExploration) closeExploration();
+  if (inPvpArena) {
+    if (pvpArenaUI) pvpArenaUI.hide();
+    inPvpArena = false;
+  }
   if (inDialogue) closeDialogue();
   // Temple não fecha, pois é uma ação importante
 }
