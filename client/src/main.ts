@@ -31,9 +31,7 @@ import { Village3DUI } from './ui/village-3d-ui';
 import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
 import { registerMessageHandler } from './ui/message-service';
-import { PvpMatchmakingUI } from './ui/pvp-matchmaking-ui';
-import { PvpRankingUI } from './ui/pvp-ranking-ui';
-import { PvpChallengeUI } from './ui/pvp-challenge-ui';
+import { PvpArenaUI } from './ui/pvp-arena-ui';
 import { pvpSocketClient } from './services/pvpSocketClient';
 import { getMatch, finishMatch } from './api/pvpApi';
 import { gameApi } from './api/gameApi';
@@ -193,9 +191,7 @@ let village3DUI: Village3DUI | null = null;
 let inVillage = false;
 let chatUI: ChatUI | null = null;
 let optionsMenuUI: OptionsMenuUI | null = null;
-let pvpMatchmakingUI: PvpMatchmakingUI | null = null;
-let pvpRankingUI: PvpRankingUI | null = null;
-let pvpChallengeUI: PvpChallengeUI | null = null;
+let pvpArenaUI: PvpArenaUI | null = null;
 let inBattle = false;
 let inPvpBattle = false;
 let currentPvpMatchId: number | null = null;
@@ -210,6 +206,7 @@ let inAchievements = false;
 let inDungeon = false;
 let inExploration = false;
 let inRanch3D = false;
+let inPvpArena = false;
 let explorationState: ExplorationState | null = null;
 let isExplorationBattle = false; // Flag para diferenciar batalha de exploração
 void isExplorationBattle; // Reservado para uso futuro
@@ -343,6 +340,8 @@ function startRenderLoop() {
       dungeonUI.draw(gameState);
     } else if (inExploration && explorationUI) {
       explorationUI.draw(explorationState || undefined);
+    } else if (inPvpArena && pvpArenaUI && gameState) {
+      pvpArenaUI.draw(gameState);
     } else if (inRanch3D && ranch3DUI) {
       ranch3DUI.render();
       // Clean up mini viewer when in full 3D mode
@@ -355,7 +354,8 @@ function startRenderLoop() {
       const hasActiveUI = (inShop && shopUI) || (inInventory && inventoryUI) || (inCraft && craftUI) || 
                           (inQuests && questsUI) || (inAchievements && achievementsUI) || 
                           (inDungeon && dungeonUI) || (inExploration && explorationUI) || 
-                          (inDialogue && dialogueUI) || (inBattle && battleUI) || (inTemple && templeUI);
+                          (inDialogue && dialogueUI) || (inBattle && battleUI) || (inTemple && templeUI) ||
+                          (inPvpArena && pvpArenaUI);
       
       if (modalUI && modalUI.isShowing()) {
         // Skip drawing GameUI when modal is open (e.g., Vila menu)
@@ -556,17 +556,11 @@ async function init() {
         // Friends agora está integrado no ChatUI
       }
       
-      // Inicializar PVP UIs e conectar socket
-      if (!pvpMatchmakingUI) {
-        pvpMatchmakingUI = new PvpMatchmakingUI();
-        pvpMatchmakingUI.onMatchFound = handlePvpMatchFound;
-      }
-      if (!pvpRankingUI) {
-        pvpRankingUI = new PvpRankingUI();
-      }
-      if (!pvpChallengeUI) {
-        pvpChallengeUI = new PvpChallengeUI();
-        pvpChallengeUI.onChallengeAccepted = handlePvpChallengeAccepted;
+      // Inicializar PVP Arena UI
+      if (!pvpArenaUI) {
+        pvpArenaUI = new PvpArenaUI(canvas);
+        pvpArenaUI.onMatchFound = handlePvpMatchFound;
+        pvpArenaUI.onChallengeAccepted = handlePvpChallengeAccepted;
       }
       
       // Conectar socket PVP
@@ -1157,26 +1151,10 @@ async function setupGame() {
       }
     };
     
-    // Setup PVP callbacks
-    gameUI.onOpenPvpMatchmaking = () => {
-      if (pvpMatchmakingUI && gameState.activeBeast) {
-        pvpMatchmakingUI.show(gameState.activeBeast);
-      } else {
-        showMessage('Selecione um beast primeiro', '⚠️ PVP');
-      }
-    };
-    
-    gameUI.onOpenPvpRanking = () => {
-      if (pvpRankingUI) {
-        pvpRankingUI.show();
-      }
-    };
-    
-    gameUI.onOpenPvpChallenges = () => {
-      if (pvpChallengeUI && gameState.activeBeast) {
-        pvpChallengeUI.show(gameState.activeBeast);
-      } else {
-        showMessage('Selecione um beast primeiro', '⚠️ PVP');
+    // Setup PVP Arena callback
+    gameUI.onOpenArenaPvp = () => {
+      if (pvpArenaUI) {
+        pvpArenaUI.show(gameState);
       }
     };
     
@@ -2052,12 +2030,38 @@ function closeCraft() {
 }
 
 function openArenaPvp() {
-  closeAllOverlays();
+  if (!gameState) return;
 
-  showMessage(
-    'O modo Arena PvP está em desenvolvimento. Em breve você poderá desafiar outros guardiões em batalhas estratégicas!',
-    '🥊 Arena PvP',
-  );
+  // Close other UIs
+  if (inShop) closeShop();
+  if (inInventory) closeInventory();
+  if (inCraft) closeCraft();
+  if (inQuests) closeQuests();
+  if (inAchievements) closeAchievements();
+  if (inDungeon) closeDungeon();
+  if (inExploration) closeExploration();
+
+  // Hide 3D viewer when opening PVP Arena
+  if (gameUI) {
+    gameUI.hide3DViewer();
+  }
+
+  // Create PVP Arena UI if needed
+  if (!pvpArenaUI) {
+    pvpArenaUI = new PvpArenaUI(canvas);
+    pvpArenaUI.onMatchFound = handlePvpMatchFound;
+    pvpArenaUI.onChallengeAccepted = handlePvpChallengeAccepted;
+  }
+
+  // Setup callbacks
+  pvpArenaUI.onClose = () => {
+    inPvpArena = false;
+  };
+
+  pvpArenaUI.show(gameState);
+  inPvpArena = true;
+
+  console.log('[PVP Arena] Arena PVP opened');
 }
 
 // ===== QUESTS SYSTEM =====
@@ -4443,8 +4447,12 @@ function setupPvpSocketHandlers() {
   
   // Challenge received handler
   pvpSocketClient.onChallengeReceived((data) => {
-    if (pvpChallengeUI) {
-      pvpChallengeUI.show(gameState?.activeBeast || null as any);
+    if (pvpArenaUI && gameState?.activeBeast) {
+      if (!inPvpArena) {
+        pvpArenaUI.show(gameState);
+        inPvpArena = true;
+      }
+      (pvpArenaUI as any).currentView = 'challenges';
     }
   });
 }
@@ -4551,7 +4559,8 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
     inBattle = true;
     
     // Esconder UIs
-    if (pvpMatchmakingUI) pvpMatchmakingUI.hide();
+    if (pvpArenaUI) pvpArenaUI.hide();
+    inPvpArena = false;
     
     showMessage(`Partida PVP ${matchType === 'ranked' ? 'Rankeada' : 'Casual'} encontrada!`, '⚔️ PVP');
   } catch (error: any) {

@@ -393,64 +393,6 @@ export class GameUI {
       height: settingsBtnHeight,
       action: () => this.onOpenSettings(),
     });
-    
-    // PVP Buttons
-    const pvpBtnWidth = 100;
-    const pvpBtnHeight = 30;
-    const pvpBtnSpacing = 10;
-    const pvpBtnStartX = settingsBtnX - (pvpBtnWidth * 3 + pvpBtnSpacing * 2);
-    const pvpBtnY = buttonY + 5;
-    
-    // Botão Matchmaking
-    const matchmakingBtnX = pvpBtnStartX;
-    const isMatchmakingHovered = isMouseOver(this.mouseX, this.mouseY, matchmakingBtnX, pvpBtnY, pvpBtnWidth, pvpBtnHeight);
-    drawButton(this.ctx, matchmakingBtnX, pvpBtnY, pvpBtnWidth, pvpBtnHeight, '⚔️ PVP', {
-      variant: 'primary',
-      bgColor: isMatchmakingHovered ? GLASS_THEME.palette.accent.purple : GLASS_THEME.palette.accent.purpleSoft,
-      isHovered: isMatchmakingHovered,
-      fontSize: 12,
-    });
-    this.buttons.set('pvp_matchmaking', {
-      x: matchmakingBtnX,
-      y: pvpBtnY,
-      width: pvpBtnWidth,
-      height: pvpBtnHeight,
-      action: () => this.onOpenPvpMatchmaking(),
-    });
-    
-    // Botão Ranking
-    const rankingBtnX = matchmakingBtnX + pvpBtnWidth + pvpBtnSpacing;
-    const isRankingHovered = isMouseOver(this.mouseX, this.mouseY, rankingBtnX, pvpBtnY, pvpBtnWidth, pvpBtnHeight);
-    drawButton(this.ctx, rankingBtnX, pvpBtnY, pvpBtnWidth, pvpBtnHeight, '🏆 Ranking', {
-      variant: 'primary',
-      bgColor: isRankingHovered ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.accent.amberSoft,
-      isHovered: isRankingHovered,
-      fontSize: 12,
-    });
-    this.buttons.set('pvp_ranking', {
-      x: rankingBtnX,
-      y: pvpBtnY,
-      width: pvpBtnWidth,
-      height: pvpBtnHeight,
-      action: () => this.onOpenPvpRanking(),
-    });
-    
-    // Botão Desafios
-    const challengeBtnX = rankingBtnX + pvpBtnWidth + pvpBtnSpacing;
-    const isChallengeHovered = isMouseOver(this.mouseX, this.mouseY, challengeBtnX, pvpBtnY, pvpBtnWidth, pvpBtnHeight);
-    drawButton(this.ctx, challengeBtnX, pvpBtnY, pvpBtnWidth, pvpBtnHeight, '🎯 Desafios', {
-      variant: 'primary',
-      bgColor: isChallengeHovered ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.emeraldSoft,
-      isHovered: isChallengeHovered,
-      fontSize: 12,
-    });
-    this.buttons.set('pvp_challenges', {
-      x: challengeBtnX,
-      y: pvpBtnY,
-      width: pvpBtnWidth,
-      height: pvpBtnHeight,
-      action: () => this.onOpenPvpChallenges(),
-    });
 
     // Relógio e calendário visual (lado esquerdo, no lugar do título)
     const gameTime = getGameTime();
