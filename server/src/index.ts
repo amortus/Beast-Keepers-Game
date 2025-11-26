@@ -14,10 +14,12 @@ import gameRoutes from './routes/game';
 import friendsRoutes from './routes/friends';
 import inventoryRoutes from './routes/inventory';
 import progressRoutes from './routes/progress';
+import pvpRoutes from './routes/pvp';
 import { pool } from './db/connection';
 import { startEventScheduler } from './services/eventScheduler';
 import { initializeChatService } from './services/chatService';
 import { autoFixSchema } from './db/auto-fix-schema';
+import { startSeasonScheduler } from './services/pvpSeasonScheduler';
 
 // Load environment variables
 dotenv.config();
@@ -110,6 +112,9 @@ app.use('/api/progress', progressRoutes);
 // Friends routes
 app.use('/api/friends', friendsRoutes);
 
+// PVP routes
+app.use('/api/pvp', pvpRoutes);
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({
@@ -158,6 +163,9 @@ async function startServer() {
       
       // Start event scheduler (daily cycles, calendar events)
       startEventScheduler();
+      
+      // Start PVP season scheduler
+      startSeasonScheduler();
     });
 
   } catch (error) {

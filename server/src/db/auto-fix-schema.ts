@@ -66,6 +66,35 @@ export async function autoFixSchema(): Promise<void> {
       WHERE last_update IS NULL;
     `);
     
+    // Verificar se tabelas PVP existem
+    const checkPvpTables = await query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' 
+        AND table_name IN ('pvp_rankings', 'pvp_matches', 'pvp_matchmaking_queue', 'pvp_seasons', 'pvp_direct_challenges');
+    `);
+    
+    const existingPvpTables = checkPvpTables.rows.map((r: any) => r.table_name);
+    const requiredPvpTables = ['pvp_rankings', 'pvp_matches', 'pvp_matchmaking_queue', 'pvp_seasons', 'pvp_direct_challenges'];
+    const missingPvpTables = requiredPvpTables.filter(t => !existingPvpTables.includes(t));
+    
+    if (missingPvpTables.length > 0) {
+      console.log('[DB] ⚠️ Tabelas PVP não encontradas. Executando migration...');
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const migrationPath = path.join(__dirname, 'migrations', '002_pvp_system.sql');
+        const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+        await query(migrationSQL);
+        console.log('[DB] ✅ Migration PVP executada com sucesso!');
+      } catch (migrationError: any) {
+        console.error('[DB] ❌ Erro ao executar migration PVP:', migrationError.message);
+        // Não lançar erro - deixar servidor continuar
+      }
+    } else {
+      console.log('[DB] ✅ Tabelas PVP já existem!');
+    }
+    
     console.log('[DB] ✅ Auto-fix concluído!');
     
   } catch (error: any) {

@@ -554,6 +554,23 @@ export function initializeChatService(server: HttpServer) {
   });
 
   console.log('[ChatService] Chat service initialized');
+  
+  // Initialize PVP Socket Handlers
+  try {
+    const { initializePvpSocketHandlers } = require('./pvpSocketHandlers');
+    initializePvpSocketHandlers(io, getUserSockets);
+    console.log('[ChatService] PVP socket handlers initialized');
+  } catch (error) {
+    console.error('[ChatService] Error initializing PVP handlers:', error);
+  }
+}
+
+/**
+ * Helper function to get user sockets (exported for PVP handlers)
+ */
+export function getUserSockets(userId: number): string[] {
+  const sockets = userSockets.get(userId);
+  return sockets ? Array.from(sockets) : [];
 }
 
 /**

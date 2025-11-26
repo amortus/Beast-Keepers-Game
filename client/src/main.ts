@@ -31,6 +31,12 @@ import { Village3DUI } from './ui/village-3d-ui';
 import { ChatUI } from './ui/chat-ui';
 import { OptionsMenuUI } from './ui/options-menu-ui';
 import { registerMessageHandler } from './ui/message-service';
+import { PvpMatchmakingUI } from './ui/pvp-matchmaking-ui';
+import { PvpRankingUI } from './ui/pvp-ranking-ui';
+import { PvpChallengeUI } from './ui/pvp-challenge-ui';
+import { pvpSocketClient } from './services/pvpSocketClient';
+import { getMatch, finishMatch } from './api/pvpApi';
+import { gameApi } from './api/gameApi';
 import { createNewGame, saveGame, loadGame, advanceGameWeek, addMoney } from './systems/game-state';
 import { advanceWeek } from './systems/calendar';
 import { isBeastAlive, calculateBeastAge, recalculateDerivedStats } from './systems/beast';
@@ -187,7 +193,13 @@ let village3DUI: Village3DUI | null = null;
 let inVillage = false;
 let chatUI: ChatUI | null = null;
 let optionsMenuUI: OptionsMenuUI | null = null;
+let pvpMatchmakingUI: PvpMatchmakingUI | null = null;
+let pvpRankingUI: PvpRankingUI | null = null;
+let pvpChallengeUI: PvpChallengeUI | null = null;
 let inBattle = false;
+let inPvpBattle = false;
+let currentPvpMatchId: number | null = null;
+let pvpBattleStartTime: number = 0;
 let inTemple = false;
 let inDialogue = false;
 let inShop = false;
@@ -543,6 +555,23 @@ async function init() {
         // onFriendOnline/onFriendOffline já chama isso internamente no ChatUI
         // Friends agora está integrado no ChatUI
       }
+      
+      // Inicializar PVP UIs e conectar socket
+      if (!pvpMatchmakingUI) {
+        pvpMatchmakingUI = new PvpMatchmakingUI();
+        pvpMatchmakingUI.onMatchFound = handlePvpMatchFound;
+      }
+      if (!pvpRankingUI) {
+        pvpRankingUI = new PvpRankingUI();
+      }
+      if (!pvpChallengeUI) {
+        pvpChallengeUI = new PvpChallengeUI();
+        pvpChallengeUI.onChallengeAccepted = handlePvpChallengeAccepted;
+      }
+      
+      // Conectar socket PVP
+      pvpSocketClient.connect(token);
+      setupPvpSocketHandlers();
       
       await loadGameFromServer();
       
@@ -1125,6 +1154,29 @@ async function setupGame() {
     gameUI.onOpenSettings = () => {
       if (optionsMenuUI) {
         optionsMenuUI.open();
+      }
+    };
+    
+    // Setup PVP callbacks
+    gameUI.onOpenPvpMatchmaking = () => {
+      if (pvpMatchmakingUI && gameState.activeBeast) {
+        pvpMatchmakingUI.show(gameState.activeBeast);
+      } else {
+        showMessage('Selecione um beast primeiro', '⚠️ PVP');
+      }
+    };
+    
+    gameUI.onOpenPvpRanking = () => {
+      if (pvpRankingUI) {
+        pvpRankingUI.show();
+      }
+    };
+    
+    gameUI.onOpenPvpChallenges = () => {
+      if (pvpChallengeUI && gameState.activeBeast) {
+        pvpChallengeUI.show(gameState.activeBeast);
+      } else {
+        showMessage('Selecione um beast primeiro', '⚠️ PVP');
       }
     };
     
@@ -4153,35 +4205,35 @@ function startTournamentBattle(rank: TournamentRank) {
     
     // Setup 2D callbacks (original)
     battleUI.onPlayerAction = (action: CombatAction) => {
-      if (!gameState?.currentBattle) return;
-      
-      const result = executePlayerAction(gameState.currentBattle, action);
-      
-      if (result && battleUI) {
-        battleUI.updateBattle(gameState.currentBattle);
-        
-        // If enemy turn, execute automatically after delay
-        if (gameState.currentBattle.phase === 'enemy_turn') {
-          setTimeout(() => {
-            if (!gameState?.currentBattle || !battleUI) return;
-            
-            executeEnemyTurn(gameState.currentBattle);
-            battleUI.updateBattle(gameState.currentBattle);
-            
-            // Check if auto-battle is active and it's player turn now
-            if (gameState.currentBattle.phase === 'player_turn') {
-              setTimeout(() => {
-                if (battleUI) {
-                  battleUI.checkAutoBattle();
-                }
-              }, 500); // Small delay before next auto action
-            }
-          }, 1500); // 1.5s delay
-        }
-      }
-    };
+    if (!gameState?.currentBattle) return;
     
-    battleUI.onBattleEnd = () => {
+    const result = executePlayerAction(gameState.currentBattle, action);
+    
+    if (result && battleUI) {
+      battleUI.updateBattle(gameState.currentBattle);
+      
+      // If enemy turn, execute automatically after delay
+      if (gameState.currentBattle.phase === 'enemy_turn') {
+        setTimeout(() => {
+          if (!gameState?.currentBattle || !battleUI) return;
+          
+          executeEnemyTurn(gameState.currentBattle);
+          battleUI.updateBattle(gameState.currentBattle);
+          
+          // Check if auto-battle is active and it's player turn now
+          if (gameState.currentBattle.phase === 'player_turn') {
+            setTimeout(() => {
+              if (battleUI) {
+                battleUI.checkAutoBattle();
+              }
+            }, 500); // Small delay before next auto action
+          }
+        }, 1500); // 1.5s delay
+      }
+    }
+  };
+  
+  battleUI.onBattleEnd = () => {
     if (!gameState?.currentBattle) return;
     
     const battle = gameState.currentBattle;
@@ -4349,6 +4401,321 @@ function resizeCanvas() {
   }
   
   // Container 3D detecta mudança de tamanho automaticamente no próximo draw()
+}
+
+// ===== PVP FUNCTIONS =====
+
+/**
+ * Setup PVP Socket Handlers
+ */
+function setupPvpSocketHandlers() {
+  // Match found handler
+  pvpSocketClient.onMatchFound(async (data) => {
+    await handlePvpMatchFound(data.matchId, data.opponent, data.matchType);
+  });
+  
+  // Match start handler
+  pvpSocketClient.onMatchStart((data) => {
+    console.log('[PVP] Match started:', data);
+  });
+  
+  // Match action handler (receber ações do oponente)
+  pvpSocketClient.onMatchAction((data) => {
+    if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.matchId === data.matchId) {
+      // Executar ação do oponente
+      if (data.fromPlayer !== gameState.currentBattle.opponentUserId) {
+        // É ação do oponente
+        executeEnemyTurn(gameState.currentBattle);
+        if (battleUI) {
+          battleUI.updateBattle(gameState.currentBattle);
+        }
+      }
+    }
+  });
+  
+  // Match state handler
+  pvpSocketClient.onMatchState((data) => {
+    if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.matchId === data.matchId) {
+      // Atualizar estado da batalha
+      // Implementar sincronização de estado se necessário
+    }
+  });
+  
+  // Challenge received handler
+  pvpSocketClient.onChallengeReceived((data) => {
+    if (pvpChallengeUI) {
+      pvpChallengeUI.show(gameState?.activeBeast || null as any);
+    }
+  });
+}
+
+/**
+ * Handle PVP match found
+ */
+async function handlePvpMatchFound(matchId: number, opponent: { userId: number; beastId: number }, matchType: 'ranked' | 'casual') {
+  if (!gameState || !gameState.activeBeast) {
+    console.error('[PVP] No active beast');
+    return;
+  }
+  
+  try {
+    // Buscar dados do oponente
+    const match = await getMatch(matchId);
+    const opponentBeastId = match.player1Id === opponent.userId ? match.player1BeastId : match.player2BeastId;
+    
+    const beastResponse = await gameApi.getBeast(opponentBeastId);
+    if (!beastResponse.success || !beastResponse.data) {
+      throw new Error('Opponent beast not found');
+    }
+    
+    const serverBeast = beastResponse.data;
+    
+    // Converter para formato Beast (usando mesmo padrão de loadGameFromServer)
+    let techIds: string[] = [];
+    if (Array.isArray(serverBeast.techniques)) {
+      techIds = serverBeast.techniques;
+    } else if (typeof serverBeast.techniques === 'string') {
+      try {
+        techIds = JSON.parse(serverBeast.techniques);
+      } catch {
+        techIds = [];
+      }
+    }
+    
+    const techniques = techIds
+      .map(id => TECHNIQUES[id])
+      .filter(tech => tech !== undefined);
+    
+    const opponentBeast: Beast = {
+      id: serverBeast.id.toString(),
+      name: serverBeast.name,
+      line: serverBeast.line,
+      blood: serverBeast.blood || 'common',
+      affinity: serverBeast.affinity || 'earth',
+      attributes: {
+        might: serverBeast.might,
+        wit: serverBeast.wit,
+        focus: serverBeast.focus,
+        agility: serverBeast.agility,
+        ward: serverBeast.ward,
+        vitality: serverBeast.vitality,
+      },
+      secondaryStats: {
+        fatigue: serverBeast.fatigue || 0,
+        stress: serverBeast.stress || 0,
+        loyalty: serverBeast.loyalty || 50,
+        age: serverBeast.age || 0,
+        maxAge: serverBeast.max_age || 100,
+      },
+      traits: Array.isArray(serverBeast.traits) ? serverBeast.traits : 
+             (typeof serverBeast.traits === 'string' ? JSON.parse(serverBeast.traits) : []),
+      techniques: techniques.length > 0 ? techniques : getStartingTechniques(serverBeast.line),
+      currentHp: serverBeast.current_hp,
+      maxHp: serverBeast.max_hp,
+      essence: serverBeast.essence,
+      maxEssence: serverBeast.max_essence,
+      level: serverBeast.level || 1,
+      experience: serverBeast.experience || 0,
+      activeBuffs: [],
+      birthWeek: 1,
+      lifeEvents: [],
+      victories: 0,
+      defeats: 0,
+      mood: 'neutral',
+    };
+    
+    // Iniciar batalha PVP
+    const battle = initiateBattle(
+      gameState.activeBeast,
+      opponentBeast,
+      false, // não pode fugir em PVP
+      true,  // isPvp
+      matchId,
+      opponent.userId
+    );
+    
+    gameState.currentBattle = battle;
+    currentPvpMatchId = matchId;
+    pvpBattleStartTime = Date.now();
+    inPvpBattle = true;
+    
+    // Criar UI de batalha
+    if (useHybridBattle) {
+      battleUI = new BattleUIHybrid(canvas, battle);
+      setupPvpBattleCallbacks(battle, matchId);
+    } else {
+      battleUI = new BattleUI(canvas, battle);
+      setupPvpBattleCallbacks(battle, matchId);
+    }
+    
+    inBattle = true;
+    
+    // Esconder UIs
+    if (pvpMatchmakingUI) pvpMatchmakingUI.hide();
+    
+    showMessage(`Partida PVP ${matchType === 'ranked' ? 'Rankeada' : 'Casual'} encontrada!`, '⚔️ PVP');
+  } catch (error: any) {
+    console.error('[PVP] Error starting match:', error);
+    showMessage('Erro ao iniciar partida PVP: ' + (error.message || 'Erro desconhecido'), '❌ Erro');
+  }
+}
+
+/**
+ * Handle PVP challenge accepted
+ */
+async function handlePvpChallengeAccepted(matchId: number) {
+  try {
+    if (!gameState || !gameState.activeBeast) {
+      throw new Error('No active beast');
+    }
+    
+    const match = await getMatch(matchId);
+    // Determinar qual é o oponente comparando beast IDs
+    const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast.id;
+    const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+    const opponentBeastId = isPlayer1 ? match.player2BeastId : match.player1BeastId;
+    
+    await handlePvpMatchFound(matchId, { userId: opponentUserId, beastId: opponentBeastId }, 'direct_challenge' as any);
+  } catch (error: any) {
+    console.error('[PVP] Error handling challenge accepted:', error);
+    showMessage('Erro ao iniciar desafio: ' + (error.message || 'Erro desconhecido'), '❌ Erro');
+  }
+}
+
+/**
+ * Setup PVP battle callbacks
+ */
+function setupPvpBattleCallbacks(battle: BattleContext, matchId: number) {
+  if (!battleUI) return;
+  
+  // Interceptar ações do jogador para enviar via WebSocket
+  const originalOnPlayerAction = (battleUI as any).onPlayerAction;
+  
+  (battleUI as any).onPlayerAction = async (action: CombatAction) => {
+    if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) {
+      // Batalha normal, usar callback original
+      if (originalOnPlayerAction) {
+        originalOnPlayerAction(action);
+      }
+      return;
+    }
+    
+    // PVP: Enviar ação via WebSocket
+    try {
+      const beastState = {
+        id: gameState.activeBeast?.id,
+        currentHp: battle.player.currentHp,
+        maxHp: battle.player.beast.maxHp,
+        currentEssence: battle.player.currentEssence,
+        maxEssence: battle.player.beast.maxEssence,
+        techniques: battle.player.beast.techniques.map(t => t.id),
+      };
+      
+      pvpSocketClient.sendAction(matchId, action, beastState);
+      
+      // Executar localmente também
+      const result = executePlayerAction(battle, action);
+      
+      if (result && battleUI) {
+        battleUI.updateBattle(battle);
+        
+        if (battle.winner) {
+          // Determinar winnerId
+          const match = await getMatch(matchId);
+          const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+          const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+          const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+          const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
+          
+          await finishPvpBattle(battle, winnerId);
+          return;
+        }
+        
+        // Turno do oponente será recebido via WebSocket
+      }
+    } catch (error) {
+      console.error('[PVP] Error sending action:', error);
+    }
+  };
+  
+  // Callback de fim de batalha
+  (battleUI as any).onBattleEnd = async () => {
+    if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.winner) {
+      // Determinar winnerId baseado no resultado
+      const match = await getMatch(matchId);
+      const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+      const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+      const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+      
+      const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+      
+      await finishPvpBattle(gameState.currentBattle, winnerId);
+    }
+  };
+}
+
+/**
+ * Finish PVP battle
+ */
+async function finishPvpBattle(battle: BattleContext, winnerId: number) {
+  if (!battle.isPvp || !battle.matchId) return;
+  
+  try {
+    const durationSeconds = Math.floor((Date.now() - pvpBattleStartTime) / 1000);
+    
+    const result = await finishMatch(battle.matchId, winnerId, durationSeconds);
+    
+    // Determinar se o jogador ganhou e qual recompensa usar
+    const match = await getMatch(battle.matchId!);
+    const isPlayer1 = match.player1BeastId.toString() === gameState?.activeBeast?.id;
+    const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+    const won = winnerId === playerUserId;
+    
+    // Usar recompensas corretas (player1 ou player2)
+    const playerRewards = isPlayer1 ? result.rewards.player1 : result.rewards.player2;
+    const playerEloChange = isPlayer1 ? result.eloChanges.player1 : result.eloChanges.player2;
+    
+    showMessage(
+      won 
+        ? `Vitória! +${playerRewards.coronas} Coronas, +${playerRewards.experience} XP${playerEloChange ? `, ${playerEloChange > 0 ? '+' : ''}${playerEloChange} ELO` : ''}`
+        : `Derrota... +${playerRewards.coronas} Coronas, +${playerRewards.experience} XP${playerEloChange ? `, ${playerEloChange} ELO` : ''}`,
+      won ? '🎉 Vitória!' : '😔 Derrota'
+    );
+    
+    // Aplicar XP (recompensas já foram aplicadas no backend)
+    if (gameState?.activeBeast && typeof addExperience === 'function') {
+      try {
+        addExperience(gameState.activeBeast, playerRewards.experience);
+      } catch (error) {
+        console.error('[PVP] Error adding experience:', error);
+      }
+    }
+    
+    // Limpar estado
+    currentPvpMatchId = null;
+    inPvpBattle = false;
+    inBattle = false;
+    if (gameState) {
+      gameState.currentBattle = undefined;
+    }
+    if (battleUI) {
+      battleUI.dispose();
+      battleUI = null;
+    }
+    
+    // Salvar
+    if (gameState) {
+      await saveGame(gameState);
+    }
+    
+    // Atualizar UI
+    if (gameUI) {
+      gameUI.updateGameState(gameState);
+    }
+  } catch (error: any) {
+    console.error('[PVP] Error finishing battle:', error);
+    showMessage('Erro ao finalizar partida: ' + (error.message || 'Erro desconhecido'), '❌ Erro');
+  }
 }
 
 function showMessage(message: string, title: string = '💬 Beast Keepers', onClose?: () => void) {

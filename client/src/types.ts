@@ -306,6 +306,9 @@ export interface CombatResult {
 }
 
 export interface BattleContext {
+  isPvp?: boolean;        // Flag para batalhas PVP
+  matchId?: number;       // ID da partida PVP
+  opponentUserId?: number; // ID do oponente (PVP)
   phase: BattlePhase;
   player: CombatEntity;
   enemy: CombatEntity;

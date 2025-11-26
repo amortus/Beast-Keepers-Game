@@ -9,7 +9,8 @@ import {
   initializeGame,
   getGameSave,
   updateGameSave,
-  updateBeast
+  updateBeast,
+  getBeast
 } from '../controllers/gameController';
 import {
   getServerTime,
@@ -32,6 +33,7 @@ router.get('/save', getGameSave);
 router.put('/save', updateGameSave);
 
 // Beast management
+router.get('/beast/:beastId', getBeast);
 router.put('/beast/:beastId', updateBeast);
 
 // Time and actions

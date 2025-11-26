@@ -35,6 +35,13 @@ export const gameApi = {
   },
 
   /**
+   * Get beast by ID
+   */
+  async getBeast(beastId: number): Promise<ApiResponse<any>> {
+    return apiClient.get(`/game/beast/${beastId}`);
+  },
+
+  /**
    * Update beast data
    */
   async updateBeast(beastId: string, beastData: any): Promise<ApiResponse<BeastDTO>> {

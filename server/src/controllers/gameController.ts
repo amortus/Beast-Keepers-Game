@@ -513,3 +513,92 @@ export async function updateBeast(req: AuthRequest, res: Response) {
   }
 }
 
+/**
+ * GET /api/game/beast/:beastId
+ * Get beast by ID (for PVP)
+ */
+export async function getBeast(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
+    }
+    
+    const beastId = parseInt(req.params.beastId);
+    if (!beastId) {
+      return res.status(400).json({ success: false, error: 'Invalid beast ID' } as ApiResponse);
+    }
+    
+    const result = await query(
+      `SELECT * FROM beasts WHERE id = $1`,
+      [beastId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Beast not found' } as ApiResponse);
+    }
+    
+    const beast = result.rows[0];
+    
+    // Parse JSON fields
+    let techniques: string[] = [];
+    if (beast.techniques) {
+      if (Array.isArray(beast.techniques)) {
+        techniques = beast.techniques;
+      } else if (typeof beast.techniques === 'string') {
+        try {
+          techniques = JSON.parse(beast.techniques);
+        } catch {
+          techniques = [];
+        }
+      }
+    }
+    
+    let traits: string[] = [];
+    if (beast.traits) {
+      if (Array.isArray(beast.traits)) {
+        traits = beast.traits;
+      } else if (typeof beast.traits === 'string') {
+        try {
+          traits = JSON.parse(beast.traits);
+        } catch {
+          traits = [];
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: beast.id,
+        name: beast.name,
+        line: beast.line,
+        blood: beast.blood || 'common',
+        affinity: beast.affinity || 'earth',
+        might: beast.might,
+        wit: beast.wit,
+        focus: beast.focus,
+        agility: beast.agility,
+        ward: beast.ward,
+        vitality: beast.vitality,
+        fatigue: beast.fatigue || 0,
+        stress: beast.stress || 0,
+        loyalty: beast.loyalty || 50,
+        age: beast.age_weeks || 0,
+        max_age: beast.max_age_weeks || 100,
+        traits,
+        techniques,
+        current_hp: beast.current_hp,
+        max_hp: beast.max_hp,
+        essence: beast.essence,
+        max_essence: beast.max_essence,
+        level: beast.level || 1,
+        experience: beast.experience || 0,
+      },
+    } as ApiResponse);
+  } catch (error) {
+    console.error('[Game] Get beast error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get beast' } as ApiResponse);
+  }
+}
+

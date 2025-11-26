@@ -5,94 +5,31 @@
 
 import express from 'express';
 import { authenticateToken } from '../middleware/auth';
+import * as pvpController from '../controllers/pvpController';
 
 const router = express.Router();
 
-/**
- * Obter ranking PvP
- */
-router.get('/ranking', authenticateToken, async (req, res) => {
-  try {
-    // TODO: Implementar consulta ao banco
-    res.json({
-      success: true,
-      data: {
-        rankings: [],
-        playerRank: null,
-        season: {
-          number: 1,
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Erro ao buscar ranking' });
-  }
-});
+// Ranking
+router.get('/ranking', authenticateToken, pvpController.getRanking);
 
-/**
- * Buscar oponente (matchmaking)
- */
-router.post('/matchmaking', authenticateToken, async (req, res) => {
-  try {
-    // TODO: Implementar matchmaking baseado em ELO
-    res.json({
-      success: true,
-      data: {
-        opponent: null,
-        matchId: null,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Erro no matchmaking' });
-  }
-});
+// Matchmaking
+router.post('/matchmaking/join', authenticateToken, pvpController.joinMatchmaking);
+router.post('/matchmaking/leave', authenticateToken, pvpController.leaveMatchmaking);
+router.get('/matchmaking/status', authenticateToken, pvpController.getMatchmakingStatus);
 
-/**
- * Iniciar batalha PvP
- */
-router.post('/battle/start', authenticateToken, async (req, res) => {
-  try {
-    const { opponentId } = req.body;
-    
-    // TODO: Implementar início de batalha PvP
-    res.json({
-      success: true,
-      data: {
-        battleId: null,
-        playerBeast: null,
-        opponentBeast: null,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Erro ao iniciar batalha' });
-  }
-});
+// Desafios diretos
+router.post('/challenge/send', authenticateToken, pvpController.sendChallenge);
+router.post('/challenge/accept', authenticateToken, pvpController.acceptChallenge);
+router.post('/challenge/decline', authenticateToken, pvpController.declineChallenge);
+router.get('/challenges/pending', authenticateToken, pvpController.getPendingChallenges);
 
-/**
- * Finalizar batalha PvP e atualizar ranking
- */
-router.post('/battle/finish', authenticateToken, async (req, res) => {
-  try {
-    const { battleId, winnerId } = req.body;
-    
-    // TODO: Atualizar ELO dos jogadores
-    // TODO: Registrar resultado
-    // TODO: Dar recompensas
-    
-    res.json({
-      success: true,
-      data: {
-        eloChange: 0,
-        newRank: 0,
-        rewards: {},
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: 'Erro ao finalizar batalha' });
-  }
-});
+// Partidas
+router.get('/match/:matchId', authenticateToken, pvpController.getMatchData);
+router.post('/match/:matchId/action', authenticateToken, pvpController.sendMatchAction);
+router.post('/match/:matchId/finish', authenticateToken, pvpController.finishMatchData);
+
+// Temporadas
+router.get('/season/current', authenticateToken, pvpController.getCurrentSeasonData);
+router.get('/season/rewards', authenticateToken, pvpController.getSeasonRewardsData);
 
 export default router;
-

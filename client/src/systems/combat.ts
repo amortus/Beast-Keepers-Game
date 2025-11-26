@@ -30,7 +30,14 @@ export function createCombatEntity(beast: Beast): CombatEntity {
 /**
  * Inicia uma nova batalha
  */
-export function initiateBattle(playerBeast: Beast, enemyBeast: Beast, canFlee: boolean = true): BattleContext {
+export function initiateBattle(
+  playerBeast: Beast,
+  enemyBeast: Beast,
+  canFlee: boolean = true,
+  isPvp: boolean = false,
+  matchId?: number,
+  opponentUserId?: number
+): BattleContext {
   return {
     phase: 'intro',
     player: createCombatEntity(playerBeast),
@@ -38,7 +45,10 @@ export function initiateBattle(playerBeast: Beast, enemyBeast: Beast, canFlee: b
     turnCount: 0,
     combatLog: ['A batalha começou!'],
     winner: null,
-    canFlee,
+    canFlee: isPvp ? false : canFlee, // PVP não permite fugir
+    isPvp,
+    matchId,
+    opponentUserId,
   };
 }
 
