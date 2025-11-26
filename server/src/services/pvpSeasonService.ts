@@ -87,7 +87,6 @@ export function clearSeasonCache(): void {
   cachedSeason = null;
   cacheExpiry = 0;
 }
-}
 
 /**
  * Cria nova temporada
