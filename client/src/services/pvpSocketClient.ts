@@ -62,7 +62,13 @@ class PvpSocketClient {
 
     this.token = token;
     
-    this.socket = io(SOCKET_URL, {
+    // Processar URL da mesma forma que o chatClient
+    let fullUrl = SOCKET_URL.replace('/api', '');
+    if (fullUrl.endsWith('/api')) {
+      fullUrl = fullUrl.substring(0, fullUrl.length - 4);
+    }
+    
+    this.socket = io(fullUrl, {
       path: '/socket.io/',
       auth: {
         token,
