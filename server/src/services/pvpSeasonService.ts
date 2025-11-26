@@ -17,14 +17,24 @@ export interface Season {
   updatedAt: Date;
 }
 
+// Cache para temporada atual (evita múltiplas queries)
+let cachedSeason: Season | null = null;
+let cacheExpiry = 0;
+const CACHE_TTL = 30000; // 30 segundos
+
 /**
- * Retorna temporada atual
+ * Retorna temporada atual (com cache)
  */
 export async function getCurrentSeason(): Promise<Season | null> {
-  const client = await getClient();
+  // Verificar cache primeiro
+  const now = Date.now();
+  if (cachedSeason && now < cacheExpiry) {
+    return cachedSeason;
+  }
   
+  // Usar query() em vez de getClient() para gerenciar conexões automaticamente
   try {
-    const result = await client.query(
+    const result = await query(
       `SELECT * FROM pvp_seasons 
        WHERE status = 'active' 
        ORDER BY number DESC 
@@ -33,11 +43,16 @@ export async function getCurrentSeason(): Promise<Season | null> {
     
     if (result.rows.length === 0) {
       // Criar primeira temporada se não existir
-      return await createNewSeason();
+      const newSeason = await createNewSeason();
+      if (newSeason) {
+        cachedSeason = newSeason;
+        cacheExpiry = now + CACHE_TTL;
+      }
+      return newSeason;
     }
     
     const row = result.rows[0];
-    return {
+    const season: Season = {
       id: row.id,
       number: row.number,
       name: row.name,
@@ -48,10 +63,30 @@ export async function getCurrentSeason(): Promise<Season | null> {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+    
+    // Atualizar cache
+    cachedSeason = season;
+    cacheExpiry = now + CACHE_TTL;
+    
+    return season;
   } catch (error) {
     console.error('[PVP Season] Error getting current season:', error);
+    // Retornar cache se disponível, mesmo que expirado
+    if (cachedSeason) {
+      console.warn('[PVP Season] Using cached season due to error');
+      return cachedSeason;
+    }
     throw error;
   }
+}
+
+/**
+ * Limpa o cache da temporada (útil quando uma nova temporada é criada)
+ */
+export function clearSeasonCache(): void {
+  cachedSeason = null;
+  cacheExpiry = 0;
+}
 }
 
 /**
@@ -101,7 +136,7 @@ export async function createNewSeason(): Promise<Season> {
     const row = result.rows[0];
     console.log(`[PVP Season] Created new season: ${name} (${nextNumber})`);
     
-    return {
+    const season: Season = {
       id: row.id,
       number: row.number,
       name: row.name,
@@ -112,10 +147,17 @@ export async function createNewSeason(): Promise<Season> {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+    
+    // Limpar cache para forçar refresh
+    clearSeasonCache();
+    
+    return season;
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('[PVP Season] Error creating new season:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -149,11 +191,16 @@ export async function endSeason(seasonNumber: number): Promise<void> {
     
     await client.query('COMMIT');
     
+    // Limpar cache para forçar refresh
+    clearSeasonCache();
+    
     console.log(`[PVP Season] Ended season ${seasonNumber}`);
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('[PVP Season] Error ending season:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -207,6 +254,8 @@ async function calculateSeasonRewards(seasonNumber: number): Promise<any> {
   } catch (error) {
     console.error('[PVP Season] Error calculating season rewards:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 

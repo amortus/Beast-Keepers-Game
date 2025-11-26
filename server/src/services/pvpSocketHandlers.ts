@@ -159,21 +159,51 @@ export function initializePvpSocketHandlers(
     });
   });
   
-  // Processar matchmaking periodicamente (a cada 5 segundos)
-  setInterval(async () => {
+  // Processar matchmaking periodicamente (a cada 10 segundos)
+  // Usar variável para poder limpar o intervalo se necessário
+  let matchmakingInterval: NodeJS.Timeout | null = null;
+  let consecutiveErrors = 0;
+  const MAX_CONSECUTIVE_ERRORS = 5;
+  
+  const processMatchmakingLoop = async () => {
     try {
       const season = await getCurrentSeason();
-      if (!season) return;
+      if (!season) {
+        consecutiveErrors = 0; // Reset se não há temporada (não é erro de conexão)
+        return;
+      }
       
       const matches = await processMatchmaking(season.number);
       
       for (const match of matches) {
         await handleMatchFound(match, season.number);
       }
-    } catch (error) {
+      
+      // Reset contador de erros em caso de sucesso
+      consecutiveErrors = 0;
+    } catch (error: any) {
+      consecutiveErrors++;
       console.error('[PVP Socket] Error processing matchmaking:', error);
+      
+      // Se houver muitos erros consecutivos (provavelmente problema de conexão),
+      // pausar o intervalo temporariamente
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        console.error(`[PVP Socket] Too many consecutive errors (${consecutiveErrors}). Pausing matchmaking for 60 seconds.`);
+        if (matchmakingInterval) {
+          clearInterval(matchmakingInterval);
+          matchmakingInterval = null;
+          
+          // Retomar após 60 segundos
+          setTimeout(() => {
+            consecutiveErrors = 0;
+            matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
+          }, 60000);
+        }
+      }
     }
-  }, 5000);
+  };
+  
+  matchmakingInterval = setInterval(processMatchmakingLoop, 10000); // Aumentado para 10 segundos para reduzir carga
 }
 
 /**
