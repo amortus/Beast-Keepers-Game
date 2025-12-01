@@ -273,7 +273,9 @@ export async function getSeasonRewards(
       [seasonNumber]
     );
     
-    if (seasonResult.rows.length === 0) return null;
+    if (seasonResult.rows.length === 0) {
+      return null;
+    }
     
     const rewardsConfig = seasonResult.rows[0].rewards_config || {};
     
@@ -290,6 +292,8 @@ export async function getSeasonRewards(
   } catch (error) {
     console.error('[PVP Season] Error getting season rewards:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -316,6 +320,8 @@ export async function checkAndCreateNewSeason(): Promise<Season | null> {
   } catch (error) {
     console.error('[PVP Season] Error checking season:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
