@@ -95,95 +95,88 @@ export async function autoFixSchema(): Promise<void> {
       console.log('[DB] ✅ Tabelas PVP já existem!');
     }
     
-    // Verificar se a coluna 'status' existe na tabela pvp_seasons
-    const checkStatusColumn = await query(`
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_name = 'pvp_seasons' AND column_name = 'status';
+    // Verificar se tabela pvp_seasons existe e adicionar colunas necessárias
+    const checkPvpSeasonsTable = await query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'pvp_seasons';
     `);
     
-    if (checkStatusColumn.rows.length === 0) {
-      console.log('[DB] ⚠️ Coluna status não existe em pvp_seasons. Adicionando...');
+    if (checkPvpSeasonsTable.rows.length > 0) {
+      console.log('[DB] 🔧 Verificando estrutura da tabela pvp_seasons...');
+      
+      // Verificar colunas existentes
+      const checkPvpSeasonsColumns = await query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'pvp_seasons';
+      `);
+      
+      const existingColumns = checkPvpSeasonsColumns.rows.map((r: any) => r.column_name);
+      console.log('[DB] Colunas existentes:', existingColumns.join(', '));
+      
+      // Adicionar colunas que faltam
       try {
-        await query(`
-          ALTER TABLE pvp_seasons
-          ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';
-        `);
-        
-        // Criar índice se não existir
-        await query(`
-          CREATE INDEX IF NOT EXISTS idx_pvp_seasons_status ON pvp_seasons(status);
-        `);
-        
-        console.log('[DB] ✅ Coluna status adicionada com sucesso!');
-      } catch (statusError: any) {
-        console.error('[DB] ❌ Erro ao adicionar coluna status:', statusError.message);
-      }
-    }
-    
-    // Verificar se outras colunas necessárias existem em pvp_seasons
-    const checkPvpSeasonsColumns = await query(`
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_name = 'pvp_seasons';
-    `);
-    
-    const existingColumns = checkPvpSeasonsColumns.rows.map((r: any) => r.column_name);
-    const requiredColumns = ['id', 'number', 'name', 'start_date', 'end_date', 'status', 'rewards_config', 'created_at', 'updated_at'];
-    const missingColumns = requiredColumns.filter(c => !existingColumns.includes(c));
-    
-    // Verificar se existe season_number (da migration 012) e precisa ser convertido para number
-    if (existingColumns.includes('season_number') && !existingColumns.includes('number')) {
-      console.log('[DB] ⚠️ Tabela pvp_seasons usa season_number. Convertendo para number...');
-      try {
-        // Criar coluna number copiando valores de season_number
-        await query(`
-          ALTER TABLE pvp_seasons 
-          ADD COLUMN IF NOT EXISTS number INTEGER;
-        `);
-        await query(`
-          UPDATE pvp_seasons 
-          SET number = season_number 
-          WHERE number IS NULL;
-        `);
-        await query(`
-          ALTER TABLE pvp_seasons 
-          ALTER COLUMN number SET NOT NULL;
-        `);
-        await query(`
-          CREATE UNIQUE INDEX IF NOT EXISTS idx_pvp_seasons_number ON pvp_seasons(number);
-        `);
-        console.log('[DB] ✅ Coluna number criada a partir de season_number!');
-      } catch (convertError: any) {
-        console.error('[DB] ❌ Erro ao converter season_number:', convertError.message);
-      }
-    }
-    
-    if (missingColumns.length > 0 && existingColumns.length > 0) {
-      console.log('[DB] ⚠️ Colunas faltando em pvp_seasons:', missingColumns.join(', '));
-      try {
-        // Adicionar colunas que faltam
-        if (!existingColumns.includes('id') && !existingColumns.includes('season_number')) {
-          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS id SERIAL;`);
-          // Não fazer PRIMARY KEY se já existe season_number como PK
+        // Status
+        if (!existingColumns.includes('status')) {
+          console.log('[DB] ⚠️ Adicionando coluna status...');
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';`);
+          await query(`UPDATE pvp_seasons SET status = 'active' WHERE status IS NULL;`);
+          await query(`ALTER TABLE pvp_seasons ALTER COLUMN status SET NOT NULL;`);
+          await query(`CREATE INDEX IF NOT EXISTS idx_pvp_seasons_status ON pvp_seasons(status);`);
         }
-        if (!existingColumns.includes('number') && !existingColumns.includes('season_number')) {
+        
+        // Name
+        if (!existingColumns.includes('name')) {
+          console.log('[DB] ⚠️ Adicionando coluna name...');
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS name VARCHAR(100);`);
+          // Preencher valores padrão
+          if (existingColumns.includes('season_number')) {
+            await query(`UPDATE pvp_seasons SET name = 'Temporada ' || season_number WHERE name IS NULL;`);
+          } else if (existingColumns.includes('number')) {
+            await query(`UPDATE pvp_seasons SET name = 'Temporada ' || number WHERE name IS NULL;`);
+          } else {
+            await query(`UPDATE pvp_seasons SET name = 'Temporada 1' WHERE name IS NULL;`);
+          }
+          await query(`ALTER TABLE pvp_seasons ALTER COLUMN name SET NOT NULL;`);
+        }
+        
+        // Number (se não existe e tem season_number)
+        if (!existingColumns.includes('number') && existingColumns.includes('season_number')) {
+          console.log('[DB] ⚠️ Adicionando coluna number a partir de season_number...');
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS number INTEGER;`);
+          await query(`UPDATE pvp_seasons SET number = season_number WHERE number IS NULL;`);
+          await query(`ALTER TABLE pvp_seasons ALTER COLUMN number SET NOT NULL;`);
+          await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pvp_seasons_number_unique ON pvp_seasons(number);`);
+        } else if (!existingColumns.includes('number') && !existingColumns.includes('season_number')) {
+          console.log('[DB] ⚠️ Adicionando coluna number...');
           await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS number INTEGER NOT NULL UNIQUE;`);
         }
-        if (!existingColumns.includes('name')) {
-          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS name VARCHAR(100) NOT NULL DEFAULT 'Season ' || COALESCE((SELECT MAX(COALESCE(number, season_number)) FROM pvp_seasons), 0) + 1;`);
-        }
+        
+        // Rewards config
         if (!existingColumns.includes('rewards_config')) {
+          console.log('[DB] ⚠️ Adicionando coluna rewards_config...');
           await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS rewards_config JSONB DEFAULT '{}'::jsonb;`);
         }
+        
+        // Updated at
         if (!existingColumns.includes('updated_at')) {
+          console.log('[DB] ⚠️ Adicionando coluna updated_at...');
           await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();`);
         }
-        console.log('[DB] ✅ Colunas adicionadas com sucesso!');
-      } catch (columnError: any) {
-        console.error('[DB] ❌ Erro ao adicionar colunas:', columnError.message);
+        
+        // Id (se não existe e não tem season_number como PK)
+        if (!existingColumns.includes('id') && !existingColumns.includes('season_number')) {
+          console.log('[DB] ⚠️ Adicionando coluna id...');
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS id SERIAL;`);
+        }
+        
+        console.log('[DB] ✅ Estrutura da tabela pvp_seasons verificada e corrigida!');
+      } catch (fixError: any) {
+        console.error('[DB] ❌ Erro ao corrigir estrutura:', fixError.message);
       }
     }
+    
     
     console.log('[DB] ✅ Auto-fix concluído!');
     
