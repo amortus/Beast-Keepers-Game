@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS pvp_seasons (
   season_number INTEGER PRIMARY KEY,
   start_date TIMESTAMP NOT NULL,
   end_date TIMESTAMP NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active', -- active, ended
   top_players JSONB DEFAULT '[]'::jsonb,
   rewards_distributed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -43,6 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_pvp_rankings_season ON pvp_rankings(season_number
 CREATE INDEX IF NOT EXISTS idx_pvp_battles_player1 ON pvp_battles(player1_id);
 CREATE INDEX IF NOT EXISTS idx_pvp_battles_player2 ON pvp_battles(player2_id);
 CREATE INDEX IF NOT EXISTS idx_pvp_battles_season ON pvp_battles(season_number);
+CREATE INDEX IF NOT EXISTS idx_pvp_seasons_status ON pvp_seasons(status);
 
 -- Comentários
 COMMENT ON TABLE pvp_rankings IS 'Rankings e estatísticas PvP dos jogadores';

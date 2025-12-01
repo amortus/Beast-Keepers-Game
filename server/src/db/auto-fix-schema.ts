@@ -95,6 +95,96 @@ export async function autoFixSchema(): Promise<void> {
       console.log('[DB] ✅ Tabelas PVP já existem!');
     }
     
+    // Verificar se a coluna 'status' existe na tabela pvp_seasons
+    const checkStatusColumn = await query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'pvp_seasons' AND column_name = 'status';
+    `);
+    
+    if (checkStatusColumn.rows.length === 0) {
+      console.log('[DB] ⚠️ Coluna status não existe em pvp_seasons. Adicionando...');
+      try {
+        await query(`
+          ALTER TABLE pvp_seasons
+          ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active';
+        `);
+        
+        // Criar índice se não existir
+        await query(`
+          CREATE INDEX IF NOT EXISTS idx_pvp_seasons_status ON pvp_seasons(status);
+        `);
+        
+        console.log('[DB] ✅ Coluna status adicionada com sucesso!');
+      } catch (statusError: any) {
+        console.error('[DB] ❌ Erro ao adicionar coluna status:', statusError.message);
+      }
+    }
+    
+    // Verificar se outras colunas necessárias existem em pvp_seasons
+    const checkPvpSeasonsColumns = await query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'pvp_seasons';
+    `);
+    
+    const existingColumns = checkPvpSeasonsColumns.rows.map((r: any) => r.column_name);
+    const requiredColumns = ['id', 'number', 'name', 'start_date', 'end_date', 'status', 'rewards_config', 'created_at', 'updated_at'];
+    const missingColumns = requiredColumns.filter(c => !existingColumns.includes(c));
+    
+    // Verificar se existe season_number (da migration 012) e precisa ser convertido para number
+    if (existingColumns.includes('season_number') && !existingColumns.includes('number')) {
+      console.log('[DB] ⚠️ Tabela pvp_seasons usa season_number. Convertendo para number...');
+      try {
+        // Criar coluna number copiando valores de season_number
+        await query(`
+          ALTER TABLE pvp_seasons 
+          ADD COLUMN IF NOT EXISTS number INTEGER;
+        `);
+        await query(`
+          UPDATE pvp_seasons 
+          SET number = season_number 
+          WHERE number IS NULL;
+        `);
+        await query(`
+          ALTER TABLE pvp_seasons 
+          ALTER COLUMN number SET NOT NULL;
+        `);
+        await query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS idx_pvp_seasons_number ON pvp_seasons(number);
+        `);
+        console.log('[DB] ✅ Coluna number criada a partir de season_number!');
+      } catch (convertError: any) {
+        console.error('[DB] ❌ Erro ao converter season_number:', convertError.message);
+      }
+    }
+    
+    if (missingColumns.length > 0 && existingColumns.length > 0) {
+      console.log('[DB] ⚠️ Colunas faltando em pvp_seasons:', missingColumns.join(', '));
+      try {
+        // Adicionar colunas que faltam
+        if (!existingColumns.includes('id') && !existingColumns.includes('season_number')) {
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS id SERIAL;`);
+          // Não fazer PRIMARY KEY se já existe season_number como PK
+        }
+        if (!existingColumns.includes('number') && !existingColumns.includes('season_number')) {
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS number INTEGER NOT NULL UNIQUE;`);
+        }
+        if (!existingColumns.includes('name')) {
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS name VARCHAR(100) NOT NULL DEFAULT 'Season ' || COALESCE((SELECT MAX(COALESCE(number, season_number)) FROM pvp_seasons), 0) + 1;`);
+        }
+        if (!existingColumns.includes('rewards_config')) {
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS rewards_config JSONB DEFAULT '{}'::jsonb;`);
+        }
+        if (!existingColumns.includes('updated_at')) {
+          await query(`ALTER TABLE pvp_seasons ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();`);
+        }
+        console.log('[DB] ✅ Colunas adicionadas com sucesso!');
+      } catch (columnError: any) {
+        console.error('[DB] ❌ Erro ao adicionar colunas:', columnError.message);
+      }
+    }
+    
     console.log('[DB] ✅ Auto-fix concluído!');
     
   } catch (error: any) {
