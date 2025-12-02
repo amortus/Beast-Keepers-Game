@@ -89,9 +89,31 @@ export class PvpArenaUI {
 
   public hide() {
     this.currentView = 'main';
-    if (this.matchmakingUI) this.matchmakingUI.hide();
-    if (this.rankingUI) this.rankingUI.hide();
-    if (this.challengeUI) this.challengeUI.hide();
+    // Ocultar todas as sub-UIs
+    if (this.matchmakingUI) {
+      this.matchmakingUI.hide();
+      // Garantir que o elemento HTML também seja ocultado
+      const container = document.getElementById('pvp-matchmaking-container');
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
+    if (this.rankingUI) {
+      this.rankingUI.hide();
+      // Garantir que o elemento HTML também seja ocultado
+      const container = document.getElementById('pvp-ranking-container');
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
+    if (this.challengeUI) {
+      this.challengeUI.hide();
+      // Garantir que o elemento HTML também seja ocultado
+      const container = document.getElementById('pvp-challenge-container');
+      if (container) {
+        container.style.display = 'none';
+      }
+    }
   }
 
   public draw(gameState: GameState) {
@@ -102,19 +124,36 @@ export class PvpArenaUI {
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (this.currentView === 'matchmaking' && this.matchmakingUI) {
+      // Ocultar outras UIs
+      if (this.rankingUI) this.rankingUI.hide();
+      if (this.challengeUI) this.challengeUI.hide();
+      
       this.matchmakingUI.show(gameState.activeBeast!);
       return;
     }
 
     if (this.currentView === 'ranking' && this.rankingUI) {
+      // Ocultar outras UIs
+      if (this.matchmakingUI) this.matchmakingUI.hide();
+      if (this.challengeUI) this.challengeUI.hide();
+      
       this.rankingUI.show();
       return;
     }
 
     if (this.currentView === 'challenges' && this.challengeUI && gameState.activeBeast) {
+      // Ocultar outras UIs
+      if (this.matchmakingUI) this.matchmakingUI.hide();
+      if (this.rankingUI) this.rankingUI.hide();
+      
       this.challengeUI.show(gameState.activeBeast);
       return;
     }
+
+    // Tela principal - ocultar todas as sub-UIs
+    if (this.matchmakingUI) this.matchmakingUI.hide();
+    if (this.rankingUI) this.rankingUI.hide();
+    if (this.challengeUI) this.challengeUI.hide();
 
     // Tela principal
     this.drawMainMenu(gameState);

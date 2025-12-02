@@ -87,7 +87,7 @@ export interface Match {
  * Obter ranking e leaderboard
  */
 export async function getRanking(): Promise<RankingResponse> {
-  const response = await apiClient.get('/api/pvp/ranking');
+  const response = await apiClient.get('/pvp/ranking');
   return response.data.data;
 }
 
@@ -95,7 +95,7 @@ export async function getRanking(): Promise<RankingResponse> {
  * Entrar na fila de matchmaking
  */
 export async function joinMatchmaking(beastId: number, matchType: MatchType): Promise<void> {
-  await apiClient.post('/api/pvp/matchmaking/join', {
+  await apiClient.post('/pvp/matchmaking/join', {
     beastId,
     matchType,
   });
@@ -105,14 +105,14 @@ export async function joinMatchmaking(beastId: number, matchType: MatchType): Pr
  * Sair da fila de matchmaking
  */
 export async function leaveMatchmaking(): Promise<void> {
-  await apiClient.post('/api/pvp/matchmaking/leave');
+  await apiClient.post('/pvp/matchmaking/leave');
 }
 
 /**
  * Obter status do matchmaking
  */
 export async function getMatchmakingStatus(): Promise<MatchmakingStatus> {
-  const response = await apiClient.get('/api/pvp/matchmaking/status');
+  const response = await apiClient.get('/pvp/matchmaking/status');
   return response.data.data;
 }
 
@@ -120,7 +120,7 @@ export async function getMatchmakingStatus(): Promise<MatchmakingStatus> {
  * Enviar desafio direto
  */
 export async function sendChallenge(challengedId: number, beastId: number): Promise<void> {
-  await apiClient.post('/api/pvp/challenge/send', {
+  await apiClient.post('/pvp/challenge/send', {
     challengedId,
     beastId,
   });
@@ -130,7 +130,7 @@ export async function sendChallenge(challengedId: number, beastId: number): Prom
  * Aceitar desafio
  */
 export async function acceptChallenge(challengeId: number, beastId: number): Promise<{ matchId: number }> {
-  const response = await apiClient.post('/api/pvp/challenge/accept', {
+  const response = await apiClient.post('/pvp/challenge/accept', {
     challengeId,
     beastId,
   });
@@ -141,7 +141,7 @@ export async function acceptChallenge(challengeId: number, beastId: number): Pro
  * Recusar desafio
  */
 export async function declineChallenge(challengeId: number): Promise<void> {
-  await apiClient.post('/api/pvp/challenge/decline', {
+  await apiClient.post('/pvp/challenge/decline', {
     challengeId,
   });
 }
@@ -150,7 +150,7 @@ export async function declineChallenge(challengeId: number): Promise<void> {
  * Listar desafios pendentes
  */
 export async function getPendingChallenges(): Promise<{ received: Challenge[]; sent: Challenge[] }> {
-  const response = await apiClient.get('/api/pvp/challenges/pending');
+  const response = await apiClient.get('/pvp/challenges/pending');
   return response.data.data;
 }
 
@@ -158,7 +158,7 @@ export async function getPendingChallenges(): Promise<{ received: Challenge[]; s
  * Obter dados da partida
  */
 export async function getMatch(matchId: number): Promise<Match> {
-  const response = await apiClient.get(`/api/pvp/match/${matchId}`);
+  const response = await apiClient.get(`/pvp/match/${matchId}`);
   return response.data.data.match;
 }
 
@@ -166,7 +166,7 @@ export async function getMatch(matchId: number): Promise<Match> {
  * Enviar ação na batalha
  */
 export async function sendMatchAction(matchId: number, action: any, beastState: any): Promise<void> {
-  await apiClient.post(`/api/pvp/match/${matchId}/action`, {
+  await apiClient.post(`/pvp/match/${matchId}/action`, {
     action,
     beastState,
   });
@@ -184,7 +184,7 @@ export async function finishMatch(
   eloChanges: { player1: number | null; player2: number | null };
   rewards: { player1: any; player2: any };
 }> {
-  const response = await apiClient.post(`/api/pvp/match/${matchId}/finish`, {
+  const response = await apiClient.post(`/pvp/match/${matchId}/finish`, {
     winnerId,
     durationSeconds,
   });
@@ -195,7 +195,7 @@ export async function finishMatch(
  * Obter temporada atual
  */
 export async function getCurrentSeason(): Promise<any> {
-  const response = await apiClient.get('/api/pvp/season/current');
+  const response = await apiClient.get('/pvp/season/current');
   return response.data.data.season;
 }
 
@@ -203,7 +203,7 @@ export async function getCurrentSeason(): Promise<any> {
  * Obter recompensas de temporada
  */
 export async function getSeasonRewards(seasonNumber: number): Promise<any> {
-  const response = await apiClient.get(`/api/pvp/season/rewards?seasonNumber=${seasonNumber}`);
+  const response = await apiClient.get(`/pvp/season/rewards?seasonNumber=${seasonNumber}`);
   return response.data.data.rewards;
 }
 
