@@ -4,7 +4,6 @@
  */
 
 import type { GameState, Beast } from '../types';
-import { COLORS } from './colors';
 import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { PvpMatchmakingUI } from './pvp-matchmaking-ui';
@@ -65,11 +64,14 @@ export class PvpArenaUI {
     
     // Inicializar sub-UIs se necessário
     if (!this.matchmakingUI) {
-      this.matchmakingUI = new PvpMatchmakingUI();
+      this.matchmakingUI = new PvpMatchmakingUI(this.canvas);
       this.matchmakingUI.onMatchFound = async (matchId, opponent, matchType) => {
         if (this.onMatchFound) {
           await this.onMatchFound(matchId, opponent, matchType);
         }
+      };
+      this.matchmakingUI.onBack = () => {
+        this.currentView = 'main';
       };
     }
     
@@ -92,11 +94,6 @@ export class PvpArenaUI {
     // Ocultar todas as sub-UIs
     if (this.matchmakingUI) {
       this.matchmakingUI.hide();
-      // Garantir que o elemento HTML também seja ocultado
-      const container = document.getElementById('pvp-matchmaking-container');
-      if (container) {
-        container.style.display = 'none';
-      }
     }
     if (this.rankingUI) {
       this.rankingUI.hide();
@@ -128,7 +125,10 @@ export class PvpArenaUI {
       if (this.rankingUI) this.rankingUI.hide();
       if (this.challengeUI) this.challengeUI.hide();
       
-      this.matchmakingUI.show(gameState.activeBeast!);
+      if (gameState.activeBeast) {
+        this.matchmakingUI.show(gameState.activeBeast);
+        this.matchmakingUI.draw();
+      }
       return;
     }
 
@@ -167,14 +167,14 @@ export class PvpArenaUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.purple,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Header
     drawText(this.ctx, '⚔️ Arena PVP', panelX + 20, panelY + 30, {
       font: 'bold 36px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Botão de fechar
@@ -185,7 +185,7 @@ export class PvpArenaUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -213,21 +213,21 @@ export class PvpArenaUI {
         id: 'matchmaking',
         title: '⚔️ Matchmaking',
         description: 'Buscar partidas rankeadas ou casuais',
-        color: COLORS.primary.purple,
+        accentColor: GLASS_THEME.palette.accent.cyan,
         icon: '⚔️',
       },
       {
         id: 'ranking',
         title: '🏆 Ranking',
         description: 'Ver leaderboard e seu ranking',
-        color: COLORS.primary.gold,
+        accentColor: GLASS_THEME.palette.accent.amber,
         icon: '🏆',
       },
       {
         id: 'challenges',
         title: '🎯 Desafios',
         description: 'Desafiar amigos ou jogadores',
-        color: COLORS.primary.green,
+        accentColor: GLASS_THEME.palette.accent.emerald,
         icon: '🎯',
       },
     ];
@@ -240,35 +240,43 @@ export class PvpArenaUI {
 
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x, y, cardWidth, cardHeight);
 
-      // Card background
-      this.ctx.fillStyle = isHovered 
-        ? `rgba(${option.color.r}, ${option.color.g}, ${option.color.b}, 0.3)`
-        : `rgba(${option.color.r}, ${option.color.g}, ${option.color.b}, 0.15)`;
+      // Card background com gradiente glass
+      const gradient = this.ctx.createLinearGradient(x, y, x, y + cardHeight);
+      if (isHovered) {
+        gradient.addColorStop(0, 'rgba(60, 194, 255, 0.25)');
+        gradient.addColorStop(1, 'rgba(26, 84, 176, 0.2)');
+      } else {
+        gradient.addColorStop(0, 'rgba(16, 52, 90, 0.4)');
+        gradient.addColorStop(1, 'rgba(8, 26, 48, 0.5)');
+      }
+      this.ctx.fillStyle = gradient;
       this.ctx.fillRect(x, y, cardWidth, cardHeight);
 
       // Border
-      this.ctx.strokeStyle = option.color.hex;
-      this.ctx.lineWidth = 2;
+      this.ctx.strokeStyle = isHovered 
+        ? GLASS_THEME.palette.panel.border
+        : GLASS_THEME.palette.panel.border.replace('0.42', '0.25');
+      this.ctx.lineWidth = 1.5;
       this.ctx.strokeRect(x, y, cardWidth, cardHeight);
 
       // Icon and title
       drawText(this.ctx, option.icon, x + cardWidth / 2, y + 40, {
         align: 'center',
         font: 'bold 48px monospace',
-        color: option.color.hex,
+        color: option.accentColor,
       });
 
       drawText(this.ctx, option.title, x + cardWidth / 2, y + 90, {
         align: 'center',
         font: 'bold 20px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
 
       // Description
       drawText(this.ctx, option.description, x + cardWidth / 2, y + 120, {
         align: 'center',
         font: '14px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.secondary,
       });
 
       this.buttons.set(option.id, {
@@ -289,18 +297,18 @@ export class PvpArenaUI {
       
       drawText(this.ctx, `Beast Ativa: ${beast.name}`, panelX + 20, infoY, {
         font: '16px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
 
       drawText(this.ctx, `Nível ${beast.level || 1} | HP ${beast.currentHp}/${beast.maxHp}`, panelX + 20, infoY + 25, {
         font: '14px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.secondary,
       });
     } else {
       const infoY = panelY + panelHeight - 80;
       drawText(this.ctx, '⚠️ Selecione um beast para participar de partidas PVP', panelX + 20, infoY, {
         font: '16px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
       });
     }
   }

@@ -3,7 +3,7 @@
  */
 
 import type { GameState } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { getCompletionPercentage, getAchievementsByCategory, type Achievement } from '../systems/achievements';
 
@@ -71,14 +71,14 @@ export class AchievementsUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Header
     drawText(this.ctx, '🏆 Conquistas', panelX + 20, panelY + 20, {
       font: 'bold 32px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Botão fechar (melhorado)
@@ -91,20 +91,20 @@ export class AchievementsUI {
     const completion = getCompletionPercentage(gameState.achievements as unknown as Achievement[]);
     drawText(this.ctx, `${Math.floor(completion)}% Completo`, panelX + 20, panelY + 55, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Título atual (abaixo do progresso)
     if (gameState.currentTitle) {
       drawText(this.ctx, `Título: ${gameState.currentTitle}`, panelX + 20, panelY + 75, {
         font: '14px monospace',
-        color: COLORS.primary.purple,
+        color: GLASS_THEME.palette.primary.purple,
       });
     }
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -147,8 +147,8 @@ export class AchievementsUI {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, tabX, y, tabWidth, tabHeight);
 
       drawButton(this.ctx, tabX, y, tabWidth, tabHeight, `${cat.icon} ${cat.name}`, {
-        bgColor: isActive ? COLORS.primary.gold : COLORS.bg.light,
-        textColor: isActive ? COLORS.bg.dark : COLORS.ui.text,
+        variant: isActive ? 'primary' : 'ghost',
+        textColor: isActive ? GLASS_THEME.palette.background : GLASS_THEME.palette.text.primary,
         isHovered: !isActive && isHovered,
       });
 
@@ -168,7 +168,8 @@ export class AchievementsUI {
 
   private drawAchievementList(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     const achievements = this.selectedCategory === 'all'
@@ -179,7 +180,7 @@ export class AchievementsUI {
       drawText(this.ctx, 'Nenhuma conquista', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -201,7 +202,7 @@ export class AchievementsUI {
       const maxScrollOffset = achievements.length - visibleItems;
       const scrollProgress = maxScrollOffset > 0 ? this.scrollOffset / maxScrollOffset : 0;
       const scrollBarY = y + scrollProgress * (height - scrollBarHeight);
-      this.ctx.fillStyle = COLORS.primary.gold;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.fillRect(x + width - 8, scrollBarY, 6, scrollBarHeight);
     }
   }
@@ -212,15 +213,15 @@ export class AchievementsUI {
 
     // Fundo
     if (achievement.isUnlocked) {
-      this.ctx.fillStyle = isSelected ? COLORS.primary.gold : (isHovered ? '#2d2510' : '#1d1510');
+      this.ctx.fillStyle = isSelected ? GLASS_THEME.palette.accent.amber : (isHovered ? '#2d2510' : '#1d1510');
     } else {
-      this.ctx.fillStyle = isSelected ? COLORS.bg.light : (isHovered ? COLORS.bg.light : 'transparent');
+      this.ctx.fillStyle = isSelected ? GLASS_THEME.palette.panel.gradient[0] : (isHovered ? GLASS_THEME.palette.panel.gradient[0] : 'transparent');
     }
     this.ctx.fillRect(x, y, width, height);
 
     // Borda dourada para desbloqueadas
     if (achievement.isUnlocked) {
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(x, y, width, height);
     }
@@ -234,13 +235,13 @@ export class AchievementsUI {
     // Nome
     drawText(this.ctx, achievement.name, x + 55, y + 20, {
       font: 'bold 16px monospace',
-      color: achievement.isUnlocked ? COLORS.primary.gold : COLORS.ui.textDim,
+      color: achievement.isUnlocked ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.text.primaryDim,
     });
 
     // Descrição
     drawText(this.ctx, achievement.description, x + 55, y + 45, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     // Progresso
@@ -250,13 +251,13 @@ export class AchievementsUI {
       const barWidth = width - 65;
       const barHeight = 10;
 
-      this.ctx.fillStyle = COLORS.bg.medium;
+      this.ctx.fillStyle = GLASS_THEME.palette.panel.gradient[0];
       this.ctx.fillRect(barX, barY, barWidth, barHeight);
 
-      this.ctx.fillStyle = COLORS.primary.green;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.emerald;
       this.ctx.fillRect(barX, barY, barWidth * achievement.progress, barHeight);
 
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(barX, barY, barWidth, barHeight);
     }
@@ -274,14 +275,15 @@ export class AchievementsUI {
 
   private drawAchievementDetails(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     if (!this.selectedAchievement) {
       drawText(this.ctx, 'Selecione uma conquista', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -297,35 +299,35 @@ export class AchievementsUI {
     // Nome
     drawText(this.ctx, ach.name, x + 20, y + 120, {
       font: 'bold 22px monospace',
-      color: ach.isUnlocked ? COLORS.primary.gold : COLORS.ui.textDim,
+      color: ach.isUnlocked ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.text.primaryDim,
     });
 
     // Status
     const status = ach.isUnlocked ? '✅ Desbloqueada' : '🔒 Bloqueada';
     drawText(this.ctx, status, x + 20, y + 150, {
       font: '16px monospace',
-      color: ach.isUnlocked ? COLORS.primary.green : COLORS.ui.error,
+      color: ach.isUnlocked ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.danger,
     });
 
     // Descrição
     drawText(this.ctx, 'Descrição:', x + 20, y + 185, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(ach.description, x + 20, y + 210, width - 40, 20, '14px monospace', COLORS.ui.textDim);
+    this.drawWrappedText(ach.description, x + 20, y + 210, width - 40, 20, '14px monospace', GLASS_THEME.palette.text.primaryDim);
 
     // Progresso
     if (!ach.isUnlocked) {
       drawText(this.ctx, 'Progresso:', x + 20, y + 265, {
         font: 'bold 16px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
 
       const progressText = `${ach.requirement.current} / ${ach.requirement.target}`;
       drawText(this.ctx, progressText, x + 20, y + 290, {
         font: '18px monospace',
-        color: COLORS.primary.purple,
+        color: GLASS_THEME.palette.primary.purple,
       });
 
       // Barra
@@ -334,27 +336,27 @@ export class AchievementsUI {
       const barWidth = width - 40;
       const barHeight = 25;
 
-      this.ctx.fillStyle = COLORS.bg.medium;
+      this.ctx.fillStyle = GLASS_THEME.palette.panel.gradient[0];
       this.ctx.fillRect(barX, barY, barWidth, barHeight);
 
-      this.ctx.fillStyle = COLORS.primary.green;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.emerald;
       this.ctx.fillRect(barX, barY, barWidth * ach.progress, barHeight);
 
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(barX, barY, barWidth, barHeight);
 
       drawText(this.ctx, `${Math.floor(ach.progress * 100)}%`, barX + barWidth / 2, barY + 17, {
         align: 'center',
         font: 'bold 14px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
     }
 
     // Recompensas
     drawText(this.ctx, 'Recompensas:', x + 20, y + 355, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     let rewardY = y + 380;
@@ -362,7 +364,7 @@ export class AchievementsUI {
     if (ach.reward.coronas) {
       drawText(this.ctx, `💰 ${ach.reward.coronas} Coronas`, x + 25, rewardY, {
         font: '14px monospace',
-        color: COLORS.primary.gold,
+        color: GLASS_THEME.palette.accent.amber,
       });
       rewardY += 25;
     }
@@ -370,14 +372,14 @@ export class AchievementsUI {
     if (ach.reward.title) {
       drawText(this.ctx, `👑 Título: "${ach.reward.title}"`, x + 25, rewardY, {
         font: '14px monospace',
-        color: COLORS.primary.purple,
+        color: GLASS_THEME.palette.primary.purple,
       });
       rewardY += 25;
     }
 
     drawText(this.ctx, `${ach.reward.badge} Badge Especial`, x + 25, rewardY, {
       font: '14px monospace',
-      color: COLORS.primary.green,
+      color: GLASS_THEME.palette.accent.emerald,
     });
 
     // Data de desbloqueio
@@ -385,7 +387,7 @@ export class AchievementsUI {
       const date = new Date(ach.unlockedAt);
       drawText(this.ctx, `Desbloqueado em: ${date.toLocaleDateString()}`, x + 20, y + height - 20, {
         font: '12px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
     }
     

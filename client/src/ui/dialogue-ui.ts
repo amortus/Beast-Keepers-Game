@@ -3,7 +3,7 @@
  */
 
 import type { NPC } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 
 export class DialogueUI {
@@ -71,19 +71,19 @@ export class DialogueUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Nome e título do NPC
     drawText(this.ctx, this.currentNPC.name, panelX + 20, panelY + 20, {
       font: 'bold 28px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     drawText(this.ctx, this.currentNPC.title, panelX + 20, panelY + 50, {
       font: '16px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     // Botão de fechar (no topo à direita)
@@ -94,7 +94,7 @@ export class DialogueUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -118,28 +118,28 @@ export class DialogueUI {
 
     drawText(this.ctx, 'Afinidade:', affinityBarX, affinityBarY - 5, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
-    this.ctx.fillStyle = COLORS.bg.dark;
+    this.ctx.fillStyle = GLASS_THEME.palette.bg.dark;
     this.ctx.fillRect(affinityBarX + 90, affinityBarY, affinityBarWidth, affinityBarHeight);
 
     const affinityFill = (this.currentNPC.affinity / 100) * affinityBarWidth;
     this.ctx.fillStyle = this.getAffinityColor(this.currentNPC.affinity);
     this.ctx.fillRect(affinityBarX + 90, affinityBarY, affinityFill, affinityBarHeight);
 
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(affinityBarX + 90, affinityBarY, affinityBarWidth, affinityBarHeight);
 
     drawText(this.ctx, `${this.currentNPC.affinity}%`, affinityBarX + 90 + affinityBarWidth / 2, affinityBarY + 14, {
       align: 'center',
       font: 'bold 12px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Linha separadora (visual)
-    this.ctx.strokeStyle = COLORS.ui.textDim;
+    this.ctx.strokeStyle = GLASS_THEME.palette.text.primaryDim;
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     this.ctx.moveTo(panelX + 30, panelY + 115);
@@ -174,7 +174,7 @@ export class DialogueUI {
       const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
       drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, option.label, {
-        bgColor: COLORS.primary.purple,
+        variant: 'primary',
         isHovered,
       });
 
@@ -196,7 +196,7 @@ export class DialogueUI {
     // Garantir que o contexto está correto
     this.ctx.save();
     this.ctx.font = '16px monospace';
-    this.ctx.fillStyle = COLORS.ui.text;
+    this.ctx.fillStyle = GLASS_THEME.palette.text.primary;
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
 
@@ -225,10 +225,10 @@ export class DialogueUI {
   }
 
   private getAffinityColor(affinity: number): string {
-    if (affinity >= 75) return COLORS.primary.green;
-    if (affinity >= 50) return COLORS.primary.blue;
-    if (affinity >= 25) return COLORS.primary.gold;
-    return COLORS.ui.error;
+    if (affinity >= 75) return GLASS_THEME.palette.accent.emerald;
+    if (affinity >= 50) return GLASS_THEME.palette.primary.blue;
+    if (affinity >= 25) return GLASS_THEME.palette.accent.amber;
+    return GLASS_THEME.palette.accent.danger;
   }
 
   public close() {

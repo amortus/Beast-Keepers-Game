@@ -3,7 +3,7 @@
  */
 
 import type { GameState } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { getAllRecipes, canCraft, type CraftRecipe } from '../systems/craft';
 import { getItemById } from '../data/shop';
@@ -73,14 +73,14 @@ export class CraftUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.green,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Header
     drawText(this.ctx, '⚗️ Oficina de Craft', panelX + 20, panelY + 20, {
       font: 'bold 32px monospace',
-      color: COLORS.primary.green,
+      color: GLASS_THEME.palette.accent.emerald,
     });
 
     // Contador de receitas (abaixo do título)
@@ -88,7 +88,7 @@ export class CraftUI {
     const availableCount = recipes.filter(r => canCraft(r, gameState.inventory)).length;
     drawText(this.ctx, `${availableCount}/${recipes.length} disponíveis`, panelX + 20, panelY + 55, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Botão de fechar (melhorado)
@@ -99,7 +99,7 @@ export class CraftUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -124,7 +124,8 @@ export class CraftUI {
 
   private drawRecipeList(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     const recipes = getAllRecipes();
@@ -133,7 +134,7 @@ export class CraftUI {
       drawText(this.ctx, 'Nenhuma receita', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -158,7 +159,7 @@ export class CraftUI {
       const scrollProgress = maxScrollOffset > 0 ? this.scrollOffset / maxScrollOffset : 0;
       const scrollBarY = y + scrollProgress * (height - scrollBarHeight);
 
-      this.ctx.fillStyle = COLORS.primary.green;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.emerald;
       this.ctx.fillRect(x + width - 8, scrollBarY, 6, scrollBarHeight);
     }
   }
@@ -169,13 +170,13 @@ export class CraftUI {
 
     // Fundo
     this.ctx.fillStyle = isSelected 
-      ? COLORS.primary.green 
-      : (isHovered ? COLORS.bg.light : 'transparent');
+      ? GLASS_THEME.palette.accent.emerald 
+      : (isHovered ? GLASS_THEME.palette.panel.gradient[0] : 'transparent');
     this.ctx.fillRect(x, y, width, height);
 
     // Borda se selecionado
     if (isSelected) {
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(x, y, width, height);
     }
@@ -188,7 +189,7 @@ export class CraftUI {
     // Nome
     drawText(this.ctx, recipe.name, x + 45, y + 20, {
       font: 'bold 16px monospace',
-      color: canCraftThis ? COLORS.ui.text : COLORS.ui.textDim,
+      color: canCraftThis ? GLASS_THEME.palette.text.primary : GLASS_THEME.palette.text.primaryDim,
     });
 
     // Descrição (truncada se muito longa)
@@ -199,7 +200,7 @@ export class CraftUI {
     
     drawText(this.ctx, desc, x + 45, y + 45, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     this.buttons.set(`recipe_${recipe.id}`, {
@@ -215,14 +216,15 @@ export class CraftUI {
 
   private drawRecipeDetails(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     if (!this.selectedRecipe) {
       drawText(this.ctx, 'Selecione uma receita', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -233,21 +235,21 @@ export class CraftUI {
     // Nome da receita
     drawText(this.ctx, recipe.name, x + 20, y + 30, {
       font: 'bold 22px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Descrição
     drawText(this.ctx, 'Descrição:', x + 20, y + 70, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(recipe.description, x + 20, y + 95, width - 40, 20, '14px monospace', COLORS.ui.textDim);
+    this.drawWrappedText(recipe.description, x + 20, y + 95, width - 40, 20, '14px monospace', GLASS_THEME.palette.text.primaryDim);
 
     // Ingredientes
     drawText(this.ctx, 'Ingredientes:', x + 20, y + 140, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     let ingredientY = y + 165;
@@ -258,7 +260,7 @@ export class CraftUI {
       const inventoryItem = gameState.inventory.find(i => i.id === ingredient.itemId);
       const hasEnough = inventoryItem && inventoryItem.quantity && inventoryItem.quantity >= ingredient.quantity;
 
-      const color = hasEnough ? COLORS.primary.green : COLORS.ui.error;
+      const color = hasEnough ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.danger;
       const current = inventoryItem?.quantity || 0;
 
       drawText(this.ctx, `${hasEnough ? '✅' : '❌'} ${item.name}`, x + 25, ingredientY, {
@@ -278,14 +280,14 @@ export class CraftUI {
     // Resultado
     drawText(this.ctx, 'Resultado:', x + 20, ingredientY + 20, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     const resultItem = getItemById(recipe.result.itemId);
     if (resultItem) {
       drawText(this.ctx, `✨ ${resultItem.name} x${recipe.result.quantity}`, x + 25, ingredientY + 45, {
         font: 'bold 14px monospace',
-        color: COLORS.primary.gold,
+        color: GLASS_THEME.palette.accent.amber,
       });
     }
 
@@ -298,7 +300,7 @@ export class CraftUI {
       const craftIsHovered = isMouseOver(this.mouseX, this.mouseY, craftBtnX, craftBtnY, craftBtnWidth, craftBtnHeight);
 
       drawButton(this.ctx, craftBtnX, craftBtnY, craftBtnWidth, craftBtnHeight, '⚗️ Craftar', {
-        bgColor: COLORS.primary.green,
+        variant: 'success',
         isHovered: craftIsHovered,
       });
 
@@ -317,7 +319,7 @@ export class CraftUI {
       drawText(this.ctx, '⚠️ Ingredientes insuficientes', x + width / 2, y + height - 40, {
         align: 'center',
         font: '16px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
       });
     }
   }

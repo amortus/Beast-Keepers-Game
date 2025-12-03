@@ -4,7 +4,7 @@
  */
 
 import type { GameState, Item } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { getAvailableSpecialItems } from '../data/special-shop';
 
@@ -76,12 +76,12 @@ export class SpecialShopUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     // Painel com brilho especial
-    this.ctx.shadowColor = COLORS.primary.gold;
+    this.ctx.shadowColor = GLASS_THEME.palette.accent.amber;
     this.ctx.shadowBlur = 20;
     
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: '#1a0a0a',
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     this.ctx.shadowBlur = 0;
@@ -90,20 +90,20 @@ export class SpecialShopUI {
     drawText(this.ctx, '✨ LOJA DE RARIDADES ✨', panelX + panelWidth / 2, panelY + 25, {
       align: 'center',
       font: 'bold 32px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     drawText(this.ctx, 'Itens Únicos - Compra Única', panelX + panelWidth / 2, panelY + 50, {
       align: 'center',
       font: '14px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Dinheiro
     drawText(this.ctx, `💰 ${gameState.economy.coronas} Coronas`, panelX + panelWidth - 20, panelY + 25, {
       align: 'right',
       font: 'bold 18px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Botão fechar (melhorado)
@@ -114,7 +114,7 @@ export class SpecialShopUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -146,7 +146,7 @@ export class SpecialShopUI {
       drawText(this.ctx, 'Todos os itens já foram comprados!', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -166,7 +166,7 @@ export class SpecialShopUI {
     if (availableItems.length > visibleItems) {
       const scrollBarHeight = (visibleItems / availableItems.length) * height;
       const scrollBarY = y + (this.scrollOffset / availableItems.length) * height;
-      this.ctx.fillStyle = COLORS.primary.gold;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.fillRect(x + width - 8, scrollBarY, 6, scrollBarHeight);
     }
   }
@@ -178,7 +178,7 @@ export class SpecialShopUI {
 
     // Fundo com brilho dourado
     if (isHovered || isSelected) {
-      this.ctx.shadowColor = COLORS.primary.gold;
+      this.ctx.shadowColor = GLASS_THEME.palette.accent.amber;
       this.ctx.shadowBlur = 15;
     }
 
@@ -188,7 +188,7 @@ export class SpecialShopUI {
     this.ctx.fillRect(x, y, width, height);
 
     // Borda dourada animada
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(x, y, width, height);
 
@@ -206,19 +206,19 @@ export class SpecialShopUI {
     // Nome
     drawText(this.ctx, item.name, x + 35, y + 20, {
       font: 'bold 18px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Preço
     drawText(this.ctx, `${item.price} 💰`, x + width / 2, y + 50, {
       align: 'center',
       font: 'bold 20px monospace',
-      color: canAfford ? COLORS.primary.gold : COLORS.ui.error,
+      color: canAfford ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.accent.danger,
     });
 
     // Status
     const statusText = canAfford ? 'DISPONÍVEL' : 'SEM DINHEIRO';
-    const statusColor = canAfford ? COLORS.primary.green : COLORS.ui.error;
+    const statusColor = canAfford ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.danger;
     
     drawText(this.ctx, statusText, x + width / 2, y + 72, {
       align: 'center',
@@ -246,7 +246,7 @@ export class SpecialShopUI {
       drawText(this.ctx, 'Selecione um item', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -255,9 +255,9 @@ export class SpecialShopUI {
     const canAfford = gameState.economy.coronas >= item.price;
 
     // Brilho ao redor do painel
-    this.ctx.shadowColor = COLORS.primary.gold;
+    this.ctx.shadowColor = GLASS_THEME.palette.accent.amber;
     this.ctx.shadowBlur = 10;
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(x + 10, y + 10, width - 20, height - 20);
     this.ctx.shadowBlur = 0;
@@ -266,43 +266,43 @@ export class SpecialShopUI {
     drawText(this.ctx, item.name, x + width / 2, y + 40, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Preço grande
     drawText(this.ctx, `${item.price} 💰`, x + width / 2, y + 80, {
       align: 'center',
       font: 'bold 32px monospace',
-      color: canAfford ? COLORS.primary.gold : COLORS.ui.error,
+      color: canAfford ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.accent.danger,
     });
 
     // Descrição
     drawText(this.ctx, 'Descrição:', x + 20, y + 130, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(item.description, x + 20, y + 155, width - 40, 20, '14px monospace', COLORS.ui.textDim);
+    this.drawWrappedText(item.description, x + 20, y + 155, width - 40, 20, '14px monospace', GLASS_THEME.palette.text.primaryDim);
 
     // Efeito
     drawText(this.ctx, 'Efeito:', x + 20, y + 225, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(item.effect, x + 20, y + 250, width - 40, 22, '16px monospace', COLORS.primary.purple);
+    this.drawWrappedText(item.effect, x + 20, y + 250, width - 40, 22, '16px monospace', GLASS_THEME.palette.accent.lilac);
 
     // Aviso de compra única
     drawText(this.ctx, '⚠️ ITEM ÚNICO', x + width / 2, y + 320, {
       align: 'center',
       font: 'bold 14px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     drawText(this.ctx, 'Só pode ser comprado uma vez!', x + width / 2, y + 340, {
       align: 'center',
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     // Botão de comprar
@@ -314,12 +314,12 @@ export class SpecialShopUI {
       const buyIsHovered = isMouseOver(this.mouseX, this.mouseY, buyBtnX, buyBtnY, buyBtnWidth, buyBtnHeight);
 
       if (buyIsHovered) {
-        this.ctx.shadowColor = COLORS.primary.gold;
+        this.ctx.shadowColor = GLASS_THEME.palette.accent.amber;
         this.ctx.shadowBlur = 20;
       }
 
       drawButton(this.ctx, buyBtnX, buyBtnY, buyBtnWidth, buyBtnHeight, '✨ COMPRAR ✨', {
-        bgColor: COLORS.primary.gold,
+        variant: 'primary',
         textColor: '#000',
         isHovered: buyIsHovered,
       });
@@ -343,7 +343,7 @@ export class SpecialShopUI {
       drawText(this.ctx, '⚠️ Dinheiro insuficiente', x + width / 2, y + height - 40, {
         align: 'center',
         font: 'bold 16px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
       });
     }
   }

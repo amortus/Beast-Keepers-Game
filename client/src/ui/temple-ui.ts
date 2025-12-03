@@ -4,7 +4,7 @@
  */
 
 import type { Beast, GameState } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { generateBeastFromRelic, generateRelicDescription, validateRelicInput } from '../systems/relic-system';
 
@@ -98,20 +98,20 @@ export class TempleUI {
     this.buttons.clear();
     
     // Background
-    this.ctx.fillStyle = COLORS.bg.dark;
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Title
     drawText(this.ctx, '🏛️ TEMPLO DOS ECOS', this.canvas.width / 2, 30, {
       align: 'center',
       font: 'bold 32px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     drawText(this.ctx, 'Insira uma palavra, nome ou frase para gerar uma Relíquia de Eco', this.canvas.width / 2, 70, {
       align: 'center',
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     // Input area
@@ -135,13 +135,14 @@ export class TempleUI {
     const height = 100;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
-      borderColor: this.isInputActive ? COLORS.primary.gold : COLORS.primary.purple,
+      variant: 'input',
+      borderColor: this.isInputActive ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.panel.border,
+      borderWidth: this.isInputActive ? 2.2 : 1.6,
     });
 
     drawText(this.ctx, 'ENTRADA DA RELÍQUIA', x + 10, y + 10, {
       font: 'bold 14px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Input box
@@ -150,16 +151,16 @@ export class TempleUI {
     const inputWidth = width - 20;
     const inputHeight = 35;
 
-    this.ctx.fillStyle = COLORS.bg.dark;
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(inputX, inputY, inputWidth, inputHeight);
     
-    this.ctx.strokeStyle = this.isInputActive ? COLORS.primary.gold : COLORS.ui.textDim;
+    this.ctx.strokeStyle = this.isInputActive ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.text.primaryDim;
     this.ctx.lineWidth = 2;
     this.ctx.strokeRect(inputX, inputY, inputWidth, inputHeight);
 
     // Text
     let displayText = this.inputText || 'Clique aqui para digitar...';
-    const textColor = this.inputText ? COLORS.ui.text : COLORS.ui.textDim;
+    const textColor = this.inputText ? GLASS_THEME.palette.text.primary : GLASS_THEME.palette.text.primaryDim;
     
     // Add blinking cursor when active
     if (this.isInputActive) {
@@ -173,7 +174,7 @@ export class TempleUI {
     
     drawText(this.ctx, displayText, inputX + 10, inputY + 12, {
       font: '16px monospace',
-      color: this.isInputActive ? COLORS.primary.gold : textColor,
+      color: this.isInputActive ? GLASS_THEME.palette.accent.amber : textColor,
       shadow: false,
     });
 
@@ -195,12 +196,12 @@ export class TempleUI {
     if (this.errorMessage) {
       drawText(this.ctx, this.errorMessage, x + 10, inputY + inputHeight + 15, {
         font: '12px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
       });
     } else if (this.isInputActive) {
       drawText(this.ctx, 'Digite o texto • Enter para confirmar • Esc para cancelar', x + 10, inputY + inputHeight + 15, {
         font: '12px monospace',
-        color: COLORS.ui.info,
+        color: GLASS_THEME.palette.accent.cyan,
       });
     }
   }
@@ -212,19 +213,19 @@ export class TempleUI {
     const height = 300;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
+      bgColor: GLASS_THEME.palette.panel.gradient[0],
     });
 
     drawText(this.ctx, '✨ Aguardando Relíquia...', this.canvas.width / 2, y + height / 2 - 20, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     drawText(this.ctx, 'Digite algo acima e clique em "Gerar Preview"', this.canvas.width / 2, y + height / 2 + 20, {
       align: 'center',
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
   }
 
@@ -237,8 +238,8 @@ export class TempleUI {
     const height = 300;
 
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Beast preview
@@ -250,7 +251,7 @@ export class TempleUI {
     this.ctx.fillStyle = this.getLineColor(this.previewBeast.line);
     this.ctx.fillRect(beastX, beastY, beastSize, beastSize);
     
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
     this.ctx.lineWidth = 3;
     this.ctx.strokeRect(beastX, beastY, beastSize, beastSize);
 
@@ -260,40 +261,40 @@ export class TempleUI {
 
     drawText(this.ctx, this.previewBeast.name, infoX, infoY, {
       font: 'bold 24px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     drawText(this.ctx, `Linha: ${this.capitalizeFirst(this.previewBeast.line)}`, infoX, infoY + 35, {
       font: '16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     drawText(this.ctx, `Sangue: ${this.capitalizeFirst(this.previewBeast.blood)}`, infoX, infoY + 60, {
       font: '16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     drawText(this.ctx, `Afinidade: ${this.capitalizeFirst(this.previewBeast.affinity)}`, infoX, infoY + 85, {
       font: '16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Relic description
     drawText(this.ctx, 'Descrição da Relíquia:', x + 30, y + 180, {
       font: 'bold 14px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     drawText(this.ctx, this.relicDescription, x + 30, y + 205, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     // Traits
     if (this.previewBeast.traits.length > 0) {
       drawText(this.ctx, `Traços: ${this.previewBeast.traits.join(', ')}`, x + 30, y + 240, {
         font: '12px monospace',
-        color: COLORS.ui.info,
+        color: GLASS_THEME.palette.accent.cyan,
       });
     }
   }
@@ -308,7 +309,7 @@ export class TempleUI {
     const generateIsHovered = isMouseOver(this.mouseX, this.mouseY, generateX, generateY, buttonWidth, buttonHeight);
 
     drawButton(this.ctx, generateX, generateY, buttonWidth, buttonHeight, this.previewBeast ? 'Gerar Novo' : 'Gerar Preview', {
-      bgColor: COLORS.primary.purple,
+      variant: 'primary',
       isHovered: generateIsHovered,
     });
 
@@ -329,7 +330,7 @@ export class TempleUI {
       const createIsHovered = isMouseOver(this.mouseX, this.mouseY, createX, createY, buttonWidth, buttonHeight);
 
       drawButton(this.ctx, createX, createY, buttonWidth, buttonHeight, '✨ Criar Besta', {
-        bgColor: COLORS.primary.gold,
+        variant: 'primary',
         isHovered: createIsHovered,
       });
 
@@ -352,7 +353,7 @@ export class TempleUI {
     const cancelIsHovered = isMouseOver(this.mouseX, this.mouseY, cancelX, cancelY, cancelWidth, cancelHeight);
 
     drawButton(this.ctx, cancelX, cancelY, cancelWidth, cancelHeight, 'Voltar ao Rancho', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: cancelIsHovered,
     });
 

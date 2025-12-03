@@ -3,7 +3,7 @@
  */
 
 import type { GameState } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { getActiveQuests, getCompletedQuests, type Quest } from '../systems/quests';
 import { getItemById } from '../data/shop';
@@ -74,14 +74,14 @@ export class QuestsUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Header
     drawText(this.ctx, '📜 Missões', panelX + 20, panelY + 20, {
       font: 'bold 32px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Contador (ao centro, mesma linha do título)
@@ -89,7 +89,7 @@ export class QuestsUI {
     const completedCount = getCompletedQuests(gameState.quests).length;
     drawText(this.ctx, `${activeCount} ativas | ${completedCount} completas`, panelX + 300, panelY + 30, {
       font: '16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Botão de fechar
@@ -100,7 +100,7 @@ export class QuestsUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -132,11 +132,10 @@ export class QuestsUI {
 
     // Tab Ativas
     const activeIsHovered = isMouseOver(this.mouseX, this.mouseY, x + 20, y, tabWidth, tabHeight);
-    const activeColor = this.selectedTab === 'active' ? COLORS.primary.gold : COLORS.bg.light;
+    const activeColor = this.selectedTab === 'active' ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.panel.gradient[0];
 
     drawButton(this.ctx, x + 20, y, tabWidth, tabHeight, '📝 Ativas', {
-      bgColor: activeColor,
-      textColor: this.selectedTab === 'active' ? COLORS.bg.dark : COLORS.ui.text,
+      variant: this.selectedTab === 'active' ? 'primary' : 'ghost',
       isHovered: this.selectedTab !== 'active' && activeIsHovered,
     });
 
@@ -154,11 +153,10 @@ export class QuestsUI {
 
     // Tab Completadas
     const completedIsHovered = isMouseOver(this.mouseX, this.mouseY, x + 180, y, tabWidth, tabHeight);
-    const completedColor = this.selectedTab === 'completed' ? COLORS.primary.gold : COLORS.bg.light;
+    const completedColor = this.selectedTab === 'completed' ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.panel.gradient[0];
 
     drawButton(this.ctx, x + 180, y, tabWidth, tabHeight, '✅ Completas', {
-      bgColor: completedColor,
-      textColor: this.selectedTab === 'completed' ? COLORS.bg.dark : COLORS.ui.text,
+      variant: this.selectedTab === 'completed' ? 'primary' : 'ghost',
       isHovered: this.selectedTab !== 'completed' && completedIsHovered,
     });
 
@@ -177,7 +175,8 @@ export class QuestsUI {
 
   private drawQuestList(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     const quests = this.selectedTab === 'active' 
@@ -192,7 +191,7 @@ export class QuestsUI {
       drawText(this.ctx, message, x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -216,7 +215,7 @@ export class QuestsUI {
       const scrollProgress = maxScrollOffset > 0 ? this.scrollOffset / maxScrollOffset : 0;
       const scrollBarY = y + scrollProgress * (height - scrollBarHeight);
 
-      this.ctx.fillStyle = COLORS.primary.gold;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.fillRect(x + width - 8, scrollBarY, 6, scrollBarHeight);
     }
   }
@@ -227,8 +226,8 @@ export class QuestsUI {
 
     // Fundo
     this.ctx.fillStyle = isSelected 
-      ? COLORS.primary.gold 
-      : (isHovered ? COLORS.bg.light : 'transparent');
+      ? GLASS_THEME.palette.accent.amber 
+      : (isHovered ? GLASS_THEME.palette.panel.gradient[0] : 'transparent');
     this.ctx.fillRect(x, y, width, height);
 
     // Ícone
@@ -240,13 +239,13 @@ export class QuestsUI {
     // Nome
     drawText(this.ctx, quest.name, x + 50, y + 20, {
       font: 'bold 16px monospace',
-      color: quest.isCompleted ? COLORS.primary.green : COLORS.ui.text,
+      color: quest.isCompleted ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.text.primary,
     });
 
     // Descrição
     drawText(this.ctx, quest.description, x + 50, y + 45, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     // Barra de progresso
@@ -256,21 +255,21 @@ export class QuestsUI {
       const barWidth = width - 60;
       const barHeight = 15;
 
-      this.ctx.fillStyle = COLORS.bg.medium;
+      this.ctx.fillStyle = GLASS_THEME.palette.panel.gradient[0];
       this.ctx.fillRect(barX, barY, barWidth, barHeight);
 
       const progress = Math.min(quest.progress, 1);
-      this.ctx.fillStyle = COLORS.primary.green;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.emerald;
       this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
 
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(barX, barY, barWidth, barHeight);
 
       drawText(this.ctx, `${Math.floor(progress * 100)}%`, barX + barWidth / 2, barY + 12, {
         align: 'center',
         font: '11px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
     }
 
@@ -287,14 +286,15 @@ export class QuestsUI {
 
   private drawQuestDetails(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     if (!this.selectedQuest) {
       drawText(this.ctx, 'Selecione uma missão', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
       });
       return;
     }
@@ -304,34 +304,34 @@ export class QuestsUI {
     // Nome
     drawText(this.ctx, quest.name, x + 20, y + 30, {
       font: 'bold 22px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Tipo
     const typeIcon = this.getQuestTypeIcon(quest.type);
     drawText(this.ctx, `${typeIcon} ${this.getQuestTypeName(quest.type)}`, x + 20, y + 60, {
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
     });
 
     // Descrição
     drawText(this.ctx, 'Objetivo:', x + 20, y + 95, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(quest.description, x + 20, y + 120, width - 40, 20, '14px monospace', COLORS.ui.textDim);
+    this.drawWrappedText(quest.description, x + 20, y + 120, width - 40, 20, '14px monospace', GLASS_THEME.palette.text.primaryDim);
 
     // Progresso
     drawText(this.ctx, 'Progresso:', x + 20, y + 165, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     const goalText = this.getGoalText(quest);
     drawText(this.ctx, goalText, x + 25, y + 190, {
       font: '14px monospace',
-      color: quest.isCompleted ? COLORS.primary.green : COLORS.ui.text,
+      color: quest.isCompleted ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.text.primary,
     });
 
     // Barra de progresso grande
@@ -341,28 +341,28 @@ export class QuestsUI {
       const barWidth = width - 40;
       const barHeight = 25;
 
-      this.ctx.fillStyle = COLORS.bg.medium;
+      this.ctx.fillStyle = GLASS_THEME.palette.panel.gradient[0];
       this.ctx.fillRect(barX, barY, barWidth, barHeight);
 
       const progress = Math.min(quest.progress, 1);
-      this.ctx.fillStyle = COLORS.primary.green;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.emerald;
       this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
 
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 2;
       this.ctx.strokeRect(barX, barY, barWidth, barHeight);
 
       drawText(this.ctx, `${Math.floor(progress * 100)}%`, barX + barWidth / 2, barY + 17, {
         align: 'center',
         font: 'bold 14px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
     }
 
     // Recompensas
     drawText(this.ctx, 'Recompensas:', x + 20, y + 260, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     let rewardY = y + 285;
@@ -370,7 +370,7 @@ export class QuestsUI {
     if (quest.rewards.coronas) {
       drawText(this.ctx, `💰 ${quest.rewards.coronas} Coronas`, x + 25, rewardY, {
         font: '14px monospace',
-        color: COLORS.primary.gold,
+        color: GLASS_THEME.palette.accent.amber,
       });
       rewardY += 25;
     }
@@ -381,7 +381,7 @@ export class QuestsUI {
         if (item) {
           drawText(this.ctx, `🎁 ${item.name} x${reward.quantity}`, x + 25, rewardY, {
             font: '14px monospace',
-            color: COLORS.primary.green,
+            color: GLASS_THEME.palette.accent.emerald,
           });
           rewardY += 25;
         }
@@ -400,7 +400,7 @@ export class QuestsUI {
       const claimIsHovered = isMouseOver(this.mouseX, this.mouseY, claimBtnX, claimBtnY, claimBtnWidth, claimBtnHeight);
 
       drawButton(this.ctx, claimBtnX, claimBtnY, claimBtnWidth, claimBtnHeight, '🎁 Coletar Recompensa', {
-        bgColor: COLORS.primary.green,
+        variant: 'success',
         isHovered: claimIsHovered,
       });
 

@@ -4,7 +4,7 @@
  * Usa inputs HTML reais para funcionalidade completa de seleção e navegação
  */
 
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { authApi } from '../api/authApi';
 
@@ -210,7 +210,7 @@ export class AuthUI {
       border: 1.6px solid rgba(148, 163, 184, 0.32);
       border-radius: ${12 * this.scale}px;
       padding: 0 ${40 * this.scale}px 0 ${18 * this.scale}px;
-      color: ${COLORS.ui.text};
+      color: ${GLASS_THEME.palette.text.primary};
       font-family: monospace;
       font-size: ${20 * this.scale}px;
       font-weight: bold;
@@ -261,7 +261,7 @@ export class AuthUI {
       left: ${x}px;
       top: ${y}px;
       width: ${width}px;
-      color: ${COLORS.ui.error};
+      color: ${GLASS_THEME.palette.accent.danger};
       font-family: monospace;
       font-size: 14px;
       pointer-events: none;
@@ -286,7 +286,7 @@ export class AuthUI {
       input.style.background = 'rgba(24, 32, 54, 0.9)';
       input.style.boxShadow = `0 ${12 * this.scale}px ${30 * this.scale}px ${focusShadow}`;
     } else if (fieldError) {
-      finalBorderColor = COLORS.ui.error;
+      finalBorderColor = GLASS_THEME.palette.accent.danger;
       input.style.background = 'rgba(36, 18, 26, 0.92)';
       input.style.boxShadow = `0 ${10 * this.scale}px ${24 * this.scale}px rgba(239, 68, 68, 0.28)`;
     } else if (isValid) {
@@ -886,21 +886,22 @@ export class AuthUI {
     this.ctx.shadowBlur = 30;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
       bgColor: '#1a1a2e',
-      borderColor: COLORS.primary.gold
+      variant: 'popup',
+      borderWidth: 1.5,
     });
     this.ctx.shadowBlur = 0;
 
     // Title (larger)
     drawText(this.ctx, '🐉 BEAST KEEPERS', panelX + panelWidth / 2, panelY + 90, {
       font: 'bold 48px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
       align: 'center'
     });
 
     // Subtitle
     drawText(this.ctx, 'Bem-vindo ao mundo de Aurath', panelX + panelWidth / 2, panelY + 150, {
       font: 'bold 22px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
       align: 'center'
     });
 
@@ -913,13 +914,13 @@ export class AuthUI {
     descriptions.forEach((desc, i) => {
       drawText(this.ctx, desc, panelX + panelWidth / 2, panelY + 200 + i * 25, {
         font: '16px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
         align: 'center'
       });
     });
 
     // Separator line
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
     this.ctx.moveTo(panelX + 150, panelY + 300);
@@ -936,8 +937,7 @@ export class AuthUI {
     // Login button
     const loginBtnY = panelY + 340;
     drawButton(this.ctx, buttonX, loginBtnY, buttonWidth, 60, '🔐 Entrar', {
-      bgColor: COLORS.primary.purple,
-      hoverColor: COLORS.primary.purpleDark
+      variant: 'primary',
     });
     this.buttons.set('login', {
       x: buttonX,
@@ -963,8 +963,7 @@ export class AuthUI {
     // Register button
     const registerBtnY = panelY + 420;
     drawButton(this.ctx, buttonX, registerBtnY, buttonWidth, 60, '✨ Criar Conta', {
-      bgColor: COLORS.primary.green,
-      hoverColor: '#2d8659'
+      variant: 'success',
     });
     this.buttons.set('register', {
       x: buttonX,
@@ -1006,7 +1005,7 @@ export class AuthUI {
     // Note
     drawText(this.ctx, '(Google OAuth não configurado)', panelX + panelWidth / 2, panelY + 595, {
       font: '12px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.primaryDim,
       align: 'center'
     });
   }
@@ -1084,7 +1083,7 @@ export class AuthUI {
     if (this.errorMessage) {
       drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, passwordInputY + fieldHeight + 60, {
         font: 'bold 15px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
         align: 'center',
         shadow: false,
       });
@@ -1270,7 +1269,7 @@ export class AuthUI {
       currentY += 60;
       drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, currentY, {
         font: 'bold 15px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
         align: 'center',
         shadow: false,
       });

@@ -3,7 +3,7 @@
  */
 
 import type { GameState, Item } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { ITEM_CATEGORIES } from '../data/shop';
 
@@ -65,14 +65,14 @@ export class InventoryUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.purple,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Header
     drawText(this.ctx, '🎒 Inventário', panelX + 20, panelY + 20, {
       font: 'bold 32px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Contador de itens
@@ -80,7 +80,7 @@ export class InventoryUI {
     drawText(this.ctx, `${totalItems} itens`, panelX + panelWidth - 20, panelY + 25, {
       align: 'right',
       font: 'bold 20px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Botão de fechar (melhorado)
@@ -91,7 +91,7 @@ export class InventoryUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -128,12 +128,8 @@ export class InventoryUI {
       const isSelected = this.selectedCategory === cat.id;
       const isHovered = isMouseOver(this.mouseX, this.mouseY, btnX, y, btnWidth, btnHeight);
 
-      const bgColor = isSelected ? COLORS.primary.purple : COLORS.bg.light;
-      const textColor = isSelected ? COLORS.bg.dark : COLORS.ui.text;
-
       drawButton(this.ctx, btnX, y, btnWidth, btnHeight, `${cat.icon} ${cat.name}`, {
-        bgColor,
-        textColor,
+        variant: isSelected ? 'primary' : 'ghost',
         isHovered: !isSelected && isHovered,
       });
 
@@ -152,7 +148,8 @@ export class InventoryUI {
 
   private drawItemList(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     // Filtrar itens
@@ -164,7 +161,7 @@ export class InventoryUI {
       drawText(this.ctx, 'Nenhum item', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.muted,
       });
       return;
     }
@@ -184,16 +181,24 @@ export class InventoryUI {
     const isSelected = this.selectedItem?.id === item.id;
     const isHovered = isMouseOver(this.mouseX, this.mouseY, x, y, width, height);
 
-    // Fundo
-    this.ctx.fillStyle = isSelected 
-      ? COLORS.primary.purple 
-      : (isHovered ? COLORS.bg.light : 'transparent');
-    this.ctx.fillRect(x, y, width, height);
+    // Fundo com gradiente glass
+    if (isSelected || isHovered) {
+      const gradient = this.ctx.createLinearGradient(x, y, x, y + height);
+      if (isSelected) {
+        gradient.addColorStop(0, 'rgba(141, 168, 255, 0.3)');
+        gradient.addColorStop(1, 'rgba(63, 110, 227, 0.25)');
+      } else {
+        gradient.addColorStop(0, 'rgba(60, 194, 255, 0.15)');
+        gradient.addColorStop(1, 'rgba(26, 84, 176, 0.1)');
+      }
+      this.ctx.fillStyle = gradient;
+      this.ctx.fillRect(x, y, width, height);
+    }
 
     // Borda se selecionado
     if (isSelected) {
-      this.ctx.strokeStyle = COLORS.primary.gold;
-      this.ctx.lineWidth = 2;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
+      this.ctx.lineWidth = 1.5;
       this.ctx.strokeRect(x, y, width, height);
     }
 
@@ -208,7 +213,7 @@ export class InventoryUI {
     // Nome
     drawText(this.ctx, item.name, x + 50, y + 20, {
       font: 'bold 18px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     // Quantidade
@@ -216,14 +221,14 @@ export class InventoryUI {
       drawText(this.ctx, `x${item.quantity}`, x + width - 10, y + 20, {
         align: 'right',
         font: 'bold 18px monospace',
-        color: COLORS.primary.gold,
+        color: GLASS_THEME.palette.accent.amber,
       });
     }
 
     // Efeito
     drawText(this.ctx, item.effect, x + 50, y + 45, {
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     this.buttons.set(`item_${item.id}`, {
@@ -239,14 +244,15 @@ export class InventoryUI {
 
   private drawItemDetails(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      bgColor: COLORS.bg.dark,
+      variant: 'panel',
+      borderWidth: 1.5,
     });
 
     if (!this.selectedItem) {
       drawText(this.ctx, 'Selecione um item', x + width / 2, y + height / 2, {
         align: 'center',
         font: '18px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.muted,
       });
       return;
     }
@@ -267,39 +273,39 @@ export class InventoryUI {
     // Nome do item
     drawText(this.ctx, item.name, x + 20, y + 120, {
       font: 'bold 22px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Quantidade
     if (item.quantity && item.quantity > 0) {
       drawText(this.ctx, `Quantidade: ${item.quantity}`, x + 20, y + 150, {
         font: '16px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
     }
 
     // Efeito
     drawText(this.ctx, 'Efeito:', x + 20, y + 190, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(item.effect, x + 20, y + 215, width - 40, 20, '14px monospace', COLORS.primary.green);
+    this.drawWrappedText(item.effect, x + 20, y + 215, width - 40, 20, '14px monospace', GLASS_THEME.palette.accent.emerald);
 
     // Descrição
     drawText(this.ctx, 'Descrição:', x + 20, y + 260, {
       font: 'bold 16px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
-    this.drawWrappedText(item.description, x + 20, y + 285, width - 40, 20, '14px monospace', COLORS.ui.textDim);
+    this.drawWrappedText(item.description, x + 20, y + 285, width - 40, 20, '14px monospace', GLASS_THEME.palette.text.secondary);
 
     // Mensagem sobre materiais de craft
     if (item.category === 'crafting') {
       drawText(this.ctx, '⚙️ Ingrediente de Craft', x + width / 2, y + height - 100, {
         align: 'center',
         font: '14px monospace',
-        color: COLORS.ui.info,
+        color: GLASS_THEME.palette.accent.cyan,
       });
     }
 
@@ -313,7 +319,7 @@ export class InventoryUI {
 
       const beastName = gameState.activeBeast?.name || 'Besta';
       drawButton(this.ctx, useBtnX, useBtnY, useBtnWidth, useBtnHeight, `✨ Usar em ${beastName}`, {
-        bgColor: COLORS.primary.green,
+        variant: 'success',
         isHovered: useIsHovered,
       });
 
@@ -334,7 +340,7 @@ export class InventoryUI {
       drawText(this.ctx, '⚠️ Nenhuma besta ativa', x + width / 2, y + height - 40, {
         align: 'center',
         font: '16px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
       });
     }
   }

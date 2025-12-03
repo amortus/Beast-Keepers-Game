@@ -102,10 +102,8 @@ export async function leaveQueue(userId: number): Promise<void> {
  * Busca status do jogador na fila
  */
 export async function getQueueStatus(userId: number): Promise<QueueEntry | null> {
-  const client = await getClient();
-  
   try {
-    const result = await client.query(
+    const result = await query(
       `SELECT * FROM pvp_matchmaking_queue WHERE user_id = $1`,
       [userId]
     );

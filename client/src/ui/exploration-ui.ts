@@ -5,7 +5,7 @@
 
 import type { ExplorationState, ExplorationZone, Encounter, WildEnemy } from '../systems/exploration';
 import type { Item } from '../types';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver, drawBar } from './ui-helper';
 import { EXPLORATION_ZONES } from '../systems/exploration';
 
@@ -66,7 +66,7 @@ export class ExplorationUI {
     }
     
     // Clear
-    this.ctx.fillStyle = COLORS.bg.dark;
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Rebuild buttons
@@ -89,22 +89,22 @@ export class ExplorationUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.gold,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Title
     drawText(this.ctx, '🗺️ EXPLORAÇÃO', this.canvas.width / 2, panelY + 30, {
       align: 'center',
       font: 'bold 32px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Subtitle
     drawText(this.ctx, 'Escolha uma zona para explorar', this.canvas.width / 2, panelY + 65, {
       align: 'center',
       font: '16px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     // Zone cards
@@ -133,7 +133,7 @@ export class ExplorationUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -152,18 +152,27 @@ export class ExplorationUI {
     const zoneData = EXPLORATION_ZONES[zone];
     const isHovered = isMouseOver(this.mouseX, this.mouseY, x, y, width, height);
 
-    // Card background
-    const bgColor = isHovered ? COLORS.bg.light : COLORS.bg.medium;
-    drawPanel(this.ctx, x, y, width, height, {
-      bgColor,
-      borderColor: this.getDifficultyColor(zoneData.difficulty),
-    });
+    // Card background com gradiente glass
+    const gradient = this.ctx.createLinearGradient(x, y, x, y + height);
+    if (isHovered) {
+      gradient.addColorStop(0, 'rgba(60, 194, 255, 0.25)');
+      gradient.addColorStop(1, 'rgba(26, 84, 176, 0.2)');
+    } else {
+      gradient.addColorStop(0, 'rgba(16, 52, 90, 0.4)');
+      gradient.addColorStop(1, 'rgba(8, 26, 48, 0.5)');
+    }
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(x, y, width, height);
+    
+    this.ctx.strokeStyle = this.getDifficultyColor(zoneData.difficulty);
+    this.ctx.lineWidth = 1.5;
+    this.ctx.strokeRect(x, y, width, height);
 
     // Zone name
     drawText(this.ctx, zoneData.name, x + width / 2, y + 20, {
       align: 'center',
       font: 'bold 18px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Difficulty stars
@@ -171,7 +180,7 @@ export class ExplorationUI {
     drawText(this.ctx, stars, x + width / 2, y + 45, {
       align: 'center',
       font: '16px monospace',
-      color: COLORS.ui.warning,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Description (wrapped)
@@ -185,7 +194,7 @@ export class ExplorationUI {
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '⚔️ Explorar', {
-      bgColor: COLORS.primary.green,
+      variant: 'primary',
       isHovered: btnIsHovered,
     });
 
@@ -236,13 +245,13 @@ export class ExplorationUI {
     drawText(this.ctx, `🗺️ ${zoneData.name}`, this.canvas.width / 2, 30, {
       align: 'center',
       font: 'bold 24px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     drawText(this.ctx, `📍 Distância: ${this.state.distance}m | ⚔️ Derrotados: ${this.state.enemiesDefeated} | 💎 Tesouros: ${this.state.treasuresFound}`, this.canvas.width / 2, 55, {
       align: 'center',
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
   }
 
@@ -258,7 +267,7 @@ export class ExplorationUI {
     const progress = Math.min(currentDistance, MAX_DISTANCE);
 
     drawBar(this.ctx, barX, barY, barWidth, barHeight, progress, MAX_DISTANCE, {
-      fillColor: COLORS.primary.green,
+      fillColor: GLASS_THEME.palette.accent.emerald,
       label: `Progresso: ${currentDistance}m / ${MAX_DISTANCE}m`,
     });
   }
@@ -289,19 +298,19 @@ export class ExplorationUI {
     drawText(this.ctx, '⚔️ INIMIGO ENCONTRADO!', x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 22px monospace',
-      color: COLORS.ui.error,
+      color: GLASS_THEME.palette.accent.danger,
     });
 
     drawText(this.ctx, enemy.name, x + width / 2, y + 60, {
       align: 'center',
       font: 'bold 20px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     drawText(this.ctx, `Level ${enemy.level} | Raridade: ${enemy.rarity.toUpperCase()}`, x + width / 2, y + 85, {
       align: 'center',
       font: '14px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     // Stats
@@ -323,7 +332,7 @@ export class ExplorationUI {
 
       drawText(this.ctx, `${stat.name}: ${stat.value}`, statX, statY, {
         font: '14px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
     });
 
@@ -331,7 +340,7 @@ export class ExplorationUI {
     drawText(this.ctx, enemy.description, x + width / 2, y + height - 80, {
       align: 'center',
       font: '13px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     // Battle button
@@ -342,7 +351,7 @@ export class ExplorationUI {
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '⚔️ LUTAR!', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: btnIsHovered,
     });
 
@@ -363,7 +372,7 @@ export class ExplorationUI {
     drawText(this.ctx, '💎 TESOURO ENCONTRADO!', x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 22px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // List treasures
@@ -372,7 +381,7 @@ export class ExplorationUI {
       drawText(this.ctx, `• ${item.name} x${item.quantity}`, x + width / 2, currentY, {
         align: 'center',
         font: '16px monospace',
-        color: COLORS.ui.text,
+        color: GLASS_THEME.palette.text.primary,
       });
       currentY += 25;
     });
@@ -385,7 +394,7 @@ export class ExplorationUI {
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '💰 Coletar', {
-      bgColor: COLORS.primary.green,
+      variant: 'success',
       isHovered: btnIsHovered,
     });
 
@@ -404,7 +413,7 @@ export class ExplorationUI {
     drawText(this.ctx, '📜 EVENTO!', x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 22px monospace',
-      color: COLORS.primary.blue,
+      color: GLASS_THEME.palette.accent.cyan,
     });
 
     this.drawWrappedText(message, x + 40, y + 80, width - 80, 22);
@@ -417,7 +426,7 @@ export class ExplorationUI {
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '➡️ Continuar', {
-      bgColor: COLORS.primary.blue,
+      variant: 'primary',
       isHovered: btnIsHovered,
     });
 
@@ -438,13 +447,13 @@ export class ExplorationUI {
     drawText(this.ctx, '🌿 Nada por aqui...', x + width / 2, y + 30, {
       align: 'center',
       font: 'bold 22px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.muted,
     });
 
     drawText(this.ctx, 'Continue explorando!', x + width / 2, y + 80, {
       align: 'center',
       font: '16px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     // Walk button
@@ -455,7 +464,7 @@ export class ExplorationUI {
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '🚶 Andar', {
-      bgColor: COLORS.primary.green,
+      variant: 'primary',
       isHovered: btnIsHovered,
     });
 
@@ -477,13 +486,14 @@ export class ExplorationUI {
     const panelY = 150;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     drawText(this.ctx, '🚶 Continue explorando...', this.canvas.width / 2, panelY + 60, {
       align: 'center',
       font: 'bold 20px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Walk button
@@ -494,7 +504,7 @@ export class ExplorationUI {
     const btnIsHovered = isMouseOver(this.mouseX, this.mouseY, btnX, btnY, btnWidth, btnHeight);
 
     drawButton(this.ctx, btnX, btnY, btnWidth, btnHeight, '➡️ Andar 100m', {
-      bgColor: COLORS.primary.green,
+      variant: 'primary',
       isHovered: btnIsHovered,
     });
 
@@ -518,13 +528,14 @@ export class ExplorationUI {
     const panelY = 120;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.light,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     drawText(this.ctx, '💎 Materiais Coletados', panelX + panelWidth / 2, panelY + 25, {
       align: 'center',
       font: 'bold 16px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // List materials
@@ -536,13 +547,13 @@ export class ExplorationUI {
       drawText(this.ctx, 'Nenhum material ainda', panelX + panelWidth / 2, currentY, {
         align: 'center',
         font: '14px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.muted,
       });
     } else {
       materials.forEach(material => {
         drawText(this.ctx, `• ${material.name} x${material.quantity}`, panelX + 20, currentY, {
           font: '13px monospace',
-          color: COLORS.ui.text,
+          color: GLASS_THEME.palette.text.primary,
         });
         currentY += 22;
       });
@@ -550,7 +561,7 @@ export class ExplorationUI {
       if (this.state.collectedMaterials.length > maxDisplay) {
         drawText(this.ctx, `... e mais ${this.state.collectedMaterials.length - maxDisplay}`, panelX + 20, currentY, {
           font: '12px monospace',
-          color: COLORS.ui.textDim,
+          color: GLASS_THEME.palette.text.secondary,
         });
       }
     }
@@ -567,7 +578,7 @@ export class ExplorationUI {
     const returnIsHovered = isMouseOver(this.mouseX, this.mouseY, returnX, y, btnWidth, btnHeight);
 
     drawButton(this.ctx, returnX, y, btnWidth, btnHeight, '🏠 Voltar', {
-      bgColor: COLORS.ui.warning,
+      variant: 'ghost',
       isHovered: returnIsHovered,
     });
 
@@ -588,7 +599,7 @@ export class ExplorationUI {
     let currentY = y;
 
     this.ctx.font = '14px monospace';
-    this.ctx.fillStyle = COLORS.ui.text;
+    this.ctx.fillStyle = GLASS_THEME.palette.text.primary;
     this.ctx.textAlign = 'left';
 
     for (const word of words) {
@@ -607,11 +618,11 @@ export class ExplorationUI {
   }
 
   private getDifficultyColor(difficulty: number): string {
-    if (difficulty <= 1) return COLORS.primary.green;
-    if (difficulty <= 2) return COLORS.primary.blue;
-    if (difficulty <= 3) return COLORS.ui.warning;
-    if (difficulty <= 4) return COLORS.ui.error;
-    return COLORS.primary.purple;
+    if (difficulty <= 1) return GLASS_THEME.palette.accent.emerald;
+    if (difficulty <= 2) return GLASS_THEME.palette.accent.cyan;
+    if (difficulty <= 3) return GLASS_THEME.palette.accent.amber;
+    if (difficulty <= 4) return GLASS_THEME.palette.accent.danger;
+    return GLASS_THEME.palette.accent.lilac;
   }
 
   public showZoneSelect() {

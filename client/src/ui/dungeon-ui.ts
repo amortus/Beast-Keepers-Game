@@ -6,7 +6,7 @@
 import type { GameState } from '../types';
 import type { Dungeon, DungeonFloor } from '../data/dungeons';
 import { DUNGEONS, getAvailableDungeons, calculateFatigueCost } from '../data/dungeons';
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 
 export class DungeonUI {
@@ -66,14 +66,14 @@ export class DungeonUI {
     const panelY = (this.canvas.height - panelHeight) / 2;
 
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: COLORS.bg.medium,
-      borderColor: COLORS.primary.purple,
+      variant: 'popup',
+      borderWidth: 1.5,
     });
 
     // Header
     drawText(this.ctx, '🏛️ Dungeons', panelX + 20, panelY + 25, {
       font: 'bold 36px monospace',
-      color: COLORS.primary.purple,
+      color: GLASS_THEME.palette.accent.lilac,
     });
 
     // Fadiga e Nível da beast ativa
@@ -81,7 +81,7 @@ export class DungeonUI {
     if (beast) {
       const fatigue = beast.secondaryStats.fatigue;
       const maxFatigue = 100;
-      const fatigueColor = fatigue < 50 ? COLORS.primary.green : fatigue < 80 ? COLORS.primary.gold : COLORS.ui.error;
+      const fatigueColor = fatigue < 50 ? GLASS_THEME.palette.accent.emerald : fatigue < 80 ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.accent.danger;
       const level = beast.level || 1;
       
       drawText(this.ctx, `⭐ Nível ${level} | 😓 Fadiga: ${fatigue}/${maxFatigue}`, panelX + panelWidth - 20, panelY + 30, {
@@ -99,7 +99,7 @@ export class DungeonUI {
     const closeIsHovered = isMouseOver(this.mouseX, this.mouseY, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight);
 
     drawButton(this.ctx, closeBtnX, closeBtnY, closeBtnWidth, closeBtnHeight, '✖ Fechar', {
-      bgColor: COLORS.ui.error,
+      variant: 'danger',
       isHovered: closeIsHovered,
     });
 
@@ -125,7 +125,7 @@ export class DungeonUI {
   private drawDungeonList(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawText(this.ctx, 'Dungeons Disponíveis', x, y, {
       font: 'bold 24px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     const playerVictories = gameState.victories || 0;
@@ -134,7 +134,7 @@ export class DungeonUI {
     // Mostrar vitórias do jogador
     drawText(this.ctx, `🏆 Vitórias: ${playerVictories}`, x, y + 30, {
       font: '16px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     let currentY = y + 65;
@@ -147,15 +147,24 @@ export class DungeonUI {
       const currentFloor = gameState.dungeonProgress?.[dungeon.id]?.currentFloor || 1;
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x, currentY, width, dungeonHeight);
 
-      // Background
-      this.ctx.fillStyle = isHovered 
-        ? COLORS.bg.light 
-        : (isCompleted ? 'rgba(72, 187, 120, 0.2)' : COLORS.bg.dark);
+      // Background com gradiente glass
+      const gradient = this.ctx.createLinearGradient(x, currentY, x, currentY + dungeonHeight);
+      if (isHovered) {
+        gradient.addColorStop(0, 'rgba(60, 194, 255, 0.25)');
+        gradient.addColorStop(1, 'rgba(26, 84, 176, 0.2)');
+      } else if (isCompleted) {
+        gradient.addColorStop(0, 'rgba(78, 212, 158, 0.2)');
+        gradient.addColorStop(1, 'rgba(44, 168, 126, 0.15)');
+      } else {
+        gradient.addColorStop(0, 'rgba(16, 52, 90, 0.3)');
+        gradient.addColorStop(1, 'rgba(8, 26, 48, 0.4)');
+      }
+      this.ctx.fillStyle = gradient;
       this.ctx.fillRect(x, currentY, width, dungeonHeight);
 
       // Borda
-      this.ctx.strokeStyle = isCompleted ? COLORS.primary.green : COLORS.primary.purple;
-      this.ctx.lineWidth = 2;
+      this.ctx.strokeStyle = isCompleted ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.panel.border;
+      this.ctx.lineWidth = 1.5;
       this.ctx.strokeRect(x, currentY, width, dungeonHeight);
 
       // Ícone (esquerda, reduzido)
@@ -164,7 +173,7 @@ export class DungeonUI {
       });
 
       // Nome (centro-esquerda, fonte reduzida)
-      const nameColor = isAvailable ? COLORS.ui.text : COLORS.ui.textDim;
+      const nameColor = isAvailable ? GLASS_THEME.palette.text.primary : GLASS_THEME.palette.text.muted;
       drawText(this.ctx, dungeon.name, x + 85, currentY + 18, {
         font: 'bold 18px monospace',
         color: nameColor,
@@ -184,14 +193,14 @@ export class DungeonUI {
       }
       drawText(this.ctx, description, x + 85, currentY + 40, {
         font: '12px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.secondary,
       });
 
       // Requisito de vitórias (abaixo da descrição)
       const reqText = isAvailable 
         ? `✅ ${dungeon.minVictories > 0 ? `${dungeon.minVictories} vitórias` : 'Disponível'}` 
         : `🔒 ${dungeon.minVictories} vitórias necessárias`;
-      const reqColor = isAvailable ? COLORS.primary.green : COLORS.ui.error;
+      const reqColor = isAvailable ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.danger;
       drawText(this.ctx, reqText, x + 85, currentY + 60, {
         font: 'bold 12px monospace',
         color: reqColor,
@@ -206,7 +215,7 @@ export class DungeonUI {
         drawText(this.ctx, progressText, x + width - 15, progressY, {
           align: 'right',
           font: 'bold 15px monospace',
-          color: isCompleted ? COLORS.primary.gold : COLORS.primary.purple,
+          color: isCompleted ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.accent.lilac,
         });
       } else {
         // Mostrar quantas vitórias faltam
@@ -214,7 +223,7 @@ export class DungeonUI {
         drawText(this.ctx, `Faltam ${needed} vitórias`, x + width - 15, currentY + 38, {
           align: 'right',
           font: '12px monospace',
-          color: COLORS.ui.error,
+          color: GLASS_THEME.palette.accent.danger,
         });
       }
 
@@ -251,7 +260,7 @@ export class DungeonUI {
     const backIsHovered = isMouseOver(this.mouseX, this.mouseY, x, y, backBtnWidth, backBtnHeight);
 
     drawButton(this.ctx, x, y, backBtnWidth, backBtnHeight, '← Voltar', {
-      bgColor: COLORS.bg.light,
+      variant: 'ghost',
       isHovered: backIsHovered,
     });
 
@@ -269,14 +278,14 @@ export class DungeonUI {
     drawText(this.ctx, `${dungeon.icon} ${dungeon.name}`, x + width / 2, y + 15, {
       align: 'center',
       font: 'bold 32px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
     });
 
     // Descrição
     drawText(this.ctx, dungeon.description, x + width / 2, y + 55, {
       align: 'center',
       font: '16px monospace',
-      color: COLORS.ui.textDim,
+      color: GLASS_THEME.palette.text.secondary,
     });
 
     // Progresso
@@ -286,7 +295,7 @@ export class DungeonUI {
     drawText(this.ctx, progressText, x + width / 2, y + 85, {
       align: 'center',
       font: 'bold 20px monospace',
-      color: dungeonProgress.completed ? COLORS.primary.green : COLORS.primary.purple,
+      color: dungeonProgress.completed ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.lilac,
     });
 
     // Lista de andares
@@ -296,7 +305,7 @@ export class DungeonUI {
 
     drawText(this.ctx, 'Selecione o Andar:', x, floorListY, {
       font: 'bold 18px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
     });
 
     let currentFloorY = floorListY + 35;
@@ -310,41 +319,50 @@ export class DungeonUI {
       const canEnter = isUnlocked && fatigueAfter <= maxFatigue && !isCleared;
       const isHovered = isMouseOver(this.mouseX, this.mouseY, x, currentFloorY, width, floorHeight);
 
-      // Background
-      this.ctx.fillStyle = isHovered && canEnter
-        ? COLORS.bg.light
-        : (isCleared ? 'rgba(72, 187, 120, 0.15)' : COLORS.bg.dark);
+      // Background com gradiente glass
+      const gradient = this.ctx.createLinearGradient(x, currentFloorY, x, currentFloorY + floorHeight);
+      if (isHovered && canEnter) {
+        gradient.addColorStop(0, 'rgba(60, 194, 255, 0.25)');
+        gradient.addColorStop(1, 'rgba(26, 84, 176, 0.2)');
+      } else if (isCleared) {
+        gradient.addColorStop(0, 'rgba(78, 212, 158, 0.15)');
+        gradient.addColorStop(1, 'rgba(44, 168, 126, 0.1)');
+      } else {
+        gradient.addColorStop(0, 'rgba(16, 52, 90, 0.3)');
+        gradient.addColorStop(1, 'rgba(8, 26, 48, 0.4)');
+      }
+      this.ctx.fillStyle = gradient;
       this.ctx.fillRect(x, currentFloorY, width, floorHeight);
 
       // Borda
       this.ctx.strokeStyle = isCleared 
-        ? COLORS.primary.green 
-        : (isUnlocked ? COLORS.primary.purple : COLORS.ui.textDim);
-      this.ctx.lineWidth = 2;
+        ? GLASS_THEME.palette.accent.emerald 
+        : (isUnlocked ? GLASS_THEME.palette.panel.border : GLASS_THEME.palette.text.muted);
+      this.ctx.lineWidth = 1.5;
       this.ctx.strokeRect(x, currentFloorY, width, floorHeight);
 
       // Número do andar
       const floorIcon = floor.boss ? '👑' : '⚔️';
       drawText(this.ctx, `${floorIcon} Andar ${floorNum}`, x + 15, currentFloorY + 20, {
         font: 'bold 20px monospace',
-        color: isUnlocked ? COLORS.ui.text : COLORS.ui.textDim,
+        color: isUnlocked ? GLASS_THEME.palette.text.primary : GLASS_THEME.palette.text.muted,
       });
 
       // Nome do andar
       drawText(this.ctx, floor.name, x + 15, currentFloorY + 45, {
         font: '16px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.secondary,
       });
 
       // Inimigos
       const enemyCount = floor.enemies.length + (floor.boss ? 1 : 0);
       drawText(this.ctx, `${enemyCount} inimigos`, x + 15, currentFloorY + 65, {
         font: '14px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.secondary,
       });
 
       // Custo de fadiga
-      const costColor = fatigueAfter <= maxFatigue ? COLORS.primary.green : COLORS.ui.error;
+      const costColor = fatigueAfter <= maxFatigue ? GLASS_THEME.palette.accent.emerald : GLASS_THEME.palette.accent.danger;
       drawText(this.ctx, `😓 +${fatigueCost}`, x + width - 150, currentFloorY + 35, {
         font: 'bold 18px monospace',
         color: costColor,
@@ -352,20 +370,20 @@ export class DungeonUI {
 
       // Status
       let statusText = '';
-      let statusColor = COLORS.ui.text;
+      let statusColor = GLASS_THEME.palette.text.primary;
 
       if (isCleared) {
         statusText = '✅ Completo';
-        statusColor = COLORS.primary.green;
+        statusColor = GLASS_THEME.palette.accent.emerald;
       } else if (!isUnlocked) {
         statusText = '🔒 Bloqueado';
-        statusColor = COLORS.ui.textDim;
+        statusColor = GLASS_THEME.palette.text.muted;
       } else if (fatigueAfter > maxFatigue) {
         statusText = '😓 Muito Cansado';
-        statusColor = COLORS.ui.error;
+        statusColor = GLASS_THEME.palette.accent.danger;
       } else {
         statusText = '▶ Entrar';
-        statusColor = COLORS.primary.purple;
+        statusColor = GLASS_THEME.palette.accent.lilac;
       }
 
       drawText(this.ctx, statusText, x + width - 15, currentFloorY + 35, {

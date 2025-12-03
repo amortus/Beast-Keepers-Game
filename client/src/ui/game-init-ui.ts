@@ -3,7 +3,7 @@
  * Beast Keepers - First time setup after registration
  */
 
-import { COLORS } from './colors';
+import { GLASS_THEME } from './theme';
 import { drawPanel, drawText, drawButton, isMouseOver } from './ui-helper';
 import { gameApi } from '../api/gameApi';
 
@@ -153,22 +153,22 @@ export class GameInitUI {
     this.ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
     this.ctx.shadowBlur = 30;
     drawPanel(this.ctx, panelX, panelY, panelWidth, panelHeight, {
-      bgColor: '#1a1a2e',
-      borderColor: COLORS.primary.gold
+      variant: 'popup',
+      borderWidth: 1.5,
     });
     this.ctx.shadowBlur = 0;
 
     // Title (larger icon + text)
     drawText(this.ctx, '🐉 BEM-VINDO, GUARDIÃO!', panelX + panelWidth / 2, panelY + 90, {
       font: 'bold 48px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
       align: 'center'
     });
 
     // Subtitle
     drawText(this.ctx, 'Você está prestes a embarcar em uma jornada épica', panelX + panelWidth / 2, panelY + 160, {
       font: '18px monospace',
-      color: COLORS.ui.text,
+      color: GLASS_THEME.palette.text.primary,
       align: 'center'
     });
 
@@ -181,13 +181,13 @@ export class GameInitUI {
     lines.forEach((line, i) => {
       drawText(this.ctx, line, panelX + panelWidth / 2, panelY + 220 + i * 30, {
         font: '16px monospace',
-        color: COLORS.ui.textDim,
+        color: GLASS_THEME.palette.text.primaryDim,
         align: 'center'
       });
     });
 
     // Separator line
-    this.ctx.strokeStyle = COLORS.primary.gold;
+    this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
     this.ctx.lineWidth = 2;
     this.ctx.beginPath();
     this.ctx.moveTo(panelX + 150, panelY + 310);
@@ -197,7 +197,7 @@ export class GameInitUI {
     // Input field label
     drawText(this.ctx, 'Digite o nome do seu Guardião:', panelX + panelWidth / 2, panelY + 360, {
       font: 'bold 20px monospace',
-      color: COLORS.primary.gold,
+      color: GLASS_THEME.palette.accent.amber,
       align: 'center'
     });
 
@@ -221,14 +221,14 @@ export class GameInitUI {
     this.ctx.fillRect(fieldX, fieldY, fieldWidth, fieldHeight);
 
     // Border (thick when active)
-    this.ctx.strokeStyle = this.activeField ? COLORS.primary.gold : COLORS.ui.textDim;
+    this.ctx.strokeStyle = this.activeField ? GLASS_THEME.palette.accent.amber : GLASS_THEME.palette.text.primaryDim;
     this.ctx.lineWidth = this.activeField ? 5 : 2;
     this.ctx.strokeRect(fieldX, fieldY, fieldWidth, fieldHeight);
     this.ctx.shadowBlur = 0;
 
     // Inner glow when active
     if (this.activeField) {
-      this.ctx.strokeStyle = COLORS.primary.gold;
+      this.ctx.strokeStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.lineWidth = 1;
       this.ctx.globalAlpha = 0.3;
       this.ctx.strokeRect(fieldX + 4, fieldY + 4, fieldWidth - 8, fieldHeight - 8);
@@ -238,14 +238,14 @@ export class GameInitUI {
     // Input text (GRANDE)
     drawText(this.ctx, this.playerName || 'Clique para digitar...', fieldX + 25, fieldY + 45, {
       font: this.playerName ? 'bold 24px monospace' : '20px monospace',
-      color: this.playerName ? COLORS.ui.text : COLORS.ui.textDim
+      color: this.playerName ? GLASS_THEME.palette.text.primary : GLASS_THEME.palette.text.primaryDim
     });
 
     // Cursor (blinking, large)
     if (this.activeField && Math.floor(Date.now() / 500) % 2 === 0) {
       this.ctx.font = 'bold 24px monospace';
       const textWidth = this.ctx.measureText(this.playerName).width;
-      this.ctx.fillStyle = COLORS.primary.gold;
+      this.ctx.fillStyle = GLASS_THEME.palette.accent.amber;
       this.ctx.fillRect(fieldX + 25 + textWidth, fieldY + 20, 4, 35);
     }
 
@@ -253,7 +253,7 @@ export class GameInitUI {
     if (this.activeField) {
       drawText(this.ctx, '(Enter para continuar)', fieldX + fieldWidth - 180, fieldY + fieldHeight + 25, {
         font: '14px monospace',
-        color: COLORS.primary.gold
+        color: GLASS_THEME.palette.accent.amber
       });
     }
 
@@ -261,7 +261,7 @@ export class GameInitUI {
     if (this.errorMessage) {
       drawText(this.ctx, this.errorMessage, panelX + panelWidth / 2, panelY + 500, {
         font: 'bold 16px monospace',
-        color: COLORS.ui.error,
+        color: GLASS_THEME.palette.accent.danger,
         align: 'center'
       });
     }
@@ -270,8 +270,7 @@ export class GameInitUI {
     const initBtnY = panelY + 540;
     const btnText = this.isLoading ? '⏳ Iniciando jogo...' : '▶ Começar Jornada!';
     drawButton(this.ctx, panelX + 200, initBtnY, 400, 60, btnText, {
-      bgColor: COLORS.primary.gold,
-      hoverColor: '#d4af37',
+      variant: 'primary',
       isDisabled: this.isLoading
     });
     if (!this.isLoading) {
