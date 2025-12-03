@@ -34,10 +34,21 @@ export async function getCurrentSeason(): Promise<Season | null> {
   
   // Usar query() em vez de getClient() para gerenciar conexões automaticamente
   try {
+    // Verificar qual coluna existe na tabela (number ou season_number)
+    const columnCheck = await query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'pvp_seasons' 
+        AND column_name IN ('number', 'season_number')
+    `);
+    
+    const hasNumber = columnCheck.rows.some((r: any) => r.column_name === 'number');
+    const seasonColumn = hasNumber ? 'number' : 'season_number';
+    
     const result = await query(
       `SELECT * FROM pvp_seasons 
        WHERE status = 'active' 
-       ORDER BY number DESC 
+       ORDER BY ${seasonColumn} DESC 
        LIMIT 1`
     );
     
@@ -52,16 +63,17 @@ export async function getCurrentSeason(): Promise<Season | null> {
     }
     
     const row = result.rows[0];
+    // Mapear para interface Season (suportar ambas estruturas)
     const season: Season = {
-      id: row.id,
-      number: row.number,
-      name: row.name,
+      id: row.id || row.season_number || row.number,
+      number: row.number || row.season_number || 1,
+      name: row.name || `Temporada ${row.number || row.season_number || 1}`,
       startDate: row.start_date,
       endDate: row.end_date,
-      status: row.status,
+      status: row.status || 'active',
       rewardsConfig: row.rewards_config || {},
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      createdAt: row.created_at || new Date(),
+      updatedAt: row.updated_at || new Date(),
     };
     
     // Atualizar cache
@@ -97,15 +109,27 @@ export async function createNewSeason(): Promise<Season> {
   try {
     await client.query('BEGIN');
     
+    // Verificar qual coluna existe na tabela (number ou season_number)
+    const columnCheck = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'pvp_seasons' 
+        AND column_name IN ('number', 'season_number')
+    `);
+    
+    const hasNumber = columnCheck.rows.some((r: any) => r.column_name === 'number');
+    const hasSeasonNumber = columnCheck.rows.some((r: any) => r.column_name === 'season_number');
+    const seasonColumn = hasNumber ? 'number' : 'season_number';
+    
     // Buscar última temporada
     const lastSeasonResult = await client.query(
-      `SELECT number FROM pvp_seasons 
-       ORDER BY number DESC 
+      `SELECT ${seasonColumn} FROM pvp_seasons 
+       ORDER BY ${seasonColumn} DESC 
        LIMIT 1`
     );
     
     const nextNumber = lastSeasonResult.rows.length > 0 
-      ? lastSeasonResult.rows[0].number + 1 
+      ? (lastSeasonResult.rows[0][seasonColumn] || 0) + 1 
       : 1;
     
     const startDate = new Date();
@@ -121,30 +145,44 @@ export async function createNewSeason(): Promise<Season> {
        WHERE status = 'active'`
     );
     
-    // Criar nova temporada
-    const result = await client.query(
-      `INSERT INTO pvp_seasons 
+    // Criar nova temporada - usar a coluna correta
+    let insertQuery: string;
+    let insertValues: any[];
+    
+    if (hasNumber) {
+      // Usar number (nova estrutura)
+      insertQuery = `INSERT INTO pvp_seasons 
        (number, name, start_date, end_date, status, rewards_config, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'active', '{}'::jsonb, NOW(), NOW())
-       RETURNING *`,
-      [nextNumber, name, startDate, endDate]
-    );
+       RETURNING *`;
+      insertValues = [nextNumber, name, startDate, endDate];
+    } else {
+      // Usar season_number (estrutura antiga)
+      insertQuery = `INSERT INTO pvp_seasons 
+       (season_number, start_date, end_date, status, created_at)
+       VALUES ($1, $2, $3, 'active', NOW())
+       RETURNING *`;
+      insertValues = [nextNumber, startDate, endDate];
+    }
+    
+    const result = await client.query(insertQuery, insertValues);
     
     await client.query('COMMIT');
     
     const row = result.rows[0];
     console.log(`[PVP Season] Created new season: ${name} (${nextNumber})`);
     
+    // Mapear para interface Season (suportar ambas estruturas)
     const season: Season = {
-      id: row.id,
-      number: row.number,
-      name: row.name,
+      id: row.id || row.season_number || nextNumber,
+      number: row.number || row.season_number || nextNumber,
+      name: row.name || name,
       startDate: row.start_date,
       endDate: row.end_date,
-      status: row.status,
+      status: row.status || 'active',
       rewardsConfig: row.rewards_config || {},
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      createdAt: row.created_at || new Date(),
+      updatedAt: row.updated_at || new Date(),
     };
     
     // Limpar cache para forçar refresh
