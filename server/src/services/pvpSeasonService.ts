@@ -138,32 +138,50 @@ export async function createNewSeason(): Promise<Season> {
     
     console.log(`[PVP Season] Table structure - hasNumber: ${hasNumber}, hasSeasonNumber: ${hasSeasonNumber}, using column: ${seasonColumn}`);
     
-    // Buscar última temporada
+    // Buscar última temporada usando a coluna correta
     let nextNumber = 1;
     try {
+      // Usar COALESCE para lidar com diferentes estruturas
+      let queryColumn = seasonColumn;
+      if (hasSeasonNumber && hasNumber) {
+        // Se ambas existem, usar season_number (pode ser PK)
+        queryColumn = 'season_number';
+      }
+      
       const lastSeasonResult = await client.query(
-        `SELECT ${seasonColumn} FROM pvp_seasons 
-         ORDER BY ${seasonColumn} DESC 
+        `SELECT ${queryColumn} FROM pvp_seasons 
+         ORDER BY ${queryColumn} DESC 
          LIMIT 1`
       );
       
       // Garantir que nextNumber seja sempre um número válido
       if (lastSeasonResult.rows.length > 0) {
-        const lastNumber = lastSeasonResult.rows[0][seasonColumn];
+        const lastNumber = lastSeasonResult.rows[0][queryColumn];
         if (lastNumber !== null && lastNumber !== undefined && !isNaN(Number(lastNumber))) {
           nextNumber = Number(lastNumber) + 1;
+        } else {
+          console.warn(`[PVP Season] Invalid last season number: ${lastNumber}, using default 1`);
+          nextNumber = 1;
         }
       }
-    } catch (error) {
-      console.warn('[PVP Season] Error fetching last season, using default number 1:', error);
+    } catch (error: any) {
+      console.warn('[PVP Season] Error fetching last season, using default number 1:', error.message);
       nextNumber = 1;
     }
     
-    // Validação final para garantir que seja pelo menos 1
-    if (!nextNumber || isNaN(nextNumber) || nextNumber < 1) {
-      console.warn('[PVP Season] Invalid nextNumber, resetting to 1. Was:', nextNumber);
+    // Validação final crítica - garantir que seja sempre um número válido
+    if (nextNumber === null || nextNumber === undefined || isNaN(nextNumber) || nextNumber < 1) {
+      console.warn(`[PVP Season] Invalid nextNumber detected (${nextNumber}), resetting to 1`);
       nextNumber = 1;
     }
+    
+    // Conversão explícita para número inteiro
+    nextNumber = Math.floor(Number(nextNumber));
+    if (nextNumber < 1) {
+      nextNumber = 1;
+    }
+    
+    console.log(`[PVP Season] Final nextNumber: ${nextNumber} (type: ${typeof nextNumber})`);
     
     const startDate = new Date();
     const endDate = new Date();
@@ -178,10 +196,15 @@ export async function createNewSeason(): Promise<Season> {
        WHERE status = 'active'`
     );
     
-    // Validação final crítica antes do INSERT
-    if (!nextNumber || isNaN(nextNumber) || nextNumber < 1) {
-      throw new Error(`Invalid season number: ${nextNumber}. Cannot create season.`);
+    // Validação final crítica antes do INSERT - garantir que nextNumber seja um inteiro válido
+    const finalSeasonNumber = parseInt(String(nextNumber), 10);
+    if (isNaN(finalSeasonNumber) || finalSeasonNumber < 1) {
+      const errorMsg = `Invalid season number after validation: ${nextNumber} (parsed: ${finalSeasonNumber})`;
+      console.error(`[PVP Season] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
+    
+    console.log(`[PVP Season] Creating season with validated number: ${finalSeasonNumber}`);
     
     // Criar nova temporada - usar a coluna correta
     // IMPORTANTE: Se season_number existe, SEMPRE usar ele (pode ser PRIMARY KEY e NOT NULL)
@@ -190,18 +213,20 @@ export async function createNewSeason(): Promise<Season> {
     
     if (hasSeasonNumber) {
       // Usar season_number (pode ser PRIMARY KEY, então é obrigatório)
+      // Esta é a estrutura da migration 012
       insertQuery = `INSERT INTO pvp_seasons 
        (season_number, start_date, end_date, status, created_at)
        VALUES ($1, $2, $3, 'active', NOW())
        RETURNING *`;
-      insertValues = [nextNumber, startDate, endDate];
+      insertValues = [finalSeasonNumber, startDate, endDate];
     } else if (hasNumber) {
       // Usar number (nova estrutura, sem season_number)
+      // Esta é a estrutura da migration 002
       insertQuery = `INSERT INTO pvp_seasons 
        (number, name, start_date, end_date, status, rewards_config, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'active', '{}'::jsonb, NOW(), NOW())
        RETURNING *`;
-      insertValues = [nextNumber, name, startDate, endDate];
+      insertValues = [finalSeasonNumber, name, startDate, endDate];
     } else {
       // Se não tem nenhuma das colunas, tentar criar com season_number (padrão)
       console.warn('[PVP Season] Neither number nor season_number found, using season_number as default');
@@ -209,17 +234,21 @@ export async function createNewSeason(): Promise<Season> {
        (season_number, start_date, end_date, status, created_at)
        VALUES ($1, $2, $3, 'active', NOW())
        RETURNING *`;
-      insertValues = [nextNumber, startDate, endDate];
+      insertValues = [finalSeasonNumber, startDate, endDate];
     }
     
-    console.log(`[PVP Season] Creating season with number: ${nextNumber}, hasNumber: ${hasNumber}, hasSeasonNumber: ${hasSeasonNumber}`);
-    console.log(`[PVP Season] Insert query: ${insertQuery}`);
-    console.log(`[PVP Season] Insert values:`, insertValues);
-    console.log(`[PVP Season] nextNumber type: ${typeof nextNumber}, value: ${nextNumber}`);
+    console.log(`[PVP Season] Final insert preparation:`);
+    console.log(`  - hasNumber: ${hasNumber}`);
+    console.log(`  - hasSeasonNumber: ${hasSeasonNumber}`);
+    console.log(`  - seasonNumber: ${finalSeasonNumber} (type: ${typeof finalSeasonNumber})`);
+    console.log(`  - Insert query: ${insertQuery}`);
+    console.log(`  - Insert values:`, insertValues.map((v, i) => `${i}: ${v} (type: ${typeof v})`));
     
     // Validação final dos valores antes do INSERT
-    if (insertValues[0] === null || insertValues[0] === undefined || isNaN(insertValues[0])) {
-      throw new Error(`Invalid season number in insert values: ${insertValues[0]}`);
+    if (insertValues[0] === null || insertValues[0] === undefined || isNaN(Number(insertValues[0]))) {
+      const errorMsg = `Invalid season number in insert values at index 0: ${insertValues[0]} (type: ${typeof insertValues[0]})`;
+      console.error(`[PVP Season] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
     
     const result = await client.query(insertQuery, insertValues);
