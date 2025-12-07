@@ -17,6 +17,19 @@ export class PvpRankingUI {
       this.container = document.createElement('div');
       this.container.id = containerId;
       this.container.className = 'pvp-ranking-ui';
+      // Adicionar estilos inline para garantir visibilidade
+      this.container.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 99999;
+        display: none;
+        overflow-y: auto;
+        pointer-events: auto;
+      `;
       document.body.appendChild(this.container);
     }
 
@@ -25,13 +38,128 @@ export class PvpRankingUI {
 
   private setupUI() {
     this.container.innerHTML = `
+      <style>
+        .pvp-ranking-ui {
+          font-family: monospace;
+          color: #dcece6;
+        }
+        .pvp-ranking-panel {
+          max-width: 1200px;
+          margin: 40px auto;
+          padding: 30px;
+          background: linear-gradient(135deg, rgba(16, 52, 90, 0.9) 0%, rgba(8, 26, 48, 0.95) 100%);
+          border: 1.5px solid rgba(60, 194, 255, 0.42);
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        .pvp-ranking-panel h2 {
+          color: #3cc2ff;
+          font-size: 32px;
+          margin-bottom: 30px;
+          text-align: center;
+        }
+        .pvp-ranking-panel h3 {
+          color: #ffd700;
+          font-size: 24px;
+          margin-bottom: 20px;
+        }
+        .ranking-content {
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+        }
+        .player-rank-section {
+          padding: 20px;
+          background: rgba(16, 52, 90, 0.5);
+          border: 1px solid rgba(60, 194, 255, 0.3);
+          border-radius: 8px;
+        }
+        .rank-info {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        .tier-badge {
+          display: inline-block;
+          padding: 10px 20px;
+          background: rgba(60, 194, 255, 0.2);
+          border: 1px solid rgba(60, 194, 255, 0.5);
+          border-radius: 6px;
+          font-size: 18px;
+          font-weight: bold;
+          color: #3cc2ff;
+        }
+        .elo {
+          font-size: 20px;
+          color: #ffd700;
+        }
+        .stats {
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .stats span {
+          padding: 8px 16px;
+          background: rgba(26, 84, 176, 0.3);
+          border-radius: 6px;
+          font-size: 14px;
+        }
+        .leaderboard-section {
+          padding: 20px;
+          background: rgba(16, 52, 90, 0.5);
+          border: 1px solid rgba(60, 194, 255, 0.3);
+          border-radius: 8px;
+        }
+        .leaderboard-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+        }
+        .leaderboard-table th {
+          background: rgba(26, 84, 176, 0.4);
+          padding: 12px;
+          text-align: left;
+          color: #3cc2ff;
+          font-weight: bold;
+          border-bottom: 2px solid rgba(60, 194, 255, 0.3);
+        }
+        .leaderboard-table td {
+          padding: 12px;
+          border-bottom: 1px solid rgba(60, 194, 255, 0.2);
+          color: #dcece6;
+        }
+        .leaderboard-table tr:hover {
+          background: rgba(60, 194, 255, 0.1);
+        }
+        #btn-close-ranking {
+          margin-top: 30px;
+          padding: 12px 30px;
+          background: rgba(255, 77, 77, 0.3);
+          border: 1px solid rgba(255, 77, 77, 0.5);
+          border-radius: 6px;
+          color: #ff4d4d;
+          font-size: 16px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.2s;
+          width: 100%;
+        }
+        #btn-close-ranking:hover {
+          background: rgba(255, 77, 77, 0.5);
+          border-color: rgba(255, 77, 77, 0.7);
+        }
+      </style>
       <div class="pvp-ranking-panel">
-        <h2>Ranking PVP</h2>
+        <h2>🏆 Ranking PVP</h2>
         <div class="ranking-content">
-          <div class="player-rank-section" id="player-rank-section"></div>
+          <div class="player-rank-section" id="player-rank-section">
+            <p>Carregando...</p>
+          </div>
           <div class="leaderboard-section">
             <h3>Leaderboard</h3>
-            <div id="leaderboard-list"></div>
+            <div id="leaderboard-list">
+              <p>Carregando...</p>
+            </div>
           </div>
         </div>
         <button id="btn-close-ranking" class="btn-secondary">Fechar</button>
@@ -45,7 +173,19 @@ export class PvpRankingUI {
   public async show() {
     this.isVisible = true;
     this.container.style.display = 'block';
-    await this.loadRanking();
+    try {
+      await this.loadRanking();
+    } catch (error) {
+      console.error('[PVP Ranking] Error showing ranking:', error);
+      const section = this.container.querySelector('#player-rank-section');
+      if (section) {
+        section.innerHTML = '<p style="color: #ff4d4d;">Erro ao carregar ranking. Tente novamente.</p>';
+      }
+      const list = this.container.querySelector('#leaderboard-list');
+      if (list) {
+        list.innerHTML = '<p style="color: #ff4d4d;">Erro ao carregar leaderboard. Tente novamente.</p>';
+      }
+    }
   }
 
   public hide() {

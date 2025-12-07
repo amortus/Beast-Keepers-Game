@@ -122,15 +122,31 @@ export async function createNewSeason(): Promise<Season> {
     const seasonColumn = hasNumber ? 'number' : 'season_number';
     
     // Buscar última temporada
-    const lastSeasonResult = await client.query(
-      `SELECT ${seasonColumn} FROM pvp_seasons 
-       ORDER BY ${seasonColumn} DESC 
-       LIMIT 1`
-    );
+    let nextNumber = 1;
+    try {
+      const lastSeasonResult = await client.query(
+        `SELECT ${seasonColumn} FROM pvp_seasons 
+         ORDER BY ${seasonColumn} DESC 
+         LIMIT 1`
+      );
+      
+      // Garantir que nextNumber seja sempre um número válido
+      if (lastSeasonResult.rows.length > 0) {
+        const lastNumber = lastSeasonResult.rows[0][seasonColumn];
+        if (lastNumber !== null && lastNumber !== undefined && !isNaN(Number(lastNumber))) {
+          nextNumber = Number(lastNumber) + 1;
+        }
+      }
+    } catch (error) {
+      console.warn('[PVP Season] Error fetching last season, using default number 1:', error);
+      nextNumber = 1;
+    }
     
-    const nextNumber = lastSeasonResult.rows.length > 0 
-      ? (lastSeasonResult.rows[0][seasonColumn] || 0) + 1 
-      : 1;
+    // Validação final para garantir que seja pelo menos 1
+    if (!nextNumber || isNaN(nextNumber) || nextNumber < 1) {
+      console.warn('[PVP Season] Invalid nextNumber, resetting to 1. Was:', nextNumber);
+      nextNumber = 1;
+    }
     
     const startDate = new Date();
     const endDate = new Date();
@@ -164,6 +180,10 @@ export async function createNewSeason(): Promise<Season> {
        RETURNING *`;
       insertValues = [nextNumber, startDate, endDate];
     }
+    
+    console.log(`[PVP Season] Creating season with number: ${nextNumber}, hasNumber: ${hasNumber}, hasSeasonNumber: ${hasSeasonNumber}`);
+    console.log(`[PVP Season] Insert query: ${insertQuery}`);
+    console.log(`[PVP Season] Insert values:`, insertValues);
     
     const result = await client.query(insertQuery, insertValues);
     
