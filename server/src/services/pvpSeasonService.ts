@@ -54,12 +54,30 @@ export async function getCurrentSeason(): Promise<Season | null> {
     
     if (result.rows.length === 0) {
       // Criar primeira temporada se não existir
-      const newSeason = await createNewSeason();
-      if (newSeason) {
-        cachedSeason = newSeason;
-        cacheExpiry = now + CACHE_TTL;
+      try {
+        const newSeason = await createNewSeason();
+        if (newSeason) {
+          cachedSeason = newSeason;
+          cacheExpiry = now + CACHE_TTL;
+        }
+        return newSeason;
+      } catch (createError: any) {
+        console.error('[PVP Season] Error creating new season, using fallback:', createError);
+        // Fallback: retornar temporada padrão temporária
+        const fallbackSeason: Season = {
+          id: 1,
+          number: 1,
+          name: 'Temporada 1 (Fallback)',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+          status: 'active',
+          rewardsConfig: {},
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        // Não cachear fallback
+        return fallbackSeason;
       }
-      return newSeason;
     }
     
     const row = result.rows[0];
