@@ -183,7 +183,19 @@ export function initializePvpSocketHandlers(
       consecutiveErrors = 0;
     } catch (error: any) {
       consecutiveErrors++;
-      console.error('[PVP Socket] Error processing matchmaking:', error);
+      
+      // Verificar se é erro de conexão
+      const isConnectionError = error?.message?.includes('timeout') || 
+                                error?.message?.includes('ECONNREFUSED') || 
+                                error?.message?.includes('connection') ||
+                                error?.code === 'ETIMEDOUT' ||
+                                error?.code === 'ECONNREFUSED';
+      
+      if (isConnectionError) {
+        console.warn(`[PVP Socket] Database connection error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, error.message);
+      } else {
+        console.error('[PVP Socket] Error processing matchmaking:', error);
+      }
       
       // Se houver muitos erros consecutivos (provavelmente problema de conexão),
       // pausar o intervalo temporariamente
@@ -196,6 +208,7 @@ export function initializePvpSocketHandlers(
           // Retomar após 60 segundos
           setTimeout(() => {
             consecutiveErrors = 0;
+            console.log('[PVP Socket] Resuming matchmaking after pause');
             matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
           }, 60000);
         }

@@ -15,7 +15,11 @@ const poolConfig: PoolConfig = {
   } : false,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Aumentado de 2s para 10s
+  connectionTimeoutMillis: 30000, // 30 segundos para evitar timeout prematuro
+  statement_timeout: 30000, // Timeout para queries individuais
+  query_timeout: 30000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 };
 
 export const pool = new Pool(poolConfig);
@@ -27,7 +31,9 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('[DB] Unexpected error on idle client', err);
-  process.exit(-1);
+  // Não encerrar o processo imediatamente - apenas logar o erro
+  // Isso evita que erros temporários de conexão quebrem o servidor
+  console.warn('[DB] Continuing despite connection error - server will retry');
 });
 
 // Helper function to execute queries
@@ -46,7 +52,23 @@ export async function query(text: string, params?: any[]) {
 
 // Helper to get a client from the pool for transactions
 export async function getClient() {
-  return await pool.connect();
+  try {
+    return await pool.connect();
+  } catch (error: any) {
+    console.error('[DB] Error getting client from pool:', error);
+    // Se for erro de timeout, tentar novamente uma vez após curto delay
+    if (error?.message?.includes('timeout') || error?.code === 'ETIMEDOUT') {
+      console.warn('[DB] Connection timeout, waiting 1s before retry...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        return await pool.connect();
+      } catch (retryError) {
+        console.error('[DB] Retry also failed:', retryError);
+        throw retryError;
+      }
+    }
+    throw error;
+  }
 }
 
 // Graceful shutdown

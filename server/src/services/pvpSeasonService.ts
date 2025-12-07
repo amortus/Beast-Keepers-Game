@@ -99,8 +99,38 @@ export async function getCurrentSeason(): Promise<Season | null> {
     cacheExpiry = now + CACHE_TTL;
     
     return season;
-  } catch (error) {
+  } catch (error: any) {
     console.error('[PVP Season] Error getting current season:', error);
+    
+    // Se for erro de conexão/timeout, retornar cache ou fallback em vez de quebrar
+    const isConnectionError = error?.message?.includes('timeout') || 
+                              error?.message?.includes('ECONNREFUSED') || 
+                              error?.message?.includes('connection') ||
+                              error?.code === 'ETIMEDOUT' ||
+                              error?.code === 'ECONNREFUSED';
+    
+    if (isConnectionError) {
+      console.warn('[PVP Season] Database connection error detected, using cached season or fallback');
+      // Retornar cache se disponível, mesmo que expirado
+      if (cachedSeason) {
+        console.warn('[PVP Season] Using cached season due to connection error');
+        return cachedSeason;
+      }
+      // Fallback: retornar temporada padrão temporária para não quebrar o sistema
+      const fallbackSeason: Season = {
+        id: 1,
+        number: 1,
+        name: 'Temporada 1 (Fallback - DB Offline)',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+        status: 'active',
+        rewardsConfig: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      return fallbackSeason;
+    }
+    
     // Retornar cache se disponível, mesmo que expirado
     if (cachedSeason) {
       console.warn('[PVP Season] Using cached season due to error');
