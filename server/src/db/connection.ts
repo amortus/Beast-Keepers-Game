@@ -124,9 +124,14 @@ export async function query(text: string, params?: any[]) {
     throw error;
   }
   
-  // Check pool health
+  // Check pool health - se não está saudável E circuit breaker está aberto, bloquear
   if (!isPoolHealthy()) {
-    console.warn('[DB] Pool is unhealthy, but attempting query anyway');
+    if (!checkCircuitBreaker()) {
+      const error = new Error('Pool is unhealthy and circuit breaker is open - database unavailable');
+      (error as any).code = 'ECIRCUITOPEN';
+      throw error;
+    }
+    console.warn('[DB] Pool is unhealthy, but attempting query anyway (circuit breaker allows)');
   }
   
   const start = Date.now();

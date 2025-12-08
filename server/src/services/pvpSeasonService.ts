@@ -327,17 +327,60 @@ export async function createNewSeason(): Promise<Season> {
     let insertQuery: string;
     let insertValues: any[];
     
+    // Verificar quais colunas são NOT NULL para garantir que todas sejam preenchidas
+    const notNullColumns = allColumnsCheck.rows
+      .filter((r: any) => r.is_nullable === 'NO')
+      .map((r: any) => r.column_name);
+    
+    console.log(`[PVP Season] NOT NULL columns found:`, notNullColumns);
+    
     // CRÍTICO: Se season_number existe (migration 012), SEMPRE usar ele, mesmo se number também existir
     // A migration 012 NÃO TEM colunas number ou name, apenas season_number
+    // Mas o auto-fix pode ter adicionado outras colunas NOT NULL
     if (hasSeasonNumber) {
-      // Usar season_number (pode ser PRIMARY KEY, então é obrigatório)
-      // Esta é a estrutura da migration 012 - NÃO TEM colunas number ou name
+      // Verificar se há colunas adicionais NOT NULL que precisam ser preenchidas
+      const hasName = allColumnsCheck.rows.some((r: any) => r.column_name === 'name');
+      const hasUpdatedAt = allColumnsCheck.rows.some((r: any) => r.column_name === 'updated_at');
+      const hasRewardsConfig = allColumnsCheck.rows.some((r: any) => r.column_name === 'rewards_config');
+      
+      // Construir INSERT dinamicamente baseado nas colunas NOT NULL
+      const insertColumns: string[] = ['season_number', 'start_date', 'end_date', 'status'];
+      const insertValuesList: any[] = [finalSeasonNumber, startDate, endDate, 'active'];
+      
+      // Verificar se created_at é NOT NULL (geralmente tem DEFAULT, mas vamos incluir se necessário)
+      const hasCreatedAt = allColumnsCheck.rows.some((r: any) => r.column_name === 'created_at');
+      if (hasCreatedAt) {
+        insertColumns.push('created_at');
+        insertValuesList.push(new Date());
+      }
+      
+      // Adicionar colunas opcionais se existirem e forem NOT NULL
+      if (hasName && notNullColumns.includes('name')) {
+        insertColumns.push('name');
+        insertValuesList.push(name);
+      }
+      if (hasUpdatedAt && notNullColumns.includes('updated_at')) {
+        insertColumns.push('updated_at');
+        insertValuesList.push(new Date());
+      }
+      if (hasRewardsConfig && notNullColumns.includes('rewards_config')) {
+        insertColumns.push('rewards_config');
+        insertValuesList.push('{}');
+      }
+      
+      // Verificar se number é NOT NULL (pode ter sido adicionado pelo auto-fix)
+      const hasNumberCol = allColumnsCheck.rows.some((r: any) => r.column_name === 'number');
+      if (hasNumberCol && notNullColumns.includes('number')) {
+        insertColumns.push('number');
+        insertValuesList.push(finalSeasonNumber);
+      }
+      
       insertQuery = `INSERT INTO pvp_seasons 
-       (season_number, start_date, end_date, status, created_at)
-       VALUES ($1, $2, $3, 'active', NOW())
+       (${insertColumns.join(', ')})
+       VALUES (${insertColumns.map((_, i) => `$${i + 1}`).join(', ')})
        RETURNING *`;
-      insertValues = [finalSeasonNumber, startDate, endDate];
-      console.log(`[PVP Season] Using season_number structure (migration 012)`);
+      insertValues = insertValuesList;
+      console.log(`[PVP Season] Using season_number structure with additional columns:`, insertColumns);
     } else if (hasNumber) {
       // Usar number (nova estrutura, sem season_number)
       // Esta é a estrutura da migration 002 - TEM colunas number e name
