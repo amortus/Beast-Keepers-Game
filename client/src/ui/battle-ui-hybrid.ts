@@ -744,8 +744,29 @@ export class BattleUIHybrid {
         height: techBtnHeight,
         action: () => {
           if (canUse) {
-            this.onPlayerAction({ type: 'technique', techniqueId: tech.id });
-            this.selectedTechnique = null;
+            this.selectedTechnique = null; // Close menu
+            
+            // Play attack animation if 3D arena exists
+            if (this.arenaScene3D && this.onPlayerAction) {
+              console.log('[BattleUI Hybrid] Playing attack animation for technique:', tech.name);
+              // Play 3D animation
+              this.arenaScene3D.playAttackAnimation('player', 'enemy');
+              
+              // Execute action after animation
+              setTimeout(() => {
+                if (this.onPlayerAction) {
+                  this.onPlayerAction({
+                    type: 'technique',
+                    techniqueId: tech.id,
+                  });
+                }
+              }, 600);
+            } else {
+              // Fallback: execute immediately if no 3D scene
+              if (this.onPlayerAction) {
+                this.onPlayerAction({ type: 'technique', techniqueId: tech.id });
+              }
+            }
           }
         },
       });

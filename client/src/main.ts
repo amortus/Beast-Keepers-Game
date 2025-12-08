@@ -4434,7 +4434,53 @@ function setupPvpSocketHandlers() {
       if (data.fromPlayer === gameState.currentBattle.opponentUserId) {
         console.log('[PVP] Received action from opponent:', data.action);
         
-        // Processar ação do oponente
+        // Tocar animação de ataque do oponente ANTES de processar a ação
+        if (battleUI && (battleUI as any).arenaScene3D) {
+          const arenaScene3D = (battleUI as any).arenaScene3D;
+          if (arenaScene3D && typeof arenaScene3D.playAttackAnimation === 'function') {
+            console.log('[PVP] Playing attack animation for opponent');
+            arenaScene3D.playAttackAnimation('enemy', 'player');
+            
+            // Processar ação após animação
+            setTimeout(async () => {
+              if (!gameState?.currentBattle) return;
+              
+              const result = executeOpponentAction(gameState.currentBattle, data.action);
+              
+              if (result && battleUI) {
+                // Atualizar UI para mostrar dano do oponente
+                battleUI.updateBattle(gameState.currentBattle);
+                
+                // Se batalha terminou, finalizar
+                if (gameState.currentBattle.winner) {
+                  const match = await getMatch(data.matchId).catch(() => null);
+                  if (match) {
+                    const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+                    const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+                    const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+                    const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+                    
+                    finishPvpBattle(gameState.currentBattle, winnerId).catch(console.error);
+                  }
+                  return;
+                }
+                
+                // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
+                if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
+                  console.log('[PVP] Auto-battle is active, executing action automatically');
+                  setTimeout(() => {
+                    if (battleUI && gameState?.currentBattle) {
+                      battleUI.checkAutoBattle();
+                    }
+                  }, 500);
+                }
+              }
+            }, 600); // Aguardar animação terminar
+            return; // Early return - ação será processada após animação
+          }
+        }
+        
+        // Fallback: processar ação imediatamente se não houver 3D scene
         const result = executeOpponentAction(gameState.currentBattle, data.action);
         
         if (result && battleUI) {
@@ -4456,8 +4502,9 @@ function setupPvpSocketHandlers() {
           
           // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
           if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
+            console.log('[PVP] Auto-battle is active, executing action automatically');
             setTimeout(() => {
-              if (battleUI) {
+              if (battleUI && gameState?.currentBattle) {
                 battleUI.checkAutoBattle();
               }
             }, 500);
@@ -4629,9 +4676,12 @@ async function handlePvpChallengeAccepted(matchId: number) {
 function setupPvpBattleCallbacks(battle: BattleContext, matchId: number) {
   if (!battleUI) return;
   
-  // Interceptar ações do jogador para enviar via WebSocket
+  // Salvar callback original (que faz animações e processamento visual)
   const originalOnPlayerAction = (battleUI as any).onPlayerAction;
   
+  // Criar novo callback que:
+  // 1. Processa a ação normalmente (com animações visuais)
+  // 2. Envia via socket para sincronizar com oponente
   (battleUI as any).onPlayerAction = async (action: CombatAction) => {
     if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) {
       // Batalha normal, usar callback original
@@ -4641,47 +4691,54 @@ function setupPvpBattleCallbacks(battle: BattleContext, matchId: number) {
       return;
     }
     
-    // PVP: Enviar ação via WebSocket
-    try {
-      const beastState = {
-        id: gameState.activeBeast?.id,
-        currentHp: battle.player.currentHp,
-        maxHp: battle.player.beast.maxHp,
-        currentEssence: battle.player.currentEssence,
-        maxEssence: battle.player.beast.maxEssence,
-        techniques: battle.player.beast.techniques.map(t => t.id),
-      };
+    // PVP: Processar ação localmente primeiro (com animações visuais)
+    console.log('[PVP] Player action:', action);
+    
+    // Executar ação localmente (isso faz as animações e atualiza UI)
+    const result = executePlayerAction(battle, action);
+    
+    if (!result) {
+      console.error('[PVP] executePlayerAction returned null');
+      return;
+    }
+    
+    // Atualizar UI imediatamente para mostrar animações
+    if (battleUI) {
+      battleUI.updateBattle(battle);
       
-      console.log('[PVP] Sending action:', action);
-      pvpSocketClient.sendAction(matchId, action, beastState);
-      
-      // Executar localmente
-      const result = executePlayerAction(battle, action);
-      
-      if (result && battleUI) {
-        battleUI.updateBattle(battle);
-        
-        if (battle.winner) {
-          // Determinar winnerId
-          const match = await getMatch(matchId).catch(() => null);
-          if (match) {
-            const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-            const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-            const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-            const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
-            
-            await finishPvpBattle(battle, winnerId);
-          }
-          return;
+      // Se batalha terminou, finalizar
+      if (battle.winner) {
+        const match = await getMatch(matchId).catch(() => null);
+        if (match) {
+          const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+          const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+          const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+          const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
+          
+          await finishPvpBattle(battle, winnerId);
         }
-        
-        // Após ação do jogador, deve ser turno do oponente
-        // O oponente enviará sua ação via WebSocket
-        // Mas também devemos checar se auto-battle está ativo para o oponente
-        // (isso será feito quando recebermos a ação do oponente)
+        return;
       }
-    } catch (error) {
-      console.error('[PVP] Error sending action:', error);
+      
+      // Enviar ação via WebSocket para sincronizar com oponente
+      try {
+        const beastState = {
+          id: gameState.activeBeast?.id,
+          currentHp: battle.player.currentHp,
+          maxHp: battle.player.beast.maxHp,
+          currentEssence: battle.player.currentEssence,
+          maxEssence: battle.player.beast.maxEssence,
+          techniques: battle.player.beast.techniques.map(t => t.id),
+        };
+        
+        console.log('[PVP] Sending action to opponent via socket:', action);
+        pvpSocketClient.sendAction(matchId, action, beastState);
+      } catch (error) {
+        console.error('[PVP] Error sending action via socket:', error);
+      }
+      
+      // Após ação do jogador, deve ser turno do oponente
+      // O oponente enviará sua ação via WebSocket quando ele jogar
     }
   };
   
