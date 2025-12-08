@@ -13,11 +13,11 @@ const poolConfig: PoolConfig = {
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
   } : false,
-  max: 10, // Reduzido de 20 para 10 para evitar esgotamento do pool
+  max: 5, // Reduzido para 5 para evitar esgotamento do pool e problemas de conexão
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 30000, // 30 segundos para evitar timeout prematuro
-  statement_timeout: 30000, // Timeout para queries individuais
-  query_timeout: 30000,
+  connectionTimeoutMillis: 10000, // 10 segundos - reduzido para evitar conexões travadas
+  statement_timeout: 10000, // Timeout para queries individuais - 10 segundos
+  query_timeout: 10000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
 };
@@ -59,14 +59,14 @@ function isPoolHealthy(): boolean {
   const waitingCount = pool.waitingCount;
   const activeCount = totalCount - idleCount;
   
-  // Pool is unhealthy if there are too many waiting connections
-  if (waitingCount > 5) {
-    console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (threshold: 5)`);
+  // Pool is unhealthy if there are too many waiting connections (reduzido para 2)
+  if (waitingCount > 2) {
+    console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (threshold: 2)`);
     return false;
   }
   
-  // Pool is unhealthy if most connections are in use
-  if (totalCount > 0 && activeCount / totalCount > 0.8) {
+  // Pool is unhealthy if most connections are in use (reduzido para 70%)
+  if (totalCount > 0 && activeCount / totalCount > 0.7) {
     console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round(activeCount / totalCount * 100)}%)`);
     return false;
   }
