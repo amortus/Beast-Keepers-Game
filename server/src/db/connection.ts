@@ -17,7 +17,7 @@ const poolConfig: PoolConfig = {
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
   } : false,
-  max: isNeonPooler ? 10 : 5, // Neon pooler permite mais conexões
+  max: 5, // Limite conservador para evitar esgotamento - Neon pooler gerencia internamente
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: isNeonPooler ? 5000 : 10000, // Pooler é mais rápido
   statement_timeout: 10000, // Timeout para queries individuais - 10 segundos
@@ -35,7 +35,7 @@ export const pool = new Pool(poolConfig);
 
 // Log da configuração do pool
 if (isNeonPooler) {
-  console.log('[DB] ✅ Neon connection pooling detectado - pool configurado para 10 conexões');
+  console.log('[DB] ✅ Neon connection pooling detectado - pool configurado para 5 conexões (pooler gerencia escalabilidade)');
 } else {
   console.log('[DB] ⚠️  Connection pooling não detectado - pool configurado para 5 conexões');
 }
@@ -74,19 +74,26 @@ function isPoolHealthy(): boolean {
   const idleCount = pool.idleCount;
   const waitingCount = pool.waitingCount;
   const activeCount = totalCount - idleCount;
-  
-  // Pool is unhealthy if there are too many waiting connections (reduzido para 2)
-  if (waitingCount > 2) {
-    console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (threshold: 2)`);
+  const maxConnections = poolConfig.max || 5;
+
+  // Pool is unhealthy if there are waiting connections (indica esgotamento)
+  if (waitingCount > 0) {
+    console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (pool esgotado)`);
     return false;
   }
-  
-  // Pool is unhealthy if most connections are in use (reduzido para 70%)
-  if (totalCount > 0 && activeCount / totalCount > 0.7) {
-    console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round(activeCount / totalCount * 100)}%)`);
+
+  // Pool is unhealthy if we're at or above max connections
+  if (totalCount >= maxConnections) {
+    console.warn(`[DB] Pool unhealthy: ${totalCount}/${maxConnections} connections (limite atingido)`);
     return false;
   }
-  
+
+  // Pool is unhealthy if more than 60% of connections are in use
+  if (totalCount > 0 && activeCount / totalCount > 0.6) {
+    console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round((activeCount / totalCount) * 100)}% - threshold: 60%)`);
+    return false;
+  }
+
   return true;
 }
 
@@ -170,24 +177,23 @@ export async function query(text: string, params?: any[]) {
     active: pool.totalCount - pool.idleCount
   };
   
-  // Check pool health - se não está saudável E circuit breaker está aberto, bloquear
+  // Check pool health - BLOQUEAR queries quando pool está unhealthy
   if (!isPoolHealthy()) {
+    const totalCount = pool.totalCount;
+    const maxConnections = poolConfig.max || 5;
+    
     // Se circuit breaker está aberto, bloquear imediatamente
     if (!checkCircuitBreaker()) {
       const error = new Error('Pool is unhealthy and circuit breaker is open - database unavailable');
       (error as any).code = 'ECIRCUITOPEN';
       throw error;
     }
-    // Se circuit breaker está fechado mas pool está unhealthy, apenas avisar
-    // Isso pode acontecer temporariamente após o circuit breaker fechar
-    // enquanto o pool ainda está se recuperando
-    if (circuitBreakerState === 'closed') {
-      // Se pool está unhealthy mas circuit breaker está fechado, permitir tentativa
-      // mas com aviso (pode ser recuperação temporária)
-      console.warn('[DB] Pool is unhealthy, but circuit breaker is closed - attempting query (pool may be recovering)', poolStatus);
-    } else {
-      console.warn('[DB] Pool is unhealthy, but attempting query anyway (circuit breaker allows)', poolStatus);
-    }
+    
+    // Bloquear queries quando pool está esgotado (mesmo com circuit breaker fechado)
+    const error = new Error(`Pool is unhealthy - ${totalCount}/${maxConnections} connections in use. Please retry.`);
+    (error as any).code = 'EPOOLUNHEALTHY';
+    console.error('[DB] ❌ Blocking query - pool is unhealthy', poolStatus);
+    throw error;
   }
   
   const start = Date.now();
@@ -249,9 +255,20 @@ export async function getClient() {
     throw error;
   }
   
-  // Check pool health
+  // Check pool health - BLOQUEAR se unhealthy
   if (!isPoolHealthy()) {
-    console.warn('[DB] Pool is unhealthy, but attempting to get client anyway');
+    const totalCount = pool.totalCount;
+    const maxConnections = poolConfig.max || 5;
+    const error = new Error(`Pool is unhealthy - ${totalCount}/${maxConnections} connections in use. Please wait.`);
+    (error as any).code = 'EPOOLUNHEALTHY';
+    console.error('[DB] ❌ Blocking client request - pool is unhealthy', {
+      total: totalCount,
+      max: maxConnections,
+      idle: pool.idleCount,
+      waiting: pool.waitingCount,
+      active: totalCount - pool.idleCount
+    });
+    throw error;
   }
   
   try {
