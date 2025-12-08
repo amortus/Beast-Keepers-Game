@@ -22,6 +22,11 @@ let cachedSeason: Season | null = null;
 let cacheExpiry = 0;
 const CACHE_TTL = 30000; // 30 segundos
 
+// Cache para estrutura da tabela (colunas) - estrutura raramente muda
+let cachedTableStructure: { hasNumber: boolean; seasonColumn: string } | null = null;
+let tableStructureCacheExpiry = 0;
+const TABLE_STRUCTURE_CACHE_TTL = 300000; // 5 minutos - estrutura da tabela raramente muda
+
 /**
  * Retorna temporada atual (com cache)
  */
@@ -34,16 +39,35 @@ export async function getCurrentSeason(): Promise<Season | null> {
   
   // Usar query() em vez de getClient() para gerenciar conexões automaticamente
   try {
-    // Verificar qual coluna existe na tabela (number ou season_number)
-    const columnCheck = await query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'pvp_seasons' 
-        AND column_name IN ('number', 'season_number')
-    `);
+    // Verificar estrutura da tabela (com cache - estrutura raramente muda)
+    let hasNumber = false;
+    let seasonColumn = 'season_number';
     
-    const hasNumber = columnCheck.rows.some((r: any) => r.column_name === 'number');
-    const seasonColumn = hasNumber ? 'number' : 'season_number';
+    const now = Date.now();
+    if (cachedTableStructure && now < tableStructureCacheExpiry) {
+      // Usar estrutura em cache
+      hasNumber = cachedTableStructure.hasNumber;
+      seasonColumn = cachedTableStructure.seasonColumn;
+      console.log('[PVP Season] Using cached table structure');
+    } else {
+      // Verificar qual coluna existe na tabela (number ou season_number)
+      // Esta query está demorando muito (22s), então cacheamos o resultado
+      const columnCheck = await query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'pvp_seasons' 
+          AND table_schema = 'public'
+          AND column_name IN ('number', 'season_number')
+      `);
+      
+      hasNumber = columnCheck.rows.some((r: any) => r.column_name === 'number');
+      seasonColumn = hasNumber ? 'number' : 'season_number';
+      
+      // Cachear estrutura da tabela
+      cachedTableStructure = { hasNumber, seasonColumn };
+      tableStructureCacheExpiry = now + TABLE_STRUCTURE_CACHE_TTL;
+      console.log('[PVP Season] Table structure cached:', { hasNumber, seasonColumn });
+    }
     
     const result = await query(
       `SELECT * FROM pvp_seasons 
@@ -172,6 +196,11 @@ export async function getCurrentSeason(): Promise<Season | null> {
 export function clearSeasonCache(): void {
   cachedSeason = null;
   cacheExpiry = 0;
+}
+
+export function clearTableStructureCache(): void {
+  cachedTableStructure = null;
+  tableStructureCacheExpiry = 0;
 }
 
 /**
