@@ -107,13 +107,18 @@ export async function getCurrentSeason(): Promise<Season | null> {
     const row = result.rows[0];
     
     // CRÍTICO: Garantir que sempre temos um número válido da season
-    // Se season_number existe e não é null, usar ele
+    // Verificar diretamente no row se season_number existe e não é null
     // Se não, usar number
     // Se ambos são null, isso é um erro - a season não deveria existir sem número
     let seasonNumber: number;
-    if (hasSeasonNumber && row.season_number !== null && row.season_number !== undefined) {
+    
+    // Verificar se season_number existe no row e não é null
+    const hasSeasonNumberInRow = row.season_number !== null && row.season_number !== undefined;
+    const hasNumberInRow = row.number !== null && row.number !== undefined;
+    
+    if (hasSeasonNumberInRow) {
       seasonNumber = Number(row.season_number);
-    } else if (row.number !== null && row.number !== undefined) {
+    } else if (hasNumberInRow) {
       seasonNumber = Number(row.number);
     } else {
       // Se ambos são null, isso é um erro crítico - tentar usar o ID ou lançar erro
