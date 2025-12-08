@@ -17,7 +17,7 @@ const poolConfig: PoolConfig = {
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
   } : false,
-  max: 5, // Limite conservador para evitar esgotamento - Neon pooler gerencia internamente
+  max: 10, // Aumentado para 10 para evitar bloqueios durante inicialização
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: isNeonPooler ? 5000 : 10000, // Pooler é mais rápido
   statement_timeout: 10000, // Timeout para queries individuais - 10 segundos
@@ -35,9 +35,9 @@ export const pool = new Pool(poolConfig);
 
 // Log da configuração do pool
 if (isNeonPooler) {
-  console.log('[DB] ✅ Neon connection pooling detectado - pool configurado para 5 conexões (pooler gerencia escalabilidade)');
+  console.log('[DB] ✅ Neon connection pooling detectado - pool configurado para 10 conexões');
 } else {
-  console.log('[DB] ⚠️  Connection pooling não detectado - pool configurado para 5 conexões');
+  console.log('[DB] ⚠️  Connection pooling não detectado - pool configurado para 10 conexões');
 }
 
 // Circuit Breaker state
@@ -76,27 +76,16 @@ function isPoolHealthy(): boolean {
   const activeCount = totalCount - idleCount;
   const maxConnections = poolConfig.max || 5;
 
-  // Se pool ainda está inicializando (menos de 2 conexões), permitir
-  if (totalCount < 2) {
-    return true; // Pool ainda está inicializando, permitir conexões
-  }
-
-  // Pool is unhealthy if there are waiting connections (indica esgotamento)
-  if (waitingCount > 0) {
+  // Pool is unhealthy ONLY if there are waiting connections (indica esgotamento real)
+  // Não bloquear baseado em porcentagem - isso causa bloqueios desnecessários
+  if (waitingCount > 2) {
     console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (pool esgotado)`);
     return false;
   }
 
-  // Pool is unhealthy if we're at or above max connections
-  if (totalCount >= maxConnections) {
-    console.warn(`[DB] Pool unhealthy: ${totalCount}/${maxConnections} connections (limite atingido)`);
-    return false;
-  }
-
-  // Pool is unhealthy if more than 80% of connections are in use (aumentado de 60% para 80%)
-  // Isso permite mais flexibilidade durante picos de uso
-  if (totalCount > 0 && activeCount / totalCount > 0.8) {
-    console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round((activeCount / totalCount) * 100)}% - threshold: 80%)`);
+  // Pool is unhealthy if we're at max connections AND há conexões esperando
+  if (totalCount >= maxConnections && waitingCount > 0) {
+    console.warn(`[DB] Pool unhealthy: ${totalCount}/${maxConnections} connections (limite atingido) e ${waitingCount} esperando`);
     return false;
   }
 
