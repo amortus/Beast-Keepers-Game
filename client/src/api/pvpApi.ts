@@ -95,10 +95,17 @@ export async function getRanking(): Promise<RankingResponse> {
  * Entrar na fila de matchmaking
  */
 export async function joinMatchmaking(beastId: number, matchType: MatchType): Promise<void> {
-  await apiClient.post('/pvp/matchmaking/join', {
-    beastId,
-    matchType,
-  });
+  console.log('[PVP API] joinMatchmaking called:', { beastId, matchType });
+  try {
+    const response = await apiClient.post('/pvp/matchmaking/join', {
+      beastId,
+      matchType,
+    });
+    console.log('[PVP API] joinMatchmaking success:', response);
+  } catch (error: any) {
+    console.error('[PVP API] joinMatchmaking error:', error);
+    throw error;
+  }
 }
 
 /**

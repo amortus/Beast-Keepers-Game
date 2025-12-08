@@ -93,16 +93,27 @@ export class PvpMatchmakingUI {
   }
 
   private async handleJoinQueue() {
+    console.log('[PVP Matchmaking] handleJoinQueue called:', {
+      hasBeast: !!this.currentBeast,
+      beastId: this.currentBeast?.id,
+      matchType: this.selectedMatchType,
+      isInQueue: this.isInQueue
+    });
+    
     if (!this.currentBeast) {
+      console.warn('[PVP Matchmaking] No beast selected');
       return;
     }
 
     if (this.isInQueue) {
+      console.warn('[PVP Matchmaking] Already in queue');
       return;
     }
 
     try {
+      console.log('[PVP Matchmaking] Calling joinMatchmaking API...');
       await joinMatchmaking(this.currentBeast.id, this.selectedMatchType);
+      console.log('[PVP Matchmaking] joinMatchmaking API call completed');
       
       // Tentar usar socket se estiver conectado, mas não é obrigatório
       if (pvpSocketClient.isConnected()) {
