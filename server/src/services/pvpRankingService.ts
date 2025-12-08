@@ -166,7 +166,7 @@ export async function updatePlayerElo(
     const tierInfo = getTierAndDivision(newElo);
     
     // Atualizar win streak
-    let newWinStreak = won ? ranking.winStreak + 1 : 0;
+    const newWinStreak = won ? ranking.winStreak + 1 : 0;
     
     // Atualizar peak
     let peakElo = ranking.peakElo;

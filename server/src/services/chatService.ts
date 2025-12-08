@@ -557,6 +557,7 @@ export function initializeChatService(server: HttpServer) {
   
   // Initialize PVP Socket Handlers
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { initializePvpSocketHandlers } = require('./pvpSocketHandlers');
     initializePvpSocketHandlers(io, getUserSockets);
     console.log('[ChatService] PVP socket handlers initialized');

@@ -9,7 +9,9 @@ import { query } from '../db/connection';
 // ===== UTILITÁRIOS DE TEMPO =====
 
 // Cache para evitar múltiplas chamadas à API
-let lastAPICall: number = 0;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const lastAPICall: number = 0;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const API_CACHE_DURATION = 60 * 60 * 1000; // 1 hora
 
 /**

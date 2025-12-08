@@ -81,7 +81,9 @@ export async function autoFixSchema(): Promise<void> {
     if (missingPvpTables.length > 0) {
       console.log('[DB] ⚠️ Tabelas PVP não encontradas. Executando migration...');
       try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const fs = require('fs');
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const path = require('path');
         const migrationPath = path.join(__dirname, 'migrations', '002_pvp_system.sql');
         const migrationSQL = fs.readFileSync(migrationPath, 'utf8');

@@ -145,8 +145,8 @@ export async function initializeGame(req: AuthRequest, res: Response) {
       JSON.stringify(randomBeast.traits)
     ];
     
-    let insertColumns = [...baseColumns];
-    let insertValues = [...baseValues];
+    const insertColumns = [...baseColumns];
+    const insertValues = [...baseValues];
     let paramIndex = baseValues.length + 1;
     
     if (hasLevel) {
