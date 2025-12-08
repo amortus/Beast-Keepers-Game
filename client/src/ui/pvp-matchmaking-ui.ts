@@ -95,6 +95,13 @@ export class PvpMatchmakingUI {
       this.startQueueTimer();
     } catch (error: any) {
       console.error('[PVP Matchmaking] Error joining queue:', error);
+      
+      // Se o erro é "Player already in queue", verificar status e atualizar UI
+      if (error?.message?.includes('already in queue') || error?.error === 'Player already in queue') {
+        console.log('[PVP Matchmaking] Player already in queue, checking status...');
+        // Verificar status e atualizar UI
+        await this.checkQueueStatus();
+      }
     }
   }
 
@@ -153,20 +160,26 @@ export class PvpMatchmakingUI {
   private async checkQueueStatus() {
     try {
       const status = await getMatchmakingStatus();
+      console.log('[PVP Matchmaking] Queue status check:', status);
+      
       if (status && status.inQueue) {
+        console.log('[PVP Matchmaking] Player is in queue, updating UI...');
         this.isInQueue = true;
         // Se já estava na fila, calcular tempo decorrido desde que entrou
         if (status.status?.queuedAt) {
           const queuedAt = new Date(status.status.queuedAt).getTime();
           this.queueStartTime = queuedAt;
           this.queueElapsedSeconds = Math.floor((Date.now() - queuedAt) / 1000);
+          console.log('[PVP Matchmaking] Queue time calculated:', this.queueElapsedSeconds, 'seconds');
         } else {
           this.queueStartTime = Date.now();
           this.queueElapsedSeconds = 0;
         }
         this.selectedMatchType = status.status?.matchType || 'casual';
         this.startQueueTimer();
+        console.log('[PVP Matchmaking] Queue timer started, isInQueue:', this.isInQueue);
       } else {
+        console.log('[PVP Matchmaking] Player is not in queue');
         this.isInQueue = false;
         this.stopQueueTimer();
       }
