@@ -542,6 +542,7 @@ export class AuthUI {
 
     while (retries <= maxRetries) {
       try {
+        console.log(`[AuthUI] Login attempt ${retries + 1}/${maxRetries + 1}`);
         const response = await authApi.login(email, password);
         
         if (response.success && response.data) {
@@ -549,20 +550,26 @@ export class AuthUI {
           this.onLoginSuccess(response.data.token, response.data.user);
           return; // Sucesso, sair
         } else {
+          // Se não é sucesso mas também não é erro 503, não tentar novamente
           this.errorMessage = response.error || 'Erro ao fazer login';
           break; // Erro não é 503, não tentar novamente
         }
       } catch (error: any) {
+        console.log('[AuthUI] Login error caught:', error, 'is503:', error.is503, 'status:', error.status, 'message:', error.message);
+        
         const is503 = error.is503 || 
                      error.status === 503 ||
                      error.message?.includes('503') || 
                      error.message?.includes('temporarily unavailable') ||
                      error.message?.includes('Database temporarily');
         
+        console.log('[AuthUI] is503 detected:', is503, 'retries:', retries, 'maxRetries:', maxRetries);
+        
         if (is503 && retries < maxRetries) {
           // Erro 503 - banco temporariamente indisponível, tentar novamente
           retries++;
           this.errorMessage = `Servidor temporariamente indisponível. Tentando novamente... (${retries}/${maxRetries})`;
+          console.log('[AuthUI] Retrying login, attempt:', retries);
           this.draw();
           await new Promise(resolve => setTimeout(resolve, retryDelay));
           continue;
@@ -570,8 +577,10 @@ export class AuthUI {
           // Outro erro ou esgotou tentativas
           if (is503 && retries >= maxRetries) {
             this.errorMessage = 'Servidor temporariamente indisponível. Por favor, tente novamente em alguns instantes.';
+            console.log('[AuthUI] Max retries reached for 503 error');
           } else {
             this.errorMessage = error.message || 'Erro ao conectar com servidor';
+            console.log('[AuthUI] Non-503 error or max retries:', error.message);
           }
           break;
         }
