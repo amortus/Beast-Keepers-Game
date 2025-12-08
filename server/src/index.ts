@@ -30,27 +30,31 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // ===== MIDDLEWARE =====
 
-// Security
-app.use(helmet());
-
 // CORS - Allow Vercel deployments and localhost
+// IMPORTANTE: CORS deve vir ANTES do Helmet para evitar conflitos
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('[CORS] Allowing request with no origin');
+      return callback(null, true);
+    }
     
     // Allow localhost (development)
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      console.log('[CORS] Allowing localhost origin:', origin);
       return callback(null, true);
     }
     
     // Allow any Vercel deployment URL (including vanilla-game.vercel.app)
     if (origin.includes('vercel.app')) {
+      console.log('[CORS] Allowing Vercel origin:', origin);
       return callback(null, true);
     }
     
     // Allow configured frontend URL
     if (origin === FRONTEND_URL) {
+      console.log('[CORS] Allowing configured frontend URL:', origin);
       return callback(null, true);
     }
     
@@ -60,9 +64,17 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Authorization'],
-  maxAge: 86400 // 24 hours
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+
+// Security - Configure Helmet to work with CORS
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
 }));
 
 // Body parsing
