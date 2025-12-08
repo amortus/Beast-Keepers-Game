@@ -13,6 +13,7 @@
     "check-beasts": "ts-node src/db/check-beasts.ts",
     "reset-password": "ts-node src/db/reset-password.ts",
     "analyze-db": "ts-node src/db/analyze-db.ts",
+    "diagnose-db": "node scripts/diagnose-db-issues.js",
     "vercel-build": "tsc",
     "type-check": "tsc --noEmit",
     "lint": "eslint 'src/**/*.ts'",
