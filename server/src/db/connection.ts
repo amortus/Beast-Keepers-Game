@@ -33,6 +33,13 @@ const poolConfig: PoolConfig = {
 
 export const pool = new Pool(poolConfig);
 
+// Log da configuração do pool
+if (isNeonPooler) {
+  console.log('[DB] ✅ Neon connection pooling detectado - pool configurado para 10 conexões');
+} else {
+  console.log('[DB] ⚠️  Connection pooling não detectado - pool configurado para 5 conexões');
+}
+
 // Circuit Breaker state
 type CircuitBreakerState = 'closed' | 'open' | 'half-open';
 let circuitBreakerState: CircuitBreakerState = 'closed';
