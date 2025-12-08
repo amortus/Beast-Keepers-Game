@@ -438,6 +438,8 @@ export async function removeFromQueue(userId1: number, userId2: number): Promise
     }
     console.error('[PVP Matchmaking] Error removing from queue:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 

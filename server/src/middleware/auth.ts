@@ -17,10 +17,18 @@ export interface AuthRequest extends Request {
 }
 
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
+  // Log apenas para rotas de matchmaking para debug
+  if (req.path.includes('matchmaking')) {
+    console.log(`[Auth Middleware] Matchmaking request: ${req.method} ${req.path}`);
+  }
+  
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
+    if (req.path.includes('matchmaking')) {
+      console.warn(`[Auth Middleware] No token for matchmaking request: ${req.method} ${req.path}`);
+    }
     return res.status(401).json({ 
       success: false, 
       error: 'Access token required' 
@@ -34,8 +42,16 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
       email: decoded.email,
       displayName: decoded.displayName
     };
+    
+    if (req.path.includes('matchmaking')) {
+      console.log(`[Auth Middleware] Authenticated user ${req.user.id} for ${req.method} ${req.path}`);
+    }
+    
     next();
   } catch (error) {
+    if (req.path.includes('matchmaking')) {
+      console.error(`[Auth Middleware] Token verification failed for ${req.method} ${req.path}:`, error);
+    }
     return res.status(403).json({ 
       success: false, 
       error: 'Invalid or expired token' 
