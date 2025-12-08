@@ -618,7 +618,18 @@ export async function getSeasonRewards(
  * Verifica se temporada atual expirou e cria nova se necessário
  */
 export async function checkAndCreateNewSeason(): Promise<Season | null> {
-  const client = await getClient();
+  let client;
+  
+  try {
+    client = await getClient();
+  } catch (error: any) {
+    // Se pool está unhealthy, não tentar criar temporada agora
+    if (error?.code === 'EPOOLUNHEALTHY' || error?.code === 'ECIRCUITOPEN') {
+      console.warn('[PVP Season] Pool is unhealthy, skipping season check');
+      return null;
+    }
+    throw error;
+  }
   
   try {
     const currentSeason = await getCurrentSeason();
@@ -638,7 +649,9 @@ export async function checkAndCreateNewSeason(): Promise<Season | null> {
     console.error('[PVP Season] Error checking season:', error);
     throw error;
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
 

@@ -144,9 +144,13 @@ export async function applyRewards(
     
     console.log(`[PVP Reward] Applied rewards to user ${userId}: ${rewards.coronas} coronas, ${rewards.experience} XP`);
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {
+      // Ignore rollback errors
+    });
     console.error('[PVP Reward] Error applying rewards:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 

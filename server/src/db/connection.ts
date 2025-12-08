@@ -76,6 +76,11 @@ function isPoolHealthy(): boolean {
   const activeCount = totalCount - idleCount;
   const maxConnections = poolConfig.max || 5;
 
+  // Se pool ainda está inicializando (menos de 2 conexões), permitir
+  if (totalCount < 2) {
+    return true; // Pool ainda está inicializando, permitir conexões
+  }
+
   // Pool is unhealthy if there are waiting connections (indica esgotamento)
   if (waitingCount > 0) {
     console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (pool esgotado)`);
@@ -88,9 +93,10 @@ function isPoolHealthy(): boolean {
     return false;
   }
 
-  // Pool is unhealthy if more than 60% of connections are in use
-  if (totalCount > 0 && activeCount / totalCount > 0.6) {
-    console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round((activeCount / totalCount) * 100)}% - threshold: 60%)`);
+  // Pool is unhealthy if more than 80% of connections are in use (aumentado de 60% para 80%)
+  // Isso permite mais flexibilidade durante picos de uso
+  if (totalCount > 0 && activeCount / totalCount > 0.8) {
+    console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round((activeCount / totalCount) * 100)}% - threshold: 80%)`);
     return false;
   }
 
