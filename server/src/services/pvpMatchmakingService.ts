@@ -440,7 +440,18 @@ export async function cleanExpiredQueueEntries(): Promise<number> {
  * Deve ser chamado a cada poucos segundos
  */
 export async function processMatchmaking(seasonNumber: number = 1): Promise<MatchResult[]> {
-  const client = await getClient();
+  let client;
+  
+  try {
+    client = await getClient();
+  } catch (error: any) {
+    // Se circuit breaker está aberto, retornar vazio imediatamente
+    if (error?.code === 'ECIRCUITOPEN' || error?.message?.includes('Circuit breaker is open')) {
+      console.warn('[PVP Matchmaking] Circuit breaker is open - skipping matchmaking');
+      return [];
+    }
+    throw error;
+  }
   
   try {
     // Verificar se a tabela existe antes de processar
@@ -540,9 +551,24 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
     }
     
     return matches;
-  } catch (error) {
+  } catch (error: any) {
+    // Se circuit breaker está aberto, retornar vazio
+    if (error?.code === 'ECIRCUITOPEN' || error?.message?.includes('Circuit breaker is open')) {
+      console.warn('[PVP Matchmaking] Circuit breaker is open - skipping matchmaking');
+      return [];
+    }
+    
+    if (error?.code === '42P01') {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping matchmaking');
+      return [];
+    }
+    
     console.error('[PVP Matchmaking] Error processing matchmaking:', error);
     throw error;
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 }
 

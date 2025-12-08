@@ -100,6 +100,32 @@ export async function getCurrentSeason(): Promise<Season | null> {
     
     return season;
   } catch (error: any) {
+    // Verificar se é circuit breaker aberto (prioridade - banco está offline)
+    const isCircuitOpen = error?.code === 'ECIRCUITOPEN' || 
+                         error?.message?.includes('Circuit breaker is open');
+    
+    if (isCircuitOpen) {
+      // Circuit breaker está aberto - usar cache ou fallback imediatamente
+      console.warn('[PVP Season] Circuit breaker is open - using cached season or fallback');
+      if (cachedSeason) {
+        console.warn('[PVP Season] Using cached season (circuit breaker open)');
+        return cachedSeason;
+      }
+      // Fallback imediato
+      const fallbackSeason: Season = {
+        id: 1,
+        number: 1,
+        name: 'Temporada 1 (Fallback - Circuit Breaker Open)',
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        status: 'active',
+        rewardsConfig: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      return fallbackSeason;
+    }
+    
     console.error('[PVP Season] Error getting current season:', error);
     
     // Se for erro de conexão/timeout, retornar cache ou fallback em vez de quebrar

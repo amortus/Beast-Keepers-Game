@@ -116,6 +116,19 @@ export async function login(req: Request, res: Response) {
         );
         break; // Success, exit retry loop
       } catch (dbError: any) {
+        // Verificar se é circuit breaker aberto
+        const isCircuitOpen = dbError?.code === 'ECIRCUITOPEN' || 
+                             dbError?.message?.includes('Circuit breaker is open');
+        
+        if (isCircuitOpen) {
+          // Circuit breaker está aberto - banco está offline, retornar 503 imediatamente
+          console.error('[Auth] Login error: Circuit breaker is open - database unavailable');
+          return res.status(503).json({
+            success: false,
+            error: 'Database temporarily unavailable. Please try again in a moment.'
+          } as ApiResponse);
+        }
+        
         const isConnectionError = dbError?.message?.includes('timeout') || 
                                   dbError?.message?.includes('ECONNREFUSED') || 
                                   dbError?.message?.includes('connection') ||
@@ -186,6 +199,18 @@ export async function login(req: Request, res: Response) {
     } as ApiResponse<AuthResponse>);
 
   } catch (error: any) {
+    // Verificar se é circuit breaker aberto
+    const isCircuitOpen = error?.code === 'ECIRCUITOPEN' || 
+                         error?.message?.includes('Circuit breaker is open');
+    
+    if (isCircuitOpen) {
+      console.error('[Auth] Login error: Circuit breaker is open - database unavailable');
+      return res.status(503).json({
+        success: false,
+        error: 'Database temporarily unavailable. Please try again in a moment.'
+      } as ApiResponse);
+    }
+    
     // Check if it's a database connection error
     const isConnectionError = error?.message?.includes('timeout') || 
                               error?.message?.includes('ECONNREFUSED') || 

@@ -200,9 +200,49 @@ export function initializePvpSocketHandlers(
         // Reset contador de erros em caso de sucesso
         consecutiveErrors = 0;
     } catch (error: any) {
+      // Verificar se é circuit breaker aberto (banco offline)
+      const isCircuitOpen = error?.code === 'ECIRCUITOPEN' || 
+                           error?.message?.includes('Circuit breaker is open');
+      
+      if (isCircuitOpen) {
+        // Circuit breaker está aberto - banco está offline
+        // Pausar matchmaking imediatamente sem contar erros
+        if (!isMatchmakingPaused) {
+          console.warn('[PVP Socket] Circuit breaker is open - database unavailable. Pausing matchmaking immediately.');
+          
+          isMatchmakingPaused = true;
+          
+          // Limpar intervalo atual
+          if (matchmakingInterval) {
+            clearInterval(matchmakingInterval);
+            matchmakingInterval = null;
+          }
+          
+          // Limpar qualquer timeout de retomada pendente
+          if (resumeTimeout) {
+            clearTimeout(resumeTimeout);
+            resumeTimeout = null;
+          }
+          
+          // Retomar após 2 minutos (circuit breaker tenta a cada 1 minuto)
+          resumeTimeout = setTimeout(() => {
+            console.log('[PVP Socket] Retrying matchmaking after circuit breaker pause...');
+            isMatchmakingPaused = false;
+            consecutiveErrors = 0;
+            resumeTimeout = null;
+            
+            // Recriar o intervalo
+            if (!matchmakingInterval) {
+              matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
+            }
+          }, 2 * 60 * 1000); // 2 minutos
+        }
+        return; // Não contar como erro, apenas pausar
+      }
+      
       consecutiveErrors++;
       
-      // Verificar se é erro de conexão
+      // Verificar se é erro de conexão real (não circuit breaker)
       const isConnectionError = error?.message?.includes('timeout') || 
                                 error?.message?.includes('ECONNREFUSED') || 
                                 error?.message?.includes('connection') ||
