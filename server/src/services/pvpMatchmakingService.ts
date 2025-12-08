@@ -35,6 +35,8 @@ export async function joinQueue(
   const client = await getClient();
   
   try {
+    console.log(`[PVP Matchmaking] joinQueue called: userId=${userId}, beastId=${beastId}, matchType=${matchType}, seasonNumber=${seasonNumber}`);
+    
     // Verificar se a tabela existe
     const tableExists = await client.query(`
       SELECT EXISTS (
@@ -42,6 +44,8 @@ export async function joinQueue(
         WHERE table_name = 'pvp_matchmaking_queue'
       )
     `);
+    
+    console.log(`[PVP Matchmaking] Table exists check: ${tableExists.rows[0]?.exists}`);
     
     if (!tableExists.rows[0]?.exists) {
       // Criar tabela automaticamente se não existir
@@ -74,6 +78,7 @@ export async function joinQueue(
     );
     
     if (existing.rows.length > 0) {
+      console.log(`[PVP Matchmaking] Player ${userId} is already in queue`);
       throw new Error('Player already in queue');
     }
     
@@ -82,30 +87,51 @@ export async function joinQueue(
     
     // Para ranked, buscar ELO e tier
     if (matchType === 'ranked') {
+      console.log(`[PVP Matchmaking] Fetching ranking for ranked match: userId=${userId}, seasonNumber=${seasonNumber}`);
       const ranking = await getPlayerRanking(userId, seasonNumber);
       if (ranking) {
         elo = ranking.elo;
         tier = ranking.tier;
+        console.log(`[PVP Matchmaking] Player ${userId} has ranking: elo=${elo}, tier=${tier}`);
       } else {
         // Ranking inicial
         elo = 1000;
         tier = 'iron';
+        console.log(`[PVP Matchmaking] Player ${userId} has no ranking, using defaults: elo=${elo}, tier=${tier}`);
       }
+    } else {
+      console.log(`[PVP Matchmaking] Casual match - no ELO needed`);
     }
     
-    await client.query(
+    const insertResult = await client.query(
       `INSERT INTO pvp_matchmaking_queue 
        (user_id, beast_id, match_type, elo, tier, queued_at, expires_at)
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW() + INTERVAL '5 minutes')`,
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW() + INTERVAL '5 minutes')
+       RETURNING id, queued_at, expires_at`,
       [userId, beastId, matchType, elo, tier]
     );
     
-    console.log(`[PVP Matchmaking] Player ${userId} joined ${matchType} queue`);
+    const insertedRow = insertResult.rows[0];
+    console.log(`[PVP Matchmaking] ✅ Player ${userId} joined ${matchType} queue successfully`, {
+      queueId: insertedRow.id,
+      queuedAt: insertedRow.queued_at,
+      expiresAt: insertedRow.expires_at,
+      elo,
+      tier
+    });
+    
+    // Verificar se realmente foi inserido
+    const verify = await client.query(
+      `SELECT COUNT(*) as count FROM pvp_matchmaking_queue WHERE user_id = $1`,
+      [userId]
+    );
+    console.log(`[PVP Matchmaking] Verification: ${verify.rows[0].count} entries found for user ${userId}`);
   } catch (error: any) {
     if (error?.code === '42P01') {
+      console.error('[PVP Matchmaking] Table does not exist (42P01)');
       throw new Error('Matchmaking queue table does not exist. Please run migrations.');
     }
-    console.error('[PVP Matchmaking] Error joining queue:', error);
+    console.error(`[PVP Matchmaking] Error joining queue for user ${userId}:`, error);
     throw error;
   } finally {
     client.release();
