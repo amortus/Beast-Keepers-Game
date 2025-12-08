@@ -8,18 +8,27 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Configuração otimizada para Neon com connection pooling
+const databaseUrl = process.env.DATABASE_URL || '';
+const isNeonPooler = databaseUrl.includes('-pooler.');
+
 const poolConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? {
     rejectUnauthorized: false
   } : false,
-  max: 5, // Reduzido para 5 para evitar esgotamento do pool e problemas de conexão
+  max: isNeonPooler ? 10 : 5, // Neon pooler permite mais conexões
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // 10 segundos - reduzido para evitar conexões travadas
+  connectionTimeoutMillis: isNeonPooler ? 5000 : 10000, // Pooler é mais rápido
   statement_timeout: 10000, // Timeout para queries individuais - 10 segundos
   query_timeout: 10000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
+  // Configurações específicas para Neon pooler
+  ...(isNeonPooler && {
+    // Neon pooler funciona melhor com essas configurações
+    allowExitOnIdle: false,
+  }),
 };
 
 export const pool = new Pool(poolConfig);
