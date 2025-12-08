@@ -54,6 +54,16 @@ export class ApiClient {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
       console.error('[ApiClient] POST error:', response.status, error);
+      
+      // Para erros 503, incluir o status code na mensagem para facilitar detecção
+      if (response.status === 503) {
+        const errorMessage = error.error || error.details || 'Database temporarily unavailable';
+        const enhancedError = new Error(errorMessage);
+        (enhancedError as any).status = 503;
+        (enhancedError as any).is503 = true;
+        throw enhancedError;
+      }
+      
       throw new Error(error.error || error.details || `HTTP ${response.status}`);
     }
 

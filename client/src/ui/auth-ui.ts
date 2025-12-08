@@ -535,21 +535,51 @@ export class AuthUI {
     this.isLoading = true;
     this.draw();
 
-    try {
-      const response = await authApi.login(email, password);
-      
-      if (response.success && response.data) {
-        localStorage.setItem('auth_token', response.data.token);
-        this.onLoginSuccess(response.data.token, response.data.user);
-      } else {
-        this.errorMessage = response.error || 'Erro ao fazer login';
+    // Tentar login com retry automático para erros 503 (banco temporariamente indisponível)
+    let retries = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 segundos entre tentativas
+
+    while (retries <= maxRetries) {
+      try {
+        const response = await authApi.login(email, password);
+        
+        if (response.success && response.data) {
+          localStorage.setItem('auth_token', response.data.token);
+          this.onLoginSuccess(response.data.token, response.data.user);
+          return; // Sucesso, sair
+        } else {
+          this.errorMessage = response.error || 'Erro ao fazer login';
+          break; // Erro não é 503, não tentar novamente
+        }
+      } catch (error: any) {
+        const is503 = error.is503 || 
+                     error.status === 503 ||
+                     error.message?.includes('503') || 
+                     error.message?.includes('temporarily unavailable') ||
+                     error.message?.includes('Database temporarily');
+        
+        if (is503 && retries < maxRetries) {
+          // Erro 503 - banco temporariamente indisponível, tentar novamente
+          retries++;
+          this.errorMessage = `Servidor temporariamente indisponível. Tentando novamente... (${retries}/${maxRetries})`;
+          this.draw();
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        } else {
+          // Outro erro ou esgotou tentativas
+          if (is503 && retries >= maxRetries) {
+            this.errorMessage = 'Servidor temporariamente indisponível. Por favor, tente novamente em alguns instantes.';
+          } else {
+            this.errorMessage = error.message || 'Erro ao conectar com servidor';
+          }
+          break;
+        }
       }
-    } catch (error: any) {
-      this.errorMessage = error.message || 'Erro ao conectar com servidor';
-    } finally {
-      this.isLoading = false;
-      this.draw();
     }
+
+    this.isLoading = false;
+    this.draw();
   }
 
   private async handleRegister() {
