@@ -334,26 +334,35 @@ async function handleMatchFound(match: any, seasonNumber: number) {
     const player1Sockets = getUserSockets(match.player1.userId);
     const player2Sockets = getUserSockets(match.player2.userId);
     
+    console.log(`[PVP Match] Notifying players: Player1 (${match.player1.userId}) has ${player1Sockets.length} sockets: [${player1Sockets.join(', ')}]`);
+    console.log(`[PVP Match] Notifying players: Player2 (${match.player2.userId}) has ${player2Sockets.length} sockets: [${player2Sockets.join(', ')}]`);
+    
+    const matchDataPlayer1 = {
+      matchId: createdMatch.id,
+      opponent: {
+        userId: match.player2.userId,
+        beastId: match.player2.beastId,
+      },
+      matchType: match.player1.matchType,
+    };
+    
+    const matchDataPlayer2 = {
+      matchId: createdMatch.id,
+      opponent: {
+        userId: match.player1.userId,
+        beastId: match.player1.beastId,
+      },
+      matchType: match.player1.matchType,
+    };
+    
     player1Sockets.forEach(socketId => {
-      io?.to(socketId).emit('pvp:matchmaking:found', {
-        matchId: createdMatch.id,
-        opponent: {
-          userId: match.player2.userId,
-          beastId: match.player2.beastId,
-        },
-        matchType: match.player1.matchType,
-      });
+      console.log(`[PVP Match] Emitting 'pvp:matchmaking:found' to Player1 socket: ${socketId}`);
+      io?.to(socketId).emit('pvp:matchmaking:found', matchDataPlayer1);
     });
     
     player2Sockets.forEach(socketId => {
-      io?.to(socketId).emit('pvp:matchmaking:found', {
-        matchId: createdMatch.id,
-        opponent: {
-          userId: match.player1.userId,
-          beastId: match.player1.beastId,
-        },
-        matchType: match.player1.matchType,
-      });
+      console.log(`[PVP Match] Emitting 'pvp:matchmaking:found' to Player2 socket: ${socketId}`);
+      io?.to(socketId).emit('pvp:matchmaking:found', matchDataPlayer2);
     });
     
     // Emitir evento de início de partida
