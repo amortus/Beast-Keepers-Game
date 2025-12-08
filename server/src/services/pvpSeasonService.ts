@@ -170,19 +170,47 @@ export async function createNewSeason(): Promise<Season> {
     }
     
     // Verificar qual coluna existe na tabela (number ou season_number)
+    // IMPORTANTE: Verificar TODAS as colunas da tabela para entender a estrutura real
+    const allColumnsCheck = await client.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_name = 'pvp_seasons' 
+        AND table_schema = 'public'
+      ORDER BY ordinal_position
+    `);
+    
     const columnCheck = await client.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'pvp_seasons' 
+        AND table_schema = 'public'
         AND column_name IN ('number', 'season_number')
     `);
     
     const hasNumber = columnCheck.rows.some((r: any) => r.column_name === 'number');
     const hasSeasonNumber = columnCheck.rows.some((r: any) => r.column_name === 'season_number');
     
-    // Priorizar season_number se existir (pode ser PRIMARY KEY)
-    // Se não existir, usar number
+    // Log detalhado para debug
+    console.log(`[PVP Season] Column check results:`, {
+      hasNumber,
+      hasSeasonNumber,
+      foundColumns: columnCheck.rows.map((r: any) => r.column_name),
+      allColumns: allColumnsCheck.rows.map((r: any) => `${r.column_name} (${r.data_type}, nullable: ${r.is_nullable})`)
+    });
+    
+    // CRÍTICO: Se season_number existe, SEMPRE usar ele (pode ser PRIMARY KEY)
+    // A migration 012 usa season_number como PRIMARY KEY e NÃO TEM coluna number
     const seasonColumn = hasSeasonNumber ? 'season_number' : (hasNumber ? 'number' : 'season_number');
+    
+    // Validação crítica: se season_number existe, NUNCA usar number
+    if (hasSeasonNumber && hasNumber) {
+      console.warn('[PVP Season] Both season_number and number exist! Using season_number (PRIMARY KEY takes precedence)');
+    }
+    
+    // Validação adicional: se season_number existe mas não tem coluna number, garantir que não tentaremos usar number
+    if (hasSeasonNumber && !hasNumber) {
+      console.log('[PVP Season] Migration 012 structure detected (season_number only, no number column)');
+    }
     
     console.log(`[PVP Season] Table structure - hasNumber: ${hasNumber}, hasSeasonNumber: ${hasSeasonNumber}, using column: ${seasonColumn}`);
     
@@ -237,13 +265,6 @@ export async function createNewSeason(): Promise<Season> {
     
     const name = `Temporada ${nextNumber}`;
     
-    // Finalizar temporada anterior se existir
-    await client.query(
-      `UPDATE pvp_seasons 
-       SET status = 'ended' 
-       WHERE status = 'active'`
-    );
-    
     // Validação final crítica antes do INSERT - garantir que nextNumber seja um inteiro válido
     const finalSeasonNumber = parseInt(String(nextNumber), 10);
     if (isNaN(finalSeasonNumber) || finalSeasonNumber < 1) {
@@ -253,28 +274,53 @@ export async function createNewSeason(): Promise<Season> {
     }
     
     console.log(`[PVP Season] Creating season with validated number: ${finalSeasonNumber}`);
+    console.log(`[PVP Season] Column detection: hasNumber=${hasNumber}, hasSeasonNumber=${hasSeasonNumber}`);
+    
+    // Finalizar temporada anterior se existir (usar a coluna correta)
+    try {
+      if (hasSeasonNumber) {
+        await client.query(
+          `UPDATE pvp_seasons 
+           SET status = 'ended' 
+           WHERE status = 'active'`
+        );
+      } else {
+        await client.query(
+          `UPDATE pvp_seasons 
+           SET status = 'ended' 
+           WHERE status = 'active'`
+        );
+      }
+    } catch (updateError: any) {
+      console.warn('[PVP Season] Error ending previous season (may not exist):', updateError.message);
+      // Continuar mesmo se falhar
+    }
     
     // Criar nova temporada - usar a coluna correta
     // IMPORTANTE: Se season_number existe, SEMPRE usar ele (pode ser PRIMARY KEY e NOT NULL)
     let insertQuery: string;
     let insertValues: any[];
     
+    // CRÍTICO: Se season_number existe (migration 012), SEMPRE usar ele, mesmo se number também existir
+    // A migration 012 NÃO TEM colunas number ou name, apenas season_number
     if (hasSeasonNumber) {
       // Usar season_number (pode ser PRIMARY KEY, então é obrigatório)
-      // Esta é a estrutura da migration 012
+      // Esta é a estrutura da migration 012 - NÃO TEM colunas number ou name
       insertQuery = `INSERT INTO pvp_seasons 
        (season_number, start_date, end_date, status, created_at)
        VALUES ($1, $2, $3, 'active', NOW())
        RETURNING *`;
       insertValues = [finalSeasonNumber, startDate, endDate];
+      console.log(`[PVP Season] Using season_number structure (migration 012)`);
     } else if (hasNumber) {
       // Usar number (nova estrutura, sem season_number)
-      // Esta é a estrutura da migration 002
+      // Esta é a estrutura da migration 002 - TEM colunas number e name
       insertQuery = `INSERT INTO pvp_seasons 
        (number, name, start_date, end_date, status, rewards_config, created_at, updated_at)
        VALUES ($1, $2, $3, $4, 'active', '{}'::jsonb, NOW(), NOW())
        RETURNING *`;
       insertValues = [finalSeasonNumber, name, startDate, endDate];
+      console.log(`[PVP Season] Using number structure (migration 002)`);
     } else {
       // Se não tem nenhuma das colunas, tentar criar com season_number (padrão)
       console.warn('[PVP Season] Neither number nor season_number found, using season_number as default');
@@ -283,6 +329,7 @@ export async function createNewSeason(): Promise<Season> {
        VALUES ($1, $2, $3, 'active', NOW())
        RETURNING *`;
       insertValues = [finalSeasonNumber, startDate, endDate];
+      console.log(`[PVP Season] Using season_number as fallback`);
     }
     
     console.log(`[PVP Season] Final insert preparation:`);

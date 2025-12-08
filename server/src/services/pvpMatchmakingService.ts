@@ -35,6 +35,18 @@ export async function joinQueue(
   const client = await getClient();
   
   try {
+    // Verificar se a tabela existe
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      throw new Error('Matchmaking queue table does not exist. Please run migrations.');
+    }
+    
     // Verificar se já está na fila
     const existing = await client.query(
       `SELECT id FROM pvp_matchmaking_queue WHERE user_id = $1`,
@@ -69,7 +81,10 @@ export async function joinQueue(
     );
     
     console.log(`[PVP Matchmaking] Player ${userId} joined ${matchType} queue`);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      throw new Error('Matchmaking queue table does not exist. Please run migrations.');
+    }
     console.error('[PVP Matchmaking] Error joining queue:', error);
     throw error;
   }
@@ -82,6 +97,19 @@ export async function leaveQueue(userId: number): Promise<void> {
   const client = await getClient();
   
   try {
+    // Verificar se a tabela existe
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, cannot leave queue');
+      return; // Tabela não existe, considerar que já saiu
+    }
+    
     const result = await client.query(
       `DELETE FROM pvp_matchmaking_queue WHERE user_id = $1`,
       [userId]
@@ -92,7 +120,11 @@ export async function leaveQueue(userId: number): Promise<void> {
     }
     
     console.log(`[PVP Matchmaking] Player ${userId} left queue`);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist');
+      return; // Tabela não existe, considerar que já saiu
+    }
     console.error('[PVP Matchmaking] Error leaving queue:', error);
     throw error;
   }
@@ -103,6 +135,18 @@ export async function leaveQueue(userId: number): Promise<void> {
  */
 export async function getQueueStatus(userId: number): Promise<QueueEntry | null> {
   try {
+    // Verificar se a tabela existe
+    const tableCheck = await query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableCheck.rows[0]?.exists) {
+      return null; // Tabela não existe
+    }
+    
     const result = await query(
       `SELECT * FROM pvp_matchmaking_queue WHERE user_id = $1`,
       [userId]
@@ -119,7 +163,10 @@ export async function getQueueStatus(userId: number): Promise<QueueEntry | null>
       tier: row.tier,
       queuedAt: row.queued_at,
     };
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      return null; // Tabela não existe
+    }
     console.error('[PVP Matchmaking] Error getting queue status:', error);
     throw error;
   }
@@ -166,24 +213,37 @@ async function findRankedMatch(
   
   if (!playerEntry.elo) return null;
   
-  const eloRange = 100; // ±100 inicial
-  let currentRange = eloRange;
-  const maxRange = 500; // Máximo de ±500
-  
-  while (currentRange <= maxRange) {
-    const minElo = Math.max(0, playerEntry.elo - currentRange);
-    const maxElo = playerEntry.elo + currentRange;
+  try {
+    // Verificar se a tabela existe
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
     
-    const result = await client.query(
-      `SELECT * FROM pvp_matchmaking_queue
-       WHERE user_id != $1
-         AND match_type = 'ranked'
-         AND elo >= $2 AND elo <= $3
-         AND expires_at > NOW()
-       ORDER BY ABS(elo - $4)
-       LIMIT 1`,
-      [playerEntry.userId, minElo, maxElo, playerEntry.elo]
-    );
+    if (!tableExists.rows[0]?.exists) {
+      return null; // Tabela não existe
+    }
+    
+    const eloRange = 100; // ±100 inicial
+    let currentRange = eloRange;
+    const maxRange = 500; // Máximo de ±500
+    
+    while (currentRange <= maxRange) {
+      const minElo = Math.max(0, playerEntry.elo - currentRange);
+      const maxElo = playerEntry.elo + currentRange;
+      
+      const result = await client.query(
+        `SELECT * FROM pvp_matchmaking_queue
+         WHERE user_id != $1
+           AND match_type = 'ranked'
+           AND elo >= $2 AND elo <= $3
+           AND expires_at > NOW()
+         ORDER BY ABS(elo - $4)
+         LIMIT 1`,
+        [playerEntry.userId, minElo, maxElo, playerEntry.elo]
+      );
     
     if (result.rows.length > 0) {
       const opponentRow = result.rows[0];
@@ -204,11 +264,17 @@ async function findRankedMatch(
       };
     }
     
-    // Expandir range
-    currentRange += 50;
+      // Expandir range
+      currentRange += 50;
+    }
+    
+    return null;
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      return null; // Tabela não existe
+    }
+    throw error;
   }
-  
-  return null;
 }
 
 /**
@@ -217,33 +283,52 @@ async function findRankedMatch(
 async function findCasualMatch(playerEntry: QueueEntry): Promise<MatchResult | null> {
   const client = await getClient();
   
-  const result = await client.query(
-    `SELECT * FROM pvp_matchmaking_queue
-     WHERE user_id != $1
-       AND match_type = 'casual'
-       AND expires_at > NOW()
-     ORDER BY RANDOM()
-     LIMIT 1`,
-    [playerEntry.userId]
-  );
-  
-  if (result.rows.length === 0) return null;
-  
-  const opponentRow = result.rows[0];
-  const opponent: QueueEntry = {
-    userId: opponentRow.user_id,
-    beastId: opponentRow.beast_id,
-    matchType: opponentRow.match_type,
-    elo: opponentRow.elo,
-    tier: opponentRow.tier,
-    queuedAt: opponentRow.queued_at,
-  };
-  
-  return {
-    player1: playerEntry,
-    player2: opponent,
-    matchId: 0, // Será preenchido pelo matchService
-  };
+  try {
+    // Verificar se a tabela existe
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      return null; // Tabela não existe
+    }
+    
+    const result = await client.query(
+      `SELECT * FROM pvp_matchmaking_queue
+       WHERE user_id != $1
+         AND match_type = 'casual'
+         AND expires_at > NOW()
+       ORDER BY RANDOM()
+       LIMIT 1`,
+      [playerEntry.userId]
+    );
+    
+    if (result.rows.length === 0) return null;
+    
+    const opponentRow = result.rows[0];
+    const opponent: QueueEntry = {
+      userId: opponentRow.user_id,
+      beastId: opponentRow.beast_id,
+      matchType: opponentRow.match_type,
+      elo: opponentRow.elo,
+      tier: opponentRow.tier,
+      queuedAt: opponentRow.queued_at,
+    };
+    
+    return {
+      player1: playerEntry,
+      player2: opponent,
+      matchId: 0, // Será preenchido pelo matchService
+    };
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      return null; // Tabela não existe
+    }
+    throw error;
+  }
 }
 
 /**
@@ -253,6 +338,19 @@ export async function removeFromQueue(userId1: number, userId2: number): Promise
   const client = await getClient();
   
   try {
+    // Verificar se a tabela existe
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping remove');
+      return;
+    }
+    
     await client.query(
       `DELETE FROM pvp_matchmaking_queue 
        WHERE user_id IN ($1, $2)`,
@@ -260,7 +358,11 @@ export async function removeFromQueue(userId1: number, userId2: number): Promise
     );
     
     console.log(`[PVP Matchmaking] Removed players ${userId1} and ${userId2} from queue`);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '42P01') {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping remove');
+      return;
+    }
     console.error('[PVP Matchmaking] Error removing from queue:', error);
     throw error;
   }
@@ -273,6 +375,19 @@ export async function cleanExpiredQueueEntries(): Promise<number> {
   const client = await getClient();
   
   try {
+    // Verificar se a tabela existe antes de tentar usar
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping cleanup');
+      return 0;
+    }
+    
     const result = await client.query(
       `DELETE FROM pvp_matchmaking_queue 
        WHERE expires_at < NOW()`
@@ -284,7 +399,12 @@ export async function cleanExpiredQueueEntries(): Promise<number> {
     }
     
     return count;
-  } catch (error) {
+  } catch (error: any) {
+    // Se a tabela não existe, apenas logar e retornar 0
+    if (error?.code === '42P01') {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping cleanup');
+      return 0;
+    }
     console.error('[PVP Matchmaking] Error cleaning expired entries:', error);
     throw error;
   }
@@ -298,18 +418,40 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
   const client = await getClient();
   
   try {
+    // Verificar se a tabela existe antes de processar
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matchmaking_queue'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping matchmaking');
+      return [];
+    }
+    
     // Limpar expirados primeiro
     await cleanExpiredQueueEntries();
     
     const matches: MatchResult[] = [];
     
-    // Processar ranked
-    const rankedPlayers = await client.query(
-      `SELECT * FROM pvp_matchmaking_queue
-       WHERE match_type = 'ranked'
-         AND expires_at > NOW()
-       ORDER BY queued_at ASC`
-    );
+    // Processar ranked - verificar se tabela existe antes de query
+    let rankedPlayers;
+    try {
+      rankedPlayers = await client.query(
+        `SELECT * FROM pvp_matchmaking_queue
+         WHERE match_type = 'ranked'
+           AND expires_at > NOW()
+         ORDER BY queued_at ASC`
+      );
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping ranked matchmaking');
+        return [];
+      }
+      throw error;
+    }
     
     const processedRanked = new Set<number>();
     
@@ -333,13 +475,22 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
       }
     }
     
-    // Processar casual
-    const casualPlayers = await client.query(
-      `SELECT * FROM pvp_matchmaking_queue
-       WHERE match_type = 'casual'
-         AND expires_at > NOW()
-       ORDER BY queued_at ASC`
-    );
+    // Processar casual - verificar se tabela existe antes de query
+    let casualPlayers;
+    try {
+      casualPlayers = await client.query(
+        `SELECT * FROM pvp_matchmaking_queue
+         WHERE match_type = 'casual'
+           AND expires_at > NOW()
+         ORDER BY queued_at ASC`
+      );
+    } catch (error: any) {
+      if (error?.code === '42P01') {
+        console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping casual matchmaking');
+        return matches; // Retornar matches já processados
+      }
+      throw error;
+    }
     
     const processedCasual = new Set<number>();
     
