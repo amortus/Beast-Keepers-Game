@@ -552,9 +552,14 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
     
     return matches;
   } catch (error: any) {
-    // Se circuit breaker está aberto, retornar vazio
+    // Se circuit breaker está aberto ou pool está unhealthy, retornar vazio
     if (error?.code === 'ECIRCUITOPEN' || error?.message?.includes('Circuit breaker is open')) {
       console.warn('[PVP Matchmaking] Circuit breaker is open - skipping matchmaking');
+      return [];
+    }
+    
+    if (error?.code === 'EPOOLUNHEALTHY' || error?.message?.includes('Pool is unhealthy')) {
+      console.warn('[PVP Matchmaking] Pool is unhealthy - skipping matchmaking');
       return [];
     }
     

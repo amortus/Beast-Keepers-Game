@@ -116,13 +116,15 @@ export async function login(req: Request, res: Response) {
         );
         break; // Success, exit retry loop
       } catch (dbError: any) {
-        // Verificar se é circuit breaker aberto
+        // Verificar se é circuit breaker aberto ou pool unhealthy
         const isCircuitOpen = dbError?.code === 'ECIRCUITOPEN' || 
                              dbError?.message?.includes('Circuit breaker is open');
+        const isPoolUnhealthy = dbError?.code === 'EPOOLUNHEALTHY' ||
+                               dbError?.message?.includes('Pool is unhealthy');
         
-        if (isCircuitOpen) {
-          // Circuit breaker está aberto - banco está offline, retornar 503 imediatamente
-          console.error('[Auth] Login error: Circuit breaker is open - database unavailable');
+        if (isCircuitOpen || isPoolUnhealthy) {
+          // Database está indisponível - retornar 503 imediatamente
+          console.error('[Auth] Login error: Database unavailable -', isCircuitOpen ? 'circuit breaker open' : 'pool unhealthy');
           return res.status(503).json({
             success: false,
             error: 'Database temporarily unavailable. Please try again in a moment.'
