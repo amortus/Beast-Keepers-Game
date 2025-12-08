@@ -23,6 +23,8 @@ export class PvpMatchmakingUI {
   private queueInterval: number | null = null;
   private currentBeast: Beast | null = null;
   private loadingAnimation: number = 0;
+  private statusCheckInterval: number | null = null;
+  private lastStatusCheck: number = 0;
 
   // Callbacks
   public onMatchFound: (matchId: number, opponent: { userId: number; beastId: number }, matchType: MatchType) => void = () => {};
@@ -63,6 +65,20 @@ export class PvpMatchmakingUI {
     pvpSocketClient.onMatchmakingLeft(() => {
       this.isInQueue = false;
       this.stopQueueTimer();
+    });
+
+    // Listener para erros do socket, especialmente "Player already in queue"
+    pvpSocketClient.onError((data: { message: string }) => {
+      if (data.message?.includes('already in queue') || data.message === 'Player already in queue') {
+        console.log('[PVP Matchmaking] Socket says player already in queue, updating UI...');
+        // Assumir que está na fila e atualizar UI diretamente
+        this.isInQueue = true;
+        this.queueStartTime = Date.now();
+        this.queueElapsedSeconds = 0;
+        this.startQueueTimer();
+        // Tentar verificar status do servidor uma vez (sem loop)
+        this.checkQueueStatusOnce();
+      }
     });
   }
 
@@ -107,11 +123,16 @@ export class PvpMatchmakingUI {
     } catch (error: any) {
       console.error('[PVP Matchmaking] Error joining queue:', error);
       
-      // Se o erro é "Player already in queue", verificar status e atualizar UI
+      // Se o erro é "Player already in queue", atualizar UI diretamente
       if (error?.message?.includes('already in queue') || error?.error === 'Player already in queue') {
-        console.log('[PVP Matchmaking] Player already in queue, checking status...');
-        // Verificar status e atualizar UI
-        await this.checkQueueStatus();
+        console.log('[PVP Matchmaking] Player already in queue, updating UI...');
+        // Assumir que está na fila e atualizar UI diretamente
+        this.isInQueue = true;
+        this.queueStartTime = Date.now();
+        this.queueElapsedSeconds = 0;
+        this.startQueueTimer();
+        // Tentar verificar status do servidor uma vez (sem loop)
+        this.checkQueueStatusOnce();
       }
     }
   }
@@ -171,15 +192,26 @@ export class PvpMatchmakingUI {
 
   public show(beast: Beast) {
     this.currentBeast = beast;
-    this.checkQueueStatus();
+    // Verificar status apenas uma vez ao mostrar, não em loop
+    this.checkQueueStatusOnce();
+    // Iniciar verificação periódica de status (a cada 5 segundos)
+    this.startStatusCheckInterval();
   }
 
   public hide() {
     this.isInQueue = false;
     this.stopQueueTimer();
+    this.stopStatusCheckInterval();
   }
 
-  private async checkQueueStatus() {
+  private async checkQueueStatusOnce() {
+    // Throttle: não verificar mais de uma vez a cada 2 segundos
+    const now = Date.now();
+    if (now - this.lastStatusCheck < 2000) {
+      return;
+    }
+    this.lastStatusCheck = now;
+
     try {
       const status = await getMatchmakingStatus();
       console.log('[PVP Matchmaking] Queue status check:', status);
@@ -194,22 +226,46 @@ export class PvpMatchmakingUI {
           this.queueElapsedSeconds = Math.floor((Date.now() - queuedAt) / 1000);
           console.log('[PVP Matchmaking] Queue time calculated:', this.queueElapsedSeconds, 'seconds');
         } else {
-          this.queueStartTime = Date.now();
-          this.queueElapsedSeconds = 0;
+          // Se não tem queuedAt mas está na fila, usar tempo atual
+          if (!this.isInQueue) {
+            this.queueStartTime = Date.now();
+            this.queueElapsedSeconds = 0;
+          }
         }
-        this.selectedMatchType = status.status?.matchType || 'casual';
+        this.selectedMatchType = status.status?.matchType || this.selectedMatchType;
         this.startQueueTimer();
         console.log('[PVP Matchmaking] Queue timer started, isInQueue:', this.isInQueue);
       } else {
-        console.log('[PVP Matchmaking] Player is not in queue');
-        this.isInQueue = false;
-        this.stopQueueTimer();
+        // Só atualizar para "não na fila" se realmente não estiver na fila
+        // (não atualizar se já está na fila localmente mas o servidor retornou null por problemas de DB)
+        if (!this.isInQueue) {
+          console.log('[PVP Matchmaking] Player is not in queue');
+          this.isInQueue = false;
+          this.stopQueueTimer();
+        }
       }
     } catch (error) {
       console.error('[PVP Matchmaking] Error checking queue status:', error);
-      // Em caso de erro, assumir que não está na fila
-      this.isInQueue = false;
-      this.stopQueueTimer();
+      // Em caso de erro, não alterar estado se já está na fila localmente
+      if (!this.isInQueue) {
+        this.isInQueue = false;
+        this.stopQueueTimer();
+      }
+    }
+  }
+
+  private startStatusCheckInterval() {
+    this.stopStatusCheckInterval();
+    // Verificar status a cada 5 segundos quando a UI está visível
+    this.statusCheckInterval = window.setInterval(() => {
+      this.checkQueueStatusOnce();
+    }, 5000);
+  }
+
+  private stopStatusCheckInterval() {
+    if (this.statusCheckInterval !== null) {
+      clearInterval(this.statusCheckInterval);
+      this.statusCheckInterval = null;
     }
   }
 
