@@ -301,7 +301,19 @@ export async function getGameSave(req: AuthRequest, res: Response) {
       }
     } as ApiResponse);
 
-  } catch (error) {
+  } catch (error: any) {
+    // Verificar se é circuit breaker aberto
+    const isCircuitOpen = error?.code === 'ECIRCUITOPEN' || 
+                         error?.message?.includes('Circuit breaker is open');
+    
+    if (isCircuitOpen) {
+      console.error('[Game] Get save error: Circuit breaker is open - database unavailable');
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Database temporarily unavailable. Please try again in a moment.' 
+      } as ApiResponse);
+    }
+    
     console.error('[Game] Get save error:', error);
     return res.status(500).json({ success: false, error: 'Failed to get game save' } as ApiResponse);
   }

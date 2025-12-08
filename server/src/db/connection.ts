@@ -83,9 +83,16 @@ function checkCircuitBreaker(): boolean {
       console.log('[DB] Circuit breaker: Attempting to close (timeout expired)');
       circuitBreakerState = 'half-open'; // Temporary state for testing
       circuitBreakerFailures = 0;
-      return true; // Allow one attempt
+      return true; // Allow one attempt to test connection
     }
-    return false; // Circuit is open, don't allow connections
+    // Circuit is open and timeout hasn't expired - block ALL queries
+    return false;
+  }
+  
+  if (circuitBreakerState === 'half-open') {
+    // In half-open state, allow queries but they will be monitored
+    // If they fail, circuit will open again
+    return true;
   }
   
   return true; // Circuit is closed, allow connections
@@ -97,6 +104,13 @@ function checkCircuitBreaker(): boolean {
 function recordCircuitBreakerFailure(): void {
   circuitBreakerFailures++;
   circuitBreakerLastFailure = Date.now();
+  
+  // Se está em half-open e falhou, voltar para open imediatamente
+  if (circuitBreakerState === 'half-open') {
+    circuitBreakerState = 'open';
+    console.error(`[DB] Circuit breaker: half-open test failed, reopening immediately. Will retry in ${CIRCUIT_BREAKER_TIMEOUT / 1000}s`);
+    return;
+  }
   
   if (circuitBreakerFailures >= CIRCUIT_BREAKER_THRESHOLD) {
     circuitBreakerState = 'open';
@@ -111,8 +125,11 @@ function recordCircuitBreakerSuccess(): void {
   if (circuitBreakerState === 'half-open') {
     circuitBreakerState = 'closed';
     console.log('[DB] Circuit breaker closed - connection successful');
+    circuitBreakerFailures = 0;
+  } else if (circuitBreakerState === 'closed') {
+    // Reset failure count on successful queries when closed
+    circuitBreakerFailures = 0;
   }
-  circuitBreakerFailures = 0;
 }
 
 // Helper function to execute queries

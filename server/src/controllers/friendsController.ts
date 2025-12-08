@@ -100,6 +100,18 @@ export async function getFriends(req: AuthRequest, res: Response) {
       data: friends
     } as ApiResponse);
   } catch (error: any) {
+    // Verificar se é circuit breaker aberto
+    const isCircuitOpen = error?.code === 'ECIRCUITOPEN' || 
+                         error?.message?.includes('Circuit breaker is open');
+    
+    if (isCircuitOpen) {
+      console.error('[Friends] Get friends error: Circuit breaker is open - database unavailable');
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Database temporarily unavailable. Please try again in a moment.' 
+      } as ApiResponse);
+    }
+    
     console.error('[Friends] Get friends error:', error);
     return res.status(500).json({ 
       success: false, 
@@ -154,6 +166,18 @@ export async function getFriendRequests(req: AuthRequest, res: Response) {
       data: requests
     } as ApiResponse);
   } catch (error: any) {
+    // Verificar se é circuit breaker aberto
+    const isCircuitOpen = error?.code === 'ECIRCUITOPEN' || 
+                         error?.message?.includes('Circuit breaker is open');
+    
+    if (isCircuitOpen) {
+      console.error('[Friends] Get requests error: Circuit breaker is open - database unavailable');
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Database temporarily unavailable. Please try again in a moment.' 
+      } as ApiResponse);
+    }
+    
     console.error('[Friends] Get requests error:', error);
     return res.status(500).json({ 
       success: false, 
