@@ -105,11 +105,35 @@ export async function getCurrentSeason(): Promise<Season | null> {
     }
     
     const row = result.rows[0];
+    
+    // CRÍTICO: Garantir que sempre temos um número válido da season
+    // Se season_number existe e não é null, usar ele
+    // Se não, usar number
+    // Se ambos são null, isso é um erro - a season não deveria existir sem número
+    let seasonNumber: number;
+    if (hasSeasonNumber && row.season_number !== null && row.season_number !== undefined) {
+      seasonNumber = Number(row.season_number);
+    } else if (row.number !== null && row.number !== undefined) {
+      seasonNumber = Number(row.number);
+    } else {
+      // Se ambos são null, isso é um erro crítico - tentar usar o ID ou lançar erro
+      console.error('[PVP Season] CRITICAL: Season exists but both season_number and number are null!', row);
+      seasonNumber = Number(row.id || row.season_number || row.number || 1);
+      if (isNaN(seasonNumber) || seasonNumber < 1) {
+        throw new Error(`Invalid season: both season_number and number are null for season ID ${row.id}`);
+      }
+    }
+    
+    // Validação final
+    if (isNaN(seasonNumber) || seasonNumber < 1) {
+      throw new Error(`Invalid season number: ${seasonNumber} (from row: ${JSON.stringify(row)})`);
+    }
+    
     // Mapear para interface Season (suportar ambas estruturas)
     const season: Season = {
-      id: row.id || row.season_number || row.number,
-      number: row.number || row.season_number || 1,
-      name: row.name || `Temporada ${row.number || row.season_number || 1}`,
+      id: row.id || seasonNumber,
+      number: seasonNumber,
+      name: row.name || `Temporada ${seasonNumber}`,
       startDate: row.start_date,
       endDate: row.end_date,
       status: row.status || 'active',

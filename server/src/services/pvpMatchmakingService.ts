@@ -218,10 +218,8 @@ export async function findMatch(
   matchType: MatchType,
   seasonNumber: number = 1
 ): Promise<MatchResult | null> {
-  const client = await getClient();
-  
   try {
-    // Buscar entrada do jogador
+    // Buscar entrada do jogador (getQueueStatus usa query() que gerencia conexões automaticamente)
     const playerEntry = await getQueueStatus(userId);
     if (!playerEntry || playerEntry.matchType !== matchType) {
       return null;
@@ -247,9 +245,9 @@ async function findRankedMatch(
 ): Promise<MatchResult | null> {
   const client = await getClient();
   
-  if (!playerEntry.elo) return null;
-  
   try {
+    if (!playerEntry.elo) return null;
+    
     // Verificar se a tabela existe
     const tableExists = await client.query(`
       SELECT EXISTS (
@@ -281,24 +279,24 @@ async function findRankedMatch(
         [playerEntry.userId, minElo, maxElo, playerEntry.elo]
       );
     
-    if (result.rows.length > 0) {
-      const opponentRow = result.rows[0];
-      const opponent: QueueEntry = {
-        userId: opponentRow.user_id,
-        beastId: opponentRow.beast_id,
-        matchType: opponentRow.match_type,
-        elo: opponentRow.elo,
-        tier: opponentRow.tier,
-        queuedAt: opponentRow.queued_at,
-      };
-      
-      // Criar match (será criado pelo matchService)
-      return {
-        player1: playerEntry,
-        player2: opponent,
-        matchId: 0, // Será preenchido pelo matchService
-      };
-    }
+      if (result.rows.length > 0) {
+        const opponentRow = result.rows[0];
+        const opponent: QueueEntry = {
+          userId: opponentRow.user_id,
+          beastId: opponentRow.beast_id,
+          matchType: opponentRow.match_type,
+          elo: opponentRow.elo,
+          tier: opponentRow.tier,
+          queuedAt: opponentRow.queued_at,
+        };
+        
+        // Criar match (será criado pelo matchService)
+        return {
+          player1: playerEntry,
+          player2: opponent,
+          matchId: 0, // Será preenchido pelo matchService
+        };
+      }
     
       // Expandir range
       currentRange += 50;
@@ -310,6 +308,8 @@ async function findRankedMatch(
       return null; // Tabela não existe
     }
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -364,6 +364,8 @@ async function findCasualMatch(playerEntry: QueueEntry): Promise<MatchResult | n
       return null; // Tabela não existe
     }
     throw error;
+  } finally {
+    client.release();
   }
 }
 
