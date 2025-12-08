@@ -146,6 +146,14 @@ export async function query(text: string, params?: any[]) {
     throw error;
   }
   
+  // Log pool status para debug
+  const poolStatus = {
+    total: pool.totalCount,
+    idle: pool.idleCount,
+    waiting: pool.waitingCount,
+    active: pool.totalCount - pool.idleCount
+  };
+  
   // Check pool health - se não está saudável E circuit breaker está aberto, bloquear
   if (!isPoolHealthy()) {
     // Se circuit breaker está aberto, bloquear imediatamente
@@ -160,9 +168,9 @@ export async function query(text: string, params?: any[]) {
     if (circuitBreakerState === 'closed') {
       // Se pool está unhealthy mas circuit breaker está fechado, permitir tentativa
       // mas com aviso (pode ser recuperação temporária)
-      console.warn('[DB] Pool is unhealthy, but circuit breaker is closed - attempting query (pool may be recovering)');
+      console.warn('[DB] Pool is unhealthy, but circuit breaker is closed - attempting query (pool may be recovering)', poolStatus);
     } else {
-      console.warn('[DB] Pool is unhealthy, but attempting query anyway (circuit breaker allows)');
+      console.warn('[DB] Pool is unhealthy, but attempting query anyway (circuit breaker allows)', poolStatus);
     }
   }
   
@@ -174,10 +182,29 @@ export async function query(text: string, params?: any[]) {
     // Record success for circuit breaker
     recordCircuitBreakerSuccess();
     
-    // Log apenas queries que demoram mais de 1s ou são importantes
+    // Log queries lentas ou importantes, incluindo status do pool
     if (duration > 1000 || text.includes('SELECT NOW()')) {
-      console.log('[DB] Query executed', { text: text.substring(0, 100), duration, rows: res.rowCount });
+      console.log('[DB] Query executed', { 
+        text: text.substring(0, 100), 
+        duration, 
+        rows: res.rowCount,
+        poolStatus: {
+          total: pool.totalCount,
+          idle: pool.idleCount,
+          waiting: pool.waitingCount,
+          active: pool.totalCount - pool.idleCount
+        }
+      });
     }
+    
+    // Alertar se query demorou muito (pode indicar problema)
+    if (duration > 5000) {
+      console.warn(`[DB] ⚠️ Slow query detected: ${duration}ms`, { 
+        text: text.substring(0, 200),
+        poolStatus 
+      });
+    }
+    
     return res;
   } catch (error: any) {
     // Check if it's a connection error
