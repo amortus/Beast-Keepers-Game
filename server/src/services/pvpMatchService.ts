@@ -52,6 +52,45 @@ export async function createMatch(
   try {
     await client.query('BEGIN');
     
+    // Verificar se a tabela existe
+    const tableExists = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'pvp_matches'
+      )
+    `);
+    
+    if (!tableExists.rows[0]?.exists) {
+      // Criar tabela automaticamente se não existir
+      console.log('[PVP Match] Table pvp_matches does not exist. Creating it...');
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS pvp_matches (
+          id SERIAL PRIMARY KEY,
+          season_number INTEGER NOT NULL DEFAULT 1,
+          player1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          player2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          player1_beast_id INTEGER NOT NULL REFERENCES beasts(id) ON DELETE SET NULL,
+          player2_beast_id INTEGER NOT NULL REFERENCES beasts(id) ON DELETE SET NULL,
+          match_type VARCHAR(20) NOT NULL DEFAULT 'ranked',
+          winner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          loser_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          elo_change_player1 INTEGER,
+          elo_change_player2 INTEGER,
+          duration_seconds INTEGER,
+          battle_log JSONB DEFAULT '[]'::jsonb,
+          created_at TIMESTAMP DEFAULT NOW(),
+          finished_at TIMESTAMP
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_player1 ON pvp_matches(player1_id);
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_player2 ON pvp_matches(player2_id);
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_season ON pvp_matches(season_number);
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_type ON pvp_matches(match_type);
+        CREATE INDEX IF NOT EXISTS idx_pvp_matches_created ON pvp_matches(created_at DESC);
+      `);
+      console.log('[PVP Match] Table pvp_matches created successfully');
+    }
+    
     // Remover da fila se estiverem lá
     try {
       await removeFromQueue(player1Id, player2Id);
