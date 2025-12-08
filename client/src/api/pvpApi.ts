@@ -182,8 +182,22 @@ export async function getPendingChallenges(): Promise<{ received: Challenge[]; s
  * Obter dados da partida
  */
 export async function getMatch(matchId: number): Promise<Match> {
-  const response = await apiClient.get(`/pvp/match/${matchId}`);
-  return response.data.data.match;
+  try {
+    const response = await apiClient.get(`/pvp/match/${matchId}`);
+    // Backend retorna: { success: true, data: { match } }
+    if (response.data?.success && response.data?.data?.match) {
+      return response.data.data.match;
+    }
+    // Fallback: tentar acessar diretamente
+    if (response.data?.match) {
+      return response.data.match;
+    }
+    // Se não encontrar, lançar erro
+    throw new Error('Match data not found in response');
+  } catch (error: any) {
+    console.error('[PVP API] Error getting match:', error);
+    throw new Error(`Failed to get match: ${error.message || 'Unknown error'}`);
+  }
 }
 
 /**
