@@ -42,10 +42,18 @@ export async function query(text: string, params?: any[]) {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    console.log('[DB] Query executed', { text, duration, rows: res.rowCount });
+    // Log apenas queries que demoram mais de 1s ou são importantes
+    if (duration > 1000 || text.includes('SELECT NOW()')) {
+      console.log('[DB] Query executed', { text: text.substring(0, 100), duration, rows: res.rowCount });
+    }
     return res;
-  } catch (error) {
-    console.error('[DB] Query error', { text, error });
+  } catch (error: any) {
+    // Log detalhado apenas para erros de conexão
+    if (error?.message?.includes('timeout') || error?.code === 'ETIMEDOUT' || error?.code === 'ECONNREFUSED') {
+      console.error('[DB] Query error (connection issue)', { text: text.substring(0, 100), error: error.message });
+    } else {
+      console.error('[DB] Query error', { text: text.substring(0, 100), error: error.message });
+    }
     throw error;
   }
 }

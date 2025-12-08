@@ -165,22 +165,33 @@ export function initializePvpSocketHandlers(
   let consecutiveErrors = 0;
   const MAX_CONSECUTIVE_ERRORS = 5;
   
-  const processMatchmakingLoop = async () => {
-    try {
-      const season = await getCurrentSeason();
-      if (!season) {
-        consecutiveErrors = 0; // Reset se não há temporada (não é erro de conexão)
-        return;
-      }
-      
-      const matches = await processMatchmaking(season.number);
-      
-      for (const match of matches) {
-        await handleMatchFound(match, season.number);
-      }
-      
-      // Reset contador de erros em caso de sucesso
-      consecutiveErrors = 0;
+    const processMatchmakingLoop = async () => {
+      try {
+        const season = await getCurrentSeason();
+        if (!season) {
+          consecutiveErrors = 0; // Reset se não há temporada (não é erro de conexão)
+          return;
+        }
+        
+        // Tentar processar matchmaking, mas não quebrar se falhar
+        try {
+          const matches = await processMatchmaking(season.number);
+          
+          for (const match of matches) {
+            try {
+              await handleMatchFound(match, season.number);
+            } catch (matchError: any) {
+              console.error('[PVP Socket] Error handling match found:', matchError.message);
+              // Continuar com próximo match mesmo se um falhar
+            }
+          }
+        } catch (matchmakingError: any) {
+          // Se processMatchmaking falhar, propagar o erro para tratamento externo
+          throw matchmakingError;
+        }
+        
+        // Reset contador de erros em caso de sucesso
+        consecutiveErrors = 0;
     } catch (error: any) {
       consecutiveErrors++;
       
@@ -193,24 +204,29 @@ export function initializePvpSocketHandlers(
       
       if (isConnectionError) {
         console.warn(`[PVP Socket] Database connection error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, error.message);
+        
+        // Se houver muitos erros consecutivos de conexão, pausar o matchmaking
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          console.error(`[PVP Socket] Too many consecutive connection errors (${consecutiveErrors}). Pausing matchmaking for 5 minutes.`);
+          if (matchmakingInterval) {
+            clearInterval(matchmakingInterval);
+            matchmakingInterval = null;
+            
+            // Retomar após 5 minutos
+            setTimeout(() => {
+              console.log('[PVP Socket] Retrying matchmaking after pause...');
+              consecutiveErrors = 0;
+              matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
+            }, 5 * 60 * 1000); // 5 minutos
+          }
+        }
       } else {
         console.error('[PVP Socket] Error processing matchmaking:', error);
-      }
-      
-      // Se houver muitos erros consecutivos (provavelmente problema de conexão),
-      // pausar o intervalo temporariamente
-      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        console.error(`[PVP Socket] Too many consecutive errors (${consecutiveErrors}). Pausing matchmaking for 60 seconds.`);
-        if (matchmakingInterval) {
-          clearInterval(matchmakingInterval);
-          matchmakingInterval = null;
-          
-          // Retomar após 60 segundos
-          setTimeout(() => {
-            consecutiveErrors = 0;
-            console.log('[PVP Socket] Resuming matchmaking after pause');
-            matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
-          }, 60000);
+        // Para erros não relacionados a conexão, apenas logar mas continuar
+        // Reset contador após alguns erros não-críticos
+        if (consecutiveErrors >= 10) {
+          console.warn('[PVP Socket] Resetting error counter after non-connection errors');
+          consecutiveErrors = 0;
         }
       }
     }

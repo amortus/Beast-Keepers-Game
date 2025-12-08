@@ -147,43 +147,75 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // ===== START SERVER =====
 
 async function startServer() {
+  // Create HTTP server for Socket.IO (antes de testar DB)
+  const server = createServer(app);
+
+  // Initialize Chat Service (Socket.IO)
+  initializeChatService(server);
+
+  // Test database connection (não bloquear servidor se falhar)
+  let dbConnected = false;
   try {
-    // Test database connection
     await pool.query('SELECT NOW()');
     console.log('[DB] Database connection established');
+    dbConnected = true;
 
     // Auto-fix schema (adiciona colunas necessárias se não existirem)
-    await autoFixSchema();
-
-    // Create HTTP server for Socket.IO
-    const server = createServer(app);
-
-    // Initialize Chat Service (Socket.IO)
-    initializeChatService(server);
-
-    // Start listening on all interfaces (required for Railway/Docker)
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log('='.repeat(50));
-      console.log('🎮 Beast Keepers Server');
-      console.log('='.repeat(50));
-      console.log(`📍 Server: http://0.0.0.0:${PORT}`);
-      console.log(`🔗 Frontend: ${FRONTEND_URL}`);
-      console.log(`🗄️  Database: Connected`);
-      console.log(`💬 Chat: Socket.IO initialized`);
-      console.log(`⚙️  Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('='.repeat(50));
-      
-      // Start event scheduler (daily cycles, calendar events)
-      startEventScheduler();
-      
-      // Start PVP season scheduler
-      startSeasonScheduler();
-    });
-
-  } catch (error) {
-    console.error('[Server] Failed to start:', error);
-    process.exit(1);
+    try {
+      await autoFixSchema();
+    } catch (schemaError: any) {
+      console.warn('[DB] Schema auto-fix failed (non-critical):', schemaError.message);
+    }
+  } catch (error: any) {
+    console.error('[DB] Failed to connect to database:', error.message);
+    console.warn('[DB] Server will start anyway, but database features will be limited');
+    console.warn('[DB] Will retry connection in background...');
+    dbConnected = false;
+    
+    // Tentar reconectar em background
+    setTimeout(async () => {
+      try {
+        await pool.query('SELECT NOW()');
+        console.log('[DB] Database connection established (retry successful)');
+        try {
+          await autoFixSchema();
+        } catch (schemaError: any) {
+          console.warn('[DB] Schema auto-fix failed (non-critical):', schemaError.message);
+        }
+      } catch (retryError: any) {
+        console.warn('[DB] Retry connection failed:', retryError.message);
+      }
+    }, 5000);
   }
+
+  // Start listening on all interfaces (required for Railway/Docker)
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log('='.repeat(50));
+    console.log('🎮 Beast Keepers Server');
+    console.log('='.repeat(50));
+    console.log(`📍 Server: http://0.0.0.0:${PORT}`);
+    console.log(`🔗 Frontend: ${FRONTEND_URL}`);
+    console.log(`🗄️  Database: ${dbConnected ? 'Connected' : 'Disconnected (will retry)'}`);
+    console.log(`💬 Chat: Socket.IO initialized`);
+    console.log(`⚙️  Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('='.repeat(50));
+    
+    // Start event scheduler (daily cycles, calendar events)
+    // Scheduler vai lidar com erros de DB internamente
+    try {
+      startEventScheduler();
+    } catch (error: any) {
+      console.warn('[Server] Event scheduler failed to start:', error.message);
+    }
+    
+    // Start PVP season scheduler
+    // Scheduler vai lidar com erros de DB internamente
+    try {
+      startSeasonScheduler();
+    } catch (error: any) {
+      console.warn('[Server] PVP season scheduler failed to start:', error.message);
+    }
+  });
 }
 
 startServer();
