@@ -127,9 +127,13 @@ export async function createMatch(
       finishedAt: row.finished_at,
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {
+      // Ignore rollback errors
+    });
     console.error('[PVP Match] Error creating match:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -168,6 +172,8 @@ export async function getMatch(matchId: number): Promise<Match | null> {
   } catch (error) {
     console.error('[PVP Match] Error getting match:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -201,6 +207,8 @@ export async function updateMatchState(matchId: number, state: Partial<MatchStat
   } catch (error) {
     console.error('[PVP Match] Error updating match state:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -289,9 +297,13 @@ export async function finishMatch(
       rewards,
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {
+      // Ignore rollback errors
+    });
     console.error('[PVP Match] Error finishing match:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -329,6 +341,8 @@ export async function validateAction(
   } catch (error) {
     console.error('[PVP Match] Error validating action:', error);
     return false;
+  } finally {
+    client.release();
   }
 }
 
