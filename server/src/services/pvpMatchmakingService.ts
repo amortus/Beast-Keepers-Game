@@ -609,6 +609,20 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
       // Para casual, fazer busca direta no mesmo client em vez de chamar findCasualMatch
       // (que obtém um novo client e pode esgotar o pool)
       try {
+        // Primeiro, verificar quantos jogadores casual existem na fila
+        const allCasualCheck = await client.query(
+          `SELECT user_id, queued_at, expires_at 
+           FROM pvp_matchmaking_queue
+           WHERE match_type = 'casual'
+           AND expires_at > NOW()`
+        );
+        console.log(`[PVP Matchmaking] All casual players in queue:`, allCasualCheck.rows.map((r: any) => ({
+          userId: r.user_id,
+          queuedAt: r.queued_at,
+          expiresAt: r.expires_at,
+          expiresIn: Math.round((new Date(r.expires_at).getTime() - Date.now()) / 1000) + 's'
+        })));
+        
         const opponentResult = await client.query(
           `SELECT * FROM pvp_matchmaking_queue
            WHERE user_id != $1
@@ -618,6 +632,8 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
            LIMIT 1`,
           [playerEntry.userId]
         );
+        
+        console.log(`[PVP Matchmaking] Opponent query result: ${opponentResult.rows.length} opponents found for player ${playerEntry.userId}`);
         
         if (opponentResult.rows.length > 0) {
           const opponentRow = opponentResult.rows[0];
@@ -642,7 +658,7 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
           processedCasual.add(match.player2.userId);
           matches.push(match);
         } else {
-          console.log(`[PVP Matchmaking] No casual opponent found for player ${playerEntry.userId}`);
+          console.log(`[PVP Matchmaking] No casual opponent found for player ${playerEntry.userId} (total casual in queue: ${allCasualCheck.rows.length})`);
         }
       } catch (matchError: any) {
         console.error(`[PVP Matchmaking] Error finding casual match for player ${playerEntry.userId}:`, matchError);
