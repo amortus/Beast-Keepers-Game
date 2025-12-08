@@ -252,6 +252,30 @@ export async function query(text: string, params?: any[]) {
   }
 }
 
+// Track active clients to detect leaks
+const activeClients = new Map<any, { timestamp: number; stack?: string }>();
+
+// Cleanup function to release stuck clients
+setInterval(() => {
+  const now = Date.now();
+  const STUCK_CLIENT_TIMEOUT = 60000; // 1 minuto
+  
+  for (const [client, info] of activeClients.entries()) {
+    if (now - info.timestamp > STUCK_CLIENT_TIMEOUT) {
+      console.error('[DB] ⚠️ Detected stuck client (held for >60s), forcing release', {
+        heldFor: now - info.timestamp,
+        stack: info.stack
+      });
+      try {
+        client.release();
+        activeClients.delete(client);
+      } catch (error) {
+        console.error('[DB] Error forcing release of stuck client:', error);
+      }
+    }
+  }
+}, 30000); // Verificar a cada 30 segundos
+
 // Helper to get a client from the pool for transactions
 export async function getClient() {
   // Check circuit breaker
@@ -272,7 +296,8 @@ export async function getClient() {
       max: maxConnections,
       idle: pool.idleCount,
       waiting: pool.waitingCount,
-      active: totalCount - pool.idleCount
+      active: totalCount - pool.idleCount,
+      trackedClients: activeClients.size
     });
     throw error;
   }
@@ -280,6 +305,18 @@ export async function getClient() {
   try {
     const client = await pool.connect();
     recordCircuitBreakerSuccess();
+    
+    // Track this client
+    const stack = new Error().stack;
+    activeClients.set(client, { timestamp: Date.now(), stack });
+    
+    // Override release to remove from tracking
+    const originalRelease = client.release.bind(client);
+    client.release = function(...args: any[]) {
+      activeClients.delete(client);
+      return originalRelease(...args);
+    };
+    
     return client;
   } catch (error: any) {
     // Check if it's a connection error
