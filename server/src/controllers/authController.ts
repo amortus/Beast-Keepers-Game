@@ -101,15 +101,50 @@ export async function login(req: Request, res: Response) {
       } as ApiResponse);
     }
 
-    // Find user
-    const result = await query(
-      `SELECT id, email, password_hash, display_name, created_at, updated_at
-       FROM users
-       WHERE email = $1`,
-      [email]
-    );
+    // Find user with retry logic for database connection issues
+    let result;
+    let retries = 0;
+    const maxRetries = 2;
+    
+    while (retries <= maxRetries) {
+      try {
+        result = await query(
+          `SELECT id, email, password_hash, display_name, created_at, updated_at
+           FROM users
+           WHERE email = $1`,
+          [email]
+        );
+        break; // Success, exit retry loop
+      } catch (dbError: any) {
+        const isConnectionError = dbError?.message?.includes('timeout') || 
+                                  dbError?.message?.includes('ECONNREFUSED') || 
+                                  dbError?.message?.includes('connection') ||
+                                  dbError?.code === 'ETIMEDOUT' ||
+                                  dbError?.code === 'ECONNREFUSED';
+        
+        if (isConnectionError && retries < maxRetries) {
+          retries++;
+          const backoffDelay = Math.pow(2, retries) * 100; // Exponential backoff: 200ms, 400ms
+          console.warn(`[Auth] Database connection error on login attempt ${retries}, retrying in ${backoffDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        }
+        
+        // If it's a connection error and we've exhausted retries, return 503
+        if (isConnectionError) {
+          console.error('[Auth] Login error: Database temporarily unavailable');
+          return res.status(503).json({
+            success: false,
+            error: 'Database temporarily unavailable. Please try again in a moment.'
+          } as ApiResponse);
+        }
+        
+        // If it's not a connection error, throw it to be handled by outer catch
+        throw dbError;
+      }
+    }
 
-    if (result.rows.length === 0) {
+    if (!result || result.rows.length === 0) {
       return res.status(401).json({
         success: false,
         error: 'Invalid email or password'
@@ -150,7 +185,22 @@ export async function login(req: Request, res: Response) {
       data: { token, user }
     } as ApiResponse<AuthResponse>);
 
-  } catch (error) {
+  } catch (error: any) {
+    // Check if it's a database connection error
+    const isConnectionError = error?.message?.includes('timeout') || 
+                              error?.message?.includes('ECONNREFUSED') || 
+                              error?.message?.includes('connection') ||
+                              error?.code === 'ETIMEDOUT' ||
+                              error?.code === 'ECONNREFUSED';
+    
+    if (isConnectionError) {
+      console.error('[Auth] Login error: Database temporarily unavailable');
+      return res.status(503).json({
+        success: false,
+        error: 'Database temporarily unavailable. Please try again in a moment.'
+      } as ApiResponse);
+    }
+    
     console.error('[Auth] Login error:', error);
     return res.status(500).json({
       success: false,

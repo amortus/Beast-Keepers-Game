@@ -164,8 +164,15 @@ export function initializePvpSocketHandlers(
   let matchmakingInterval: NodeJS.Timeout | null = null;
   let consecutiveErrors = 0;
   const MAX_CONSECUTIVE_ERRORS = 5;
+  let isMatchmakingPaused = false;
+  let resumeTimeout: NodeJS.Timeout | null = null;
   
     const processMatchmakingLoop = async () => {
+      // Se matchmaking está pausado, não fazer nada
+      if (isMatchmakingPaused) {
+        return;
+      }
+      
       try {
         const season = await getCurrentSeason();
         if (!season) {
@@ -206,19 +213,36 @@ export function initializePvpSocketHandlers(
         console.warn(`[PVP Socket] Database connection error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, error.message);
         
         // Se houver muitos erros consecutivos de conexão, pausar o matchmaking
-        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && !isMatchmakingPaused) {
           console.error(`[PVP Socket] Too many consecutive connection errors (${consecutiveErrors}). Pausing matchmaking for 5 minutes.`);
+          
+          // Marcar como pausado
+          isMatchmakingPaused = true;
+          
+          // Limpar intervalo atual
           if (matchmakingInterval) {
             clearInterval(matchmakingInterval);
             matchmakingInterval = null;
-            
-            // Retomar após 5 minutos
-            setTimeout(() => {
-              console.log('[PVP Socket] Retrying matchmaking after pause...');
-              consecutiveErrors = 0;
-              matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
-            }, 5 * 60 * 1000); // 5 minutos
           }
+          
+          // Limpar qualquer timeout de retomada pendente
+          if (resumeTimeout) {
+            clearTimeout(resumeTimeout);
+            resumeTimeout = null;
+          }
+          
+          // Criar apenas um timeout para retomar após 5 minutos
+          resumeTimeout = setTimeout(() => {
+            console.log('[PVP Socket] Retrying matchmaking after pause...');
+            isMatchmakingPaused = false;
+            consecutiveErrors = 0;
+            resumeTimeout = null;
+            
+            // Recriar o intervalo
+            if (!matchmakingInterval) {
+              matchmakingInterval = setInterval(processMatchmakingLoop, 10000);
+            }
+          }, 5 * 60 * 1000); // 5 minutos
         }
       } else {
         console.error('[PVP Socket] Error processing matchmaking:', error);
