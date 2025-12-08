@@ -4428,7 +4428,7 @@ function setupPvpSocketHandlers() {
   });
   
   // Match action handler (receber ações do oponente)
-  pvpSocketClient.onMatchAction((data) => {
+  pvpSocketClient.onMatchAction(async (data) => {
     if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.matchId === data.matchId) {
       // Executar ação real do oponente (não usar IA)
       if (data.fromPlayer === gameState.currentBattle.opponentUserId) {
