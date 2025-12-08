@@ -57,14 +57,17 @@ function isPoolHealthy(): boolean {
   const totalCount = pool.totalCount;
   const idleCount = pool.idleCount;
   const waitingCount = pool.waitingCount;
+  const activeCount = totalCount - idleCount;
   
   // Pool is unhealthy if there are too many waiting connections
   if (waitingCount > 5) {
+    console.warn(`[DB] Pool unhealthy: ${waitingCount} connections waiting (threshold: 5)`);
     return false;
   }
   
   // Pool is unhealthy if most connections are in use
-  if (totalCount > 0 && (totalCount - idleCount) / totalCount > 0.8) {
+  if (totalCount > 0 && activeCount / totalCount > 0.8) {
+    console.warn(`[DB] Pool unhealthy: ${activeCount}/${totalCount} connections in use (${Math.round(activeCount / totalCount * 100)}%)`);
     return false;
   }
   
@@ -126,6 +129,8 @@ function recordCircuitBreakerSuccess(): void {
     circuitBreakerState = 'closed';
     console.log('[DB] Circuit breaker closed - connection successful');
     circuitBreakerFailures = 0;
+    // Quando circuit breaker fecha, o pool pode ainda estar se recuperando
+    // Dar um tempo para conexões pendentes serem limpas
   } else if (circuitBreakerState === 'closed') {
     // Reset failure count on successful queries when closed
     circuitBreakerFailures = 0;
@@ -143,12 +148,22 @@ export async function query(text: string, params?: any[]) {
   
   // Check pool health - se não está saudável E circuit breaker está aberto, bloquear
   if (!isPoolHealthy()) {
+    // Se circuit breaker está aberto, bloquear imediatamente
     if (!checkCircuitBreaker()) {
       const error = new Error('Pool is unhealthy and circuit breaker is open - database unavailable');
       (error as any).code = 'ECIRCUITOPEN';
       throw error;
     }
-    console.warn('[DB] Pool is unhealthy, but attempting query anyway (circuit breaker allows)');
+    // Se circuit breaker está fechado mas pool está unhealthy, apenas avisar
+    // Isso pode acontecer temporariamente após o circuit breaker fechar
+    // enquanto o pool ainda está se recuperando
+    if (circuitBreakerState === 'closed') {
+      // Se pool está unhealthy mas circuit breaker está fechado, permitir tentativa
+      // mas com aviso (pode ser recuperação temporária)
+      console.warn('[DB] Pool is unhealthy, but circuit breaker is closed - attempting query (pool may be recovering)');
+    } else {
+      console.warn('[DB] Pool is unhealthy, but attempting query anyway (circuit breaker allows)');
+    }
   }
   
   const start = Date.now();
