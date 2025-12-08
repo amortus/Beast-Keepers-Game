@@ -4471,10 +4471,12 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
   }
   
   try {
-    // Buscar dados do oponente
-    const match = await getMatch(matchId);
-    const opponentBeastId = match.player1Id === opponent.userId ? match.player1BeastId : match.player2BeastId;
+    console.log(`[PVP] Match found: matchId=${matchId}, opponent=${opponent.userId}, opponentBeast=${opponent.beastId}`);
     
+    // Usar o beastId que já foi enviado no evento socket
+    const opponentBeastId = opponent.beastId;
+    
+    // Buscar dados do beast do oponente
     const beastResponse = await gameApi.getBeast(opponentBeastId);
     if (!beastResponse.success || !beastResponse.data) {
       throw new Error('Opponent beast not found');
