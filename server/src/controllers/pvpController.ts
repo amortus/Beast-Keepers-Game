@@ -73,26 +73,36 @@ export async function getRanking(req: AuthRequest, res: Response) {
 export async function joinMatchmaking(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.id;
+    console.log(`[PVP Controller] joinMatchmaking called: userId=${userId}, body=`, req.body);
+    
     if (!userId) {
+      console.warn('[PVP Controller] joinMatchmaking: Not authenticated');
       return res.status(401).json({ success: false, error: 'Not authenticated' } as ApiResponse);
     }
     
     const { beastId, matchType } = req.body;
+    console.log(`[PVP Controller] joinMatchmaking: beastId=${beastId}, matchType=${matchType}`);
     
     if (!beastId) {
+      console.warn('[PVP Controller] joinMatchmaking: Beast ID required');
       return res.status(400).json({ success: false, error: 'Beast ID required' } as ApiResponse);
     }
     
     if (!matchType || !['ranked', 'casual'].includes(matchType)) {
+      console.warn(`[PVP Controller] joinMatchmaking: Invalid match type: ${matchType}`);
       return res.status(400).json({ success: false, error: 'Invalid match type' } as ApiResponse);
     }
     
+    console.log(`[PVP Controller] Getting current season...`);
     const season = await getCurrentSeason();
     if (!season) {
+      console.error('[PVP Controller] joinMatchmaking: No active season');
       return res.status(500).json({ success: false, error: 'No active season' } as ApiResponse);
     }
     
+    console.log(`[PVP Controller] Season found: number=${season.number}, calling joinQueue...`);
     await joinQueue(userId, beastId, matchType, season.number);
+    console.log(`[PVP Controller] ✅ joinQueue completed successfully for user ${userId}`);
     
     res.json({
       success: true,
@@ -102,7 +112,7 @@ export async function joinMatchmaking(req: AuthRequest, res: Response) {
       },
     } as ApiResponse);
   } catch (error: any) {
-    console.error('[PVP Controller] Error joining matchmaking:', error);
+    console.error(`[PVP Controller] Error joining matchmaking for user ${req.user?.id}:`, error);
     res.status(500).json({
       success: false,
       error: error.message || 'Erro ao entrar na fila',

@@ -31,32 +31,42 @@ export function initializePvpSocketHandlers(
     // Matchmaking: Entrar na fila
     socket.on('pvp:matchmaking:join', async (data: { beastId: number; matchType: 'ranked' | 'casual' }) => {
       try {
+        console.log(`[PVP Socket] pvp:matchmaking:join received: userId=${userId}, data=`, data);
         const { beastId, matchType } = data;
         
         if (!beastId || !matchType) {
+          console.warn(`[PVP Socket] Invalid data: beastId=${beastId}, matchType=${matchType}`);
           socket.emit('pvp:error', { message: 'Beast ID and match type required' });
           return;
         }
         
+        console.log(`[PVP Socket] Getting current season...`);
         const season = await getCurrentSeason();
         if (!season) {
+          console.error('[PVP Socket] No active season');
           socket.emit('pvp:error', { message: 'No active season' });
           return;
         }
         
+        console.log(`[PVP Socket] Season found: number=${season.number}, calling joinQueue...`);
         // Importar função dinamicamente para evitar dependência circular
         const { joinQueue } = await import('./pvpMatchmakingService');
         await joinQueue(userId, beastId, matchType, season.number);
+        console.log(`[PVP Socket] ✅ joinQueue completed successfully for user ${userId}`);
         
         socket.emit('pvp:matchmaking:joined', { matchType });
         
         // Tentar encontrar match imediatamente
+        console.log(`[PVP Socket] Trying to find immediate match...`);
         const match = await findMatch(userId, matchType, season.number);
         if (match) {
+          console.log(`[PVP Socket] ✅ Immediate match found!`);
           await handleMatchFound(match, season.number);
+        } else {
+          console.log(`[PVP Socket] No immediate match found, player will wait in queue`);
         }
       } catch (error: any) {
-        console.error('[PVP Socket] Error joining matchmaking:', error);
+        console.error(`[PVP Socket] Error joining matchmaking for user ${userId}:`, error);
         socket.emit('pvp:error', { message: error.message || 'Error joining matchmaking' });
       }
     });
