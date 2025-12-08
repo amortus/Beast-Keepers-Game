@@ -87,7 +87,18 @@ export class PvpMatchmakingUI {
 
     try {
       await joinMatchmaking(this.currentBeast.id, this.selectedMatchType);
-      pvpSocketClient.joinMatchmaking(this.currentBeast.id, this.selectedMatchType);
+      
+      // Tentar usar socket se estiver conectado, mas não é obrigatório
+      if (pvpSocketClient.isConnected()) {
+        try {
+          pvpSocketClient.joinMatchmaking(this.currentBeast.id, this.selectedMatchType);
+        } catch (socketError: any) {
+          console.warn('[PVP Matchmaking] Socket not available, using REST API only:', socketError);
+          // Continuar mesmo sem socket - a API REST já funcionou
+        }
+      } else {
+        console.warn('[PVP Matchmaking] Socket not connected, using REST API only');
+      }
       
       this.isInQueue = true;
       this.queueStartTime = Date.now();
@@ -112,7 +123,18 @@ export class PvpMatchmakingUI {
 
     try {
       await leaveMatchmaking();
-      pvpSocketClient.leaveMatchmaking();
+      
+      // Tentar usar socket se estiver conectado, mas não é obrigatório
+      if (pvpSocketClient.isConnected()) {
+        try {
+          pvpSocketClient.leaveMatchmaking();
+        } catch (socketError: any) {
+          console.warn('[PVP Matchmaking] Socket not available, using REST API only:', socketError);
+          // Continuar mesmo sem socket - a API REST já funcionou
+        }
+      } else {
+        console.warn('[PVP Matchmaking] Socket not connected, using REST API only');
+      }
       
       this.isInQueue = false;
       this.stopQueueTimer();

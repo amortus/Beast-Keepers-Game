@@ -117,8 +117,14 @@ class PvpSocketClient {
    * Entrar na fila de matchmaking
    */
   joinMatchmaking(beastId: number, matchType: MatchType): void {
-    if (!this.socket || !this.isConnected()) {
+    if (!this.socket) {
       throw new Error('Not connected to server');
+    }
+    
+    // Verificar se está conectado, mas não lançar erro se não estiver - apenas avisar
+    if (!this.isConnected()) {
+      console.warn('[PVP Socket] Socket not connected, attempting to emit anyway');
+      // Tentar emitir mesmo assim - o servidor pode estar processando a conexão
     }
 
     this.socket.emit('pvp:matchmaking:join', {
@@ -131,8 +137,13 @@ class PvpSocketClient {
    * Sair da fila de matchmaking
    */
   leaveMatchmaking(): void {
-    if (!this.socket || !this.isConnected()) {
+    if (!this.socket) {
       throw new Error('Not connected to server');
+    }
+    
+    // Verificar se está conectado, mas não lançar erro se não estiver - apenas avisar
+    if (!this.isConnected()) {
+      console.warn('[PVP Socket] Socket not connected, attempting to emit anyway');
     }
 
     this.socket.emit('pvp:matchmaking:leave');

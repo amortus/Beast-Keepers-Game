@@ -189,6 +189,17 @@ export async function getQueueStatus(userId: number): Promise<QueueEntry | null>
       queuedAt: row.queued_at,
     };
   } catch (error: any) {
+    // Se circuit breaker está aberto ou pool está unhealthy, retornar null
+    if (error?.code === 'ECIRCUITOPEN' || error?.message?.includes('Circuit breaker is open')) {
+      console.warn('[PVP Matchmaking] Circuit breaker is open - returning null status');
+      return null;
+    }
+    
+    if (error?.code === 'EPOOLUNHEALTHY' || error?.message?.includes('Pool is unhealthy')) {
+      console.warn('[PVP Matchmaking] Pool is unhealthy - returning null status');
+      return null;
+    }
+    
     if (error?.code === '42P01') {
       return null; // Tabela não existe
     }
