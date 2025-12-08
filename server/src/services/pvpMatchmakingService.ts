@@ -169,6 +169,7 @@ export async function getQueueStatus(userId: number): Promise<QueueEntry | null>
     `);
     
     if (!tableCheck.rows[0]?.exists) {
+      console.log(`[PVP Matchmaking] Table does not exist for user ${userId}`);
       return null; // Tabela não existe
     }
     
@@ -177,9 +178,14 @@ export async function getQueueStatus(userId: number): Promise<QueueEntry | null>
       [userId]
     );
     
-    if (result.rows.length === 0) return null;
+    if (result.rows.length === 0) {
+      console.log(`[PVP Matchmaking] User ${userId} is not in queue`);
+      return null;
+    }
     
     const row = result.rows[0];
+    console.log(`[PVP Matchmaking] User ${userId} is in queue: ${row.match_type} (queued at ${row.queued_at})`);
+    
     return {
       userId: row.user_id,
       beastId: row.beast_id,
@@ -201,10 +207,13 @@ export async function getQueueStatus(userId: number): Promise<QueueEntry | null>
     }
     
     if (error?.code === '42P01') {
+      console.log(`[PVP Matchmaking] Table does not exist (42P01) for user ${userId}`);
       return null; // Tabela não existe
     }
-    console.error('[PVP Matchmaking] Error getting queue status:', error);
-    throw error;
+    
+    console.error(`[PVP Matchmaking] Error getting queue status for user ${userId}:`, error);
+    // Em vez de lançar erro, retornar null para evitar 500
+    return null;
   }
 }
 
@@ -481,7 +490,10 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
     }
     
     // Limpar expirados primeiro
-    await cleanExpiredQueueEntries();
+    const cleaned = await cleanExpiredQueueEntries();
+    if (cleaned > 0) {
+      console.log(`[PVP Matchmaking] Cleaned ${cleaned} expired queue entries`);
+    }
     
     const matches: MatchResult[] = [];
     
@@ -494,6 +506,8 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
            AND expires_at > NOW()
          ORDER BY queued_at ASC`
       );
+      
+      console.log(`[PVP Matchmaking] Found ${rankedPlayers.rows.length} ranked players in queue`);
     } catch (error: any) {
       if (error?.code === '42P01') {
         console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping ranked matchmaking');
@@ -530,9 +544,11 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
       casualPlayers = await client.query(
         `SELECT * FROM pvp_matchmaking_queue
          WHERE match_type = 'casual'
-           AND expires_at > NOW()
+         AND expires_at > NOW()
          ORDER BY queued_at ASC`
       );
+      
+      console.log(`[PVP Matchmaking] Found ${casualPlayers.rows.length} casual players in queue`);
     } catch (error: any) {
       if (error?.code === '42P01') {
         console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist, skipping casual matchmaking');
@@ -544,7 +560,10 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
     const processedCasual = new Set<number>();
     
     for (const row of casualPlayers.rows) {
-      if (processedCasual.has(row.user_id)) continue;
+      if (processedCasual.has(row.user_id)) {
+        console.log(`[PVP Matchmaking] Skipping casual player ${row.user_id} (already processed)`);
+        continue;
+      }
       
       const playerEntry: QueueEntry = {
         userId: row.user_id,
@@ -555,11 +574,49 @@ export async function processMatchmaking(seasonNumber: number = 1): Promise<Matc
         queuedAt: row.queued_at,
       };
       
-      const match = await findCasualMatch(playerEntry);
-      if (match) {
-        processedCasual.add(match.player1.userId);
-        processedCasual.add(match.player2.userId);
-        matches.push(match);
+      console.log(`[PVP Matchmaking] Trying to find casual match for player ${playerEntry.userId}`);
+      
+      // Para casual, fazer busca direta no mesmo client em vez de chamar findCasualMatch
+      // (que obtém um novo client e pode esgotar o pool)
+      try {
+        const opponentResult = await client.query(
+          `SELECT * FROM pvp_matchmaking_queue
+           WHERE user_id != $1
+             AND match_type = 'casual'
+             AND expires_at > NOW()
+           ORDER BY queued_at ASC
+           LIMIT 1`,
+          [playerEntry.userId]
+        );
+        
+        if (opponentResult.rows.length > 0) {
+          const opponentRow = opponentResult.rows[0];
+          const opponent: QueueEntry = {
+            userId: opponentRow.user_id,
+            beastId: opponentRow.beast_id,
+            matchType: opponentRow.match_type,
+            elo: opponentRow.elo,
+            tier: opponentRow.tier,
+            queuedAt: opponentRow.queued_at,
+          };
+          
+          console.log(`[PVP Matchmaking] ✅ Found casual match: Player ${playerEntry.userId} vs Player ${opponent.userId}`);
+          
+          const match: MatchResult = {
+            player1: playerEntry,
+            player2: opponent,
+            matchId: 0, // Será preenchido pelo matchService
+          };
+          
+          processedCasual.add(match.player1.userId);
+          processedCasual.add(match.player2.userId);
+          matches.push(match);
+        } else {
+          console.log(`[PVP Matchmaking] No casual opponent found for player ${playerEntry.userId}`);
+        }
+      } catch (matchError: any) {
+        console.error(`[PVP Matchmaking] Error finding casual match for player ${playerEntry.userId}:`, matchError);
+        // Continuar com próximo jogador
       }
     }
     
