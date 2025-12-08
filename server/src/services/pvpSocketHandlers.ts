@@ -316,6 +316,8 @@ async function handleMatchFound(match: any, seasonNumber: number) {
   if (!io) return;
   
   try {
+    console.log(`[PVP Match] Creating match: Player ${match.player1.userId} vs Player ${match.player2.userId}`);
+    
     // Criar partida
     const createdMatch = await createMatch(
       match.player1.userId,
@@ -325,6 +327,8 @@ async function handleMatchFound(match: any, seasonNumber: number) {
       match.player1.matchType,
       seasonNumber
     );
+    
+    console.log(`[PVP Match] ✅ Match created successfully: matchId=${createdMatch.id}, type=${createdMatch.matchType}`);
     
     // Notificar ambos jogadores
     const player1Sockets = getUserSockets(match.player1.userId);
