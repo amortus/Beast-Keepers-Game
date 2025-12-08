@@ -454,6 +454,8 @@ export async function cleanExpiredQueueEntries(): Promise<number> {
     }
     console.error('[PVP Matchmaking] Error cleaning expired entries:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
