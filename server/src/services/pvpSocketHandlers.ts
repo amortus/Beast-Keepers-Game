@@ -194,11 +194,17 @@ export function initializePvpSocketHandlers(
         try {
           const matches = await processMatchmaking(season.number);
           
+          if (matches.length > 0) {
+            console.log(`[PVP Matchmaking] ✅ Found ${matches.length} match(es), processing...`);
+          }
+          
           for (const match of matches) {
+            console.log(`[PVP Matchmaking] Processing match: Player ${match.player1.userId} vs Player ${match.player2.userId}`);
             try {
               await handleMatchFound(match, season.number);
+              console.log(`[PVP Matchmaking] ✅ Match processed successfully`);
             } catch (matchError: any) {
-              console.error('[PVP Socket] Error handling match found:', matchError.message);
+              console.error('[PVP Socket] ❌ Error handling match found:', matchError);
               // Continuar com próximo match mesmo se um falhar
             }
           }
