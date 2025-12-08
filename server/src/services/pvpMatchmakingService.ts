@@ -44,7 +44,27 @@ export async function joinQueue(
     `);
     
     if (!tableExists.rows[0]?.exists) {
-      throw new Error('Matchmaking queue table does not exist. Please run migrations.');
+      // Criar tabela automaticamente se não existir
+      console.log('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist. Creating it...');
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS pvp_matchmaking_queue (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          beast_id INTEGER NOT NULL REFERENCES beasts(id) ON DELETE CASCADE,
+          match_type VARCHAR(20) NOT NULL,
+          elo INTEGER,
+          tier VARCHAR(20),
+          queued_at TIMESTAMP DEFAULT NOW(),
+          expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '5 minutes'),
+          UNIQUE(user_id)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_pvp_queue_user ON pvp_matchmaking_queue(user_id);
+        CREATE INDEX IF NOT EXISTS idx_pvp_queue_type ON pvp_matchmaking_queue(match_type);
+        CREATE INDEX IF NOT EXISTS idx_pvp_queue_elo ON pvp_matchmaking_queue(elo);
+        CREATE INDEX IF NOT EXISTS idx_pvp_queue_expires ON pvp_matchmaking_queue(expires_at);
+      `);
+      console.log('[PVP Matchmaking] Table pvp_matchmaking_queue created successfully');
     }
     
     // Verificar se já está na fila
@@ -87,6 +107,8 @@ export async function joinQueue(
     }
     console.error('[PVP Matchmaking] Error joining queue:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -123,10 +145,13 @@ export async function leaveQueue(userId: number): Promise<void> {
   } catch (error: any) {
     if (error?.code === '42P01') {
       console.warn('[PVP Matchmaking] Table pvp_matchmaking_queue does not exist');
-      return; // Tabela não existe, considerar que já saiu
+      // Não lançar erro, apenas retornar
+      return;
     }
     console.error('[PVP Matchmaking] Error leaving queue:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 

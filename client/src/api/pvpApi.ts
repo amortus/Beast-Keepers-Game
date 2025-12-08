@@ -112,8 +112,25 @@ export async function leaveMatchmaking(): Promise<void> {
  * Obter status do matchmaking
  */
 export async function getMatchmakingStatus(): Promise<MatchmakingStatus> {
-  const response = await apiClient.get('/pvp/matchmaking/status');
-  return response.data.data;
+  try {
+    const response = await apiClient.get('/pvp/matchmaking/status');
+    // Garantir que sempre retornamos um objeto válido
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    // Se a resposta não tem o formato esperado, retornar padrão
+    return {
+      inQueue: false,
+      status: null,
+    };
+  } catch (error: any) {
+    console.error('[PVP API] Error getting matchmaking status:', error);
+    // Retornar objeto padrão em caso de erro
+    return {
+      inQueue: false,
+      status: null,
+    };
+  }
 }
 
 /**

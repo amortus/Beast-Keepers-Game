@@ -153,15 +153,28 @@ export class PvpMatchmakingUI {
   private async checkQueueStatus() {
     try {
       const status = await getMatchmakingStatus();
-      if (status.inQueue) {
+      if (status && status.inQueue) {
         this.isInQueue = true;
-        this.queueStartTime = Date.now();
-        this.queueElapsedSeconds = 0;
+        // Se já estava na fila, calcular tempo decorrido desde que entrou
+        if (status.status?.queuedAt) {
+          const queuedAt = new Date(status.status.queuedAt).getTime();
+          this.queueStartTime = queuedAt;
+          this.queueElapsedSeconds = Math.floor((Date.now() - queuedAt) / 1000);
+        } else {
+          this.queueStartTime = Date.now();
+          this.queueElapsedSeconds = 0;
+        }
         this.selectedMatchType = status.status?.matchType || 'casual';
         this.startQueueTimer();
+      } else {
+        this.isInQueue = false;
+        this.stopQueueTimer();
       }
     } catch (error) {
       console.error('[PVP Matchmaking] Error checking queue status:', error);
+      // Em caso de erro, assumir que não está na fila
+      this.isInQueue = false;
+      this.stopQueueTimer();
     }
   }
 
@@ -341,15 +354,26 @@ export class PvpMatchmakingUI {
       this.ctx.stroke();
       this.ctx.restore();
 
-      drawText(this.ctx, 'Buscando oponente...', centerX, centerY + 15, {
+      drawText(this.ctx, 'Buscando oponente...', centerX, centerY + 10, {
         align: 'center',
         font: 'bold 18px monospace',
         color: GLASS_THEME.palette.accent.cyan,
       });
 
-      drawText(this.ctx, `${this.queueElapsedSeconds}s`, centerX, centerY + 35, {
+      // Formatar tempo como MM:SS (estilo Dota/LoL)
+      const minutes = Math.floor(this.queueElapsedSeconds / 60);
+      const seconds = this.queueElapsedSeconds % 60;
+      const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+      drawText(this.ctx, timeString, centerX, centerY + 35, {
         align: 'center',
-        font: '14px monospace',
+        font: 'bold 20px monospace',
+        color: GLASS_THEME.palette.accent.amber,
+      });
+      
+      drawText(this.ctx, 'Tempo na fila', centerX, centerY + 55, {
+        align: 'center',
+        font: '12px monospace',
         color: GLASS_THEME.palette.text.secondary,
       });
     } else {
