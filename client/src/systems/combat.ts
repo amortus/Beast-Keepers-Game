@@ -445,6 +445,51 @@ export function executePlayerAction(battle: BattleContext, action: CombatAction)
 }
 
 /**
+ * Executa ação do oponente (para PVP - ação real do outro jogador)
+ */
+export function executeOpponentAction(battle: BattleContext, action: CombatAction): CombatResult | null {
+  // Em PVP, oponente é o "enemy" na estrutura da batalha
+  // Mas estamos recebendo a ação real dele, não usando IA
+  if (battle.phase !== 'enemy_turn' && battle.phase !== 'player_turn') {
+    return null;
+  }
+  
+  let result: CombatResult;
+  
+  if (action.type === 'technique') {
+    const technique = battle.enemy.beast.techniques.find(t => t.id === action.techniqueId);
+    if (!technique) return null;
+    
+    if (!canUseTechnique(technique, battle.enemy.currentEssence)) {
+      return null;
+    }
+    
+    result = executeTechnique(battle.enemy, battle.player, technique);
+  } else if (action.type === 'defend') {
+    result = executeDefend(battle.enemy);
+  } else {
+    return null;
+  }
+  
+  // Adiciona mensagens ao log
+  battle.combatLog.push(...result.messages);
+  
+  // Processa efeitos
+  const effectMessages = processActiveEffects(battle.player);
+  battle.combatLog.push(...effectMessages);
+  
+  // Verifica fim de batalha
+  checkBattleEnd(battle);
+  
+  if (battle.winner === null) {
+    // Passa turno para jogador
+    nextTurn(battle);
+  }
+  
+  return result;
+}
+
+/**
  * Executa turno do inimigo
  * @param battle Contexto da batalha
  * @param useAdvancedAI Se true, usa IA avançada. Se false, usa IA simples (legacy)

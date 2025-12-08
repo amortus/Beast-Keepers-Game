@@ -50,7 +50,7 @@ import {
   getActionName as getRealtimeActionName
 } from './systems/realtime-actions';
 import { formatTime } from './utils/time-format';
-import { initiateBattle, executePlayerAction, executeEnemyTurn, applyBattleRewards } from './systems/combat';
+import { initiateBattle, executePlayerAction, executeEnemyTurn, executeOpponentAction, applyBattleRewards } from './systems/combat';
 import { generateTournamentOpponent, getTournamentPrize, getTournamentFee, canEnterTournament } from './systems/tournaments';
 import { NPCS, getNPCDialogue, increaseAffinity } from './data/npcs';
 import { processWeeklyEvents } from './systems/events';
@@ -4430,12 +4430,38 @@ function setupPvpSocketHandlers() {
   // Match action handler (receber ações do oponente)
   pvpSocketClient.onMatchAction((data) => {
     if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.matchId === data.matchId) {
-      // Executar ação do oponente
-      if (data.fromPlayer !== gameState.currentBattle.opponentUserId) {
-        // É ação do oponente
-        executeEnemyTurn(gameState.currentBattle);
-        if (battleUI) {
+      // Executar ação real do oponente (não usar IA)
+      if (data.fromPlayer === gameState.currentBattle.opponentUserId) {
+        console.log('[PVP] Received action from opponent:', data.action);
+        
+        // Processar ação do oponente
+        const result = executeOpponentAction(gameState.currentBattle, data.action);
+        
+        if (result && battleUI) {
           battleUI.updateBattle(gameState.currentBattle);
+          
+          // Se batalha terminou, finalizar
+          if (gameState.currentBattle.winner) {
+            const match = await getMatch(data.matchId).catch(() => null);
+            if (match) {
+              const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+              const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+              const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+              const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+              
+              finishPvpBattle(gameState.currentBattle, winnerId).catch(console.error);
+            }
+            return;
+          }
+          
+          // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
+          if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
+            setTimeout(() => {
+              if (battleUI) {
+                battleUI.checkAutoBattle();
+              }
+            }, 500);
+          }
         }
       }
     }
@@ -4626,9 +4652,10 @@ function setupPvpBattleCallbacks(battle: BattleContext, matchId: number) {
         techniques: battle.player.beast.techniques.map(t => t.id),
       };
       
+      console.log('[PVP] Sending action:', action);
       pvpSocketClient.sendAction(matchId, action, beastState);
       
-      // Executar localmente também
+      // Executar localmente
       const result = executePlayerAction(battle, action);
       
       if (result && battleUI) {
@@ -4636,17 +4663,22 @@ function setupPvpBattleCallbacks(battle: BattleContext, matchId: number) {
         
         if (battle.winner) {
           // Determinar winnerId
-          const match = await getMatch(matchId);
-          const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-          const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-          const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-          const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
-          
-          await finishPvpBattle(battle, winnerId);
+          const match = await getMatch(matchId).catch(() => null);
+          if (match) {
+            const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+            const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+            const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+            const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
+            
+            await finishPvpBattle(battle, winnerId);
+          }
           return;
         }
         
-        // Turno do oponente será recebido via WebSocket
+        // Após ação do jogador, deve ser turno do oponente
+        // O oponente enviará sua ação via WebSocket
+        // Mas também devemos checar se auto-battle está ativo para o oponente
+        // (isso será feito quando recebermos a ação do oponente)
       }
     } catch (error) {
       console.error('[PVP] Error sending action:', error);
