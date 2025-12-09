@@ -4620,34 +4620,156 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
       matchId,
       opponent.userId
     );
+    battle.phase = 'player_turn'; // Definir fase ANTES de criar UI (igual exploração)
     
     gameState.currentBattle = battle;
     currentPvpMatchId = matchId;
     pvpBattleStartTime = Date.now();
     inPvpBattle = true;
     
-    // Criar UI de batalha
+    // Log de debug (igual exploração)
+    console.log('[PVP Battle] Starting battle:');
+    console.log('- Phase:', battle.phase);
+    console.log('- Turn:', battle.turnCount);
+    console.log('- Player HP:', battle.player.currentHp, '/', gameState.activeBeast.maxHp);
+    console.log('- Enemy HP:', battle.enemy.currentHp, '/', opponentBeast.maxHp);
+    
+    // Criar UI de batalha (igual exploração)
     if (useHybridBattle) {
-      console.log('[PVP] Creating BattleUIHybrid for PVP battle');
+      console.log('[PVP Battle] 🎨 Using HYBRID Battle System (2D UI + 3D Arena)');
       battleUI = new BattleUIHybrid(canvas, battle);
-      setupPvpBattleCallbacks(battle, matchId);
+      
+      // Setup HYBRID callbacks (mesma interface do 2D) - INLINE como na exploração
+      (battleUI as BattleUIHybrid).onPlayerAction = async (action: CombatAction) => {
+        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) {
+          return;
+        }
+        
+        console.log('[PVP] Player action:', action);
+        
+        // Executar ação localmente (isso faz as animações e atualiza UI)
+        const result = executePlayerAction(battle, action);
+        
+        if (!result) {
+          console.error('[PVP] executePlayerAction returned null');
+          return;
+        }
+        
+        // Atualizar UI imediatamente para mostrar animações
+        if (battleUI) {
+          battleUI.updateBattle(battle);
+          
+          // Se batalha terminou, finalizar
+          if (battle.winner) {
+            const match = await getMatch(matchId).catch(() => null);
+            if (match) {
+              const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+              const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+              const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+              const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
+              
+              await finishPvpBattle(battle, winnerId);
+            }
+            return;
+          }
+          
+          // Enviar ação via WebSocket para sincronizar com oponente
+          try {
+            const beastState = {
+              id: gameState.activeBeast?.id,
+              currentHp: battle.player.currentHp,
+              maxHp: battle.player.beast.maxHp,
+              currentEssence: battle.player.currentEssence,
+              maxEssence: battle.player.beast.maxEssence,
+              techniques: battle.player.beast.techniques.map((t: any) => t.id),
+            };
+            
+            console.log('[PVP] Sending action to opponent via socket:', action);
+            pvpSocketClient.sendAction(matchId, action, beastState);
+          } catch (error) {
+            console.error('[PVP] Error sending action via socket:', error);
+          }
+        }
+      };
+      
+      (battleUI as BattleUIHybrid).onBattleEnd = async () => {
+        if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.winner) {
+          const match = await getMatch(matchId).catch(() => null);
+          if (match) {
+            const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+            const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+            const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+            const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+            
+            await finishPvpBattle(gameState.currentBattle, winnerId);
+          }
+        }
+      };
     } else {
-      console.log('[PVP] Creating BattleUI for PVP battle');
+      console.log('[PVP Battle] Using 2D Battle System');
       battleUI = new BattleUI(canvas, battle);
-      setupPvpBattleCallbacks(battle, matchId);
-    }
-    
-    // Garantir que a fase está correta e renderizar imediatamente
-    if (battle.phase !== 'player_turn' && battle.phase !== 'enemy_turn') {
-      console.warn('[PVP] Battle phase is not player_turn or enemy_turn, setting to player_turn');
-      battle.phase = 'player_turn';
-    }
-    
-    // Renderizar UI imediatamente
-    if (battleUI) {
-      console.log('[PVP] Initial battle UI render - Phase:', battle.phase);
-      battleUI.updateBattle(battle);
-      battleUI.draw();
+      
+      // Setup 2D callbacks (original) - INLINE como na exploração
+      battleUI.onPlayerAction = async (action: CombatAction) => {
+        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) {
+          return;
+        }
+        
+        console.log('[PVP] Player action:', action);
+        
+        const result = executePlayerAction(battle, action);
+        
+        if (!result) {
+          console.error('[PVP] executePlayerAction returned null');
+          return;
+        }
+        
+        if (battleUI) {
+          battleUI.updateBattle(battle);
+          
+          if (battle.winner) {
+            const match = await getMatch(matchId).catch(() => null);
+            if (match) {
+              const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+              const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+              const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+              const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
+              
+              await finishPvpBattle(battle, winnerId);
+            }
+            return;
+          }
+          
+          try {
+            const beastState = {
+              id: gameState.activeBeast?.id,
+              currentHp: battle.player.currentHp,
+              maxHp: battle.player.beast.maxHp,
+              currentEssence: battle.player.currentEssence,
+              maxEssence: battle.player.beast.maxEssence,
+              techniques: battle.player.beast.techniques.map((t: any) => t.id),
+            };
+            
+            pvpSocketClient.sendAction(matchId, action, beastState);
+          } catch (error) {
+            console.error('[PVP] Error sending action via socket:', error);
+          }
+        }
+      };
+      
+      battleUI.onBattleEnd = async () => {
+        if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.winner) {
+          const match = await getMatch(matchId).catch(() => null);
+          if (match) {
+            const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
+            const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
+            const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
+            const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+            
+            await finishPvpBattle(gameState.currentBattle, winnerId);
+          }
+        }
+      };
     }
     
     inBattle = true;
