@@ -184,7 +184,13 @@ class PvpSocketClient {
    * Callback quando match é encontrado
    */
   onMatchFound(callback: (data: MatchFoundData) => void): void {
-    if (!this.socket) return;
+    // Armazenar callback para re-registrar após reconexão
+    this.matchFoundCallbacks.push(callback);
+    
+    if (!this.socket) {
+      console.warn('[PVP Socket] Socket not initialized yet, callback will be registered after connection');
+      return;
+    }
     this.socket.on('pvp:matchmaking:found', callback);
   }
 
@@ -192,6 +198,7 @@ class PvpSocketClient {
    * Callback quando partida inicia
    */
   onMatchStart(callback: (data: MatchStartData) => void): void {
+    this.matchStartCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:match:start', callback);
   }
@@ -200,6 +207,7 @@ class PvpSocketClient {
    * Callback quando recebe ação do oponente
    */
   onMatchAction(callback: (data: MatchActionData) => void): void {
+    this.matchActionCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:match:action', callback);
   }
@@ -208,6 +216,7 @@ class PvpSocketClient {
    * Callback quando recebe atualização de estado
    */
   onMatchState(callback: (data: MatchStateData) => void): void {
+    this.matchStateCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:match:state', callback);
   }
@@ -216,6 +225,7 @@ class PvpSocketClient {
    * Callback quando partida termina
    */
   onMatchEnd(callback: (data: any) => void): void {
+    this.matchEndCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:match:end', callback);
   }
@@ -224,6 +234,7 @@ class PvpSocketClient {
    * Callback quando entra na fila
    */
   onMatchmakingJoined(callback: (data: { matchType: MatchType }) => void): void {
+    this.matchmakingJoinedCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:matchmaking:joined', callback);
   }
@@ -232,6 +243,7 @@ class PvpSocketClient {
    * Callback quando sai da fila
    */
   onMatchmakingLeft(callback: () => void): void {
+    this.matchmakingLeftCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:matchmaking:left', callback);
   }
@@ -240,6 +252,7 @@ class PvpSocketClient {
    * Callback quando recebe desafio
    */
   onChallengeReceived(callback: (data: ChallengeReceivedData) => void): void {
+    this.challengeReceivedCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:challenge:received', callback);
   }
@@ -248,6 +261,7 @@ class PvpSocketClient {
    * Callback quando desafio é aceito
    */
   onChallengeAccepted(callback: (data: any) => void): void {
+    this.challengeAcceptedCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:challenge:accepted', callback);
   }
@@ -256,6 +270,7 @@ class PvpSocketClient {
    * Callback quando desafio é recusado
    */
   onChallengeDeclined(callback: (data: any) => void): void {
+    this.challengeDeclinedCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:challenge:declined', callback);
   }
@@ -264,6 +279,7 @@ class PvpSocketClient {
    * Callback de erro
    */
   onError(callback: (data: { message: string }) => void): void {
+    this.errorCallbacks.push(callback);
     if (!this.socket) return;
     this.socket.on('pvp:error', callback);
   }

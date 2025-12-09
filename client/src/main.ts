@@ -566,7 +566,11 @@ async function init() {
       
       // Conectar socket PVP
       pvpSocketClient.connect(token);
-      setupPvpSocketHandlers();
+      
+      // Aguardar um pouco para garantir que socket está pronto antes de registrar handlers
+      setTimeout(() => {
+        setupPvpSocketHandlers();
+      }, 500);
       
       await loadGameFromServer();
       
