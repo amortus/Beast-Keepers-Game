@@ -4628,11 +4628,26 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
     
     // Criar UI de batalha
     if (useHybridBattle) {
+      console.log('[PVP] Creating BattleUIHybrid for PVP battle');
       battleUI = new BattleUIHybrid(canvas, battle);
       setupPvpBattleCallbacks(battle, matchId);
     } else {
+      console.log('[PVP] Creating BattleUI for PVP battle');
       battleUI = new BattleUI(canvas, battle);
       setupPvpBattleCallbacks(battle, matchId);
+    }
+    
+    // Garantir que a fase está correta e renderizar imediatamente
+    if (battle.phase !== 'player_turn' && battle.phase !== 'enemy_turn') {
+      console.warn('[PVP] Battle phase is not player_turn or enemy_turn, setting to player_turn');
+      battle.phase = 'player_turn';
+    }
+    
+    // Renderizar UI imediatamente
+    if (battleUI) {
+      console.log('[PVP] Initial battle UI render - Phase:', battle.phase);
+      battleUI.updateBattle(battle);
+      battleUI.draw();
     }
     
     inBattle = true;

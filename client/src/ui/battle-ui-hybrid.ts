@@ -250,6 +250,14 @@ export class BattleUIHybrid {
       this.drawActionMenu();
     } else if (this.battle.phase === 'player_turn' && this.isAutoBattle) {
       // Auto-battle is active, skipping action menu
+      if (this.animationFrame % 120 === 0) { // Log every 2 seconds
+        console.log('[BattleUI Hybrid] Auto-battle active, action menu skipped');
+      }
+    } else {
+      // Debug: log why action menu is not shown
+      if (this.animationFrame % 120 === 0) { // Log every 2 seconds to avoid spam
+        console.log('[BattleUI Hybrid] Action menu not shown - Phase:', this.battle.phase, 'Auto:', this.isAutoBattle, 'Player techniques:', this.battle.player?.beast?.techniques?.length || 0);
+      }
     }
 
     // Draw end screen
