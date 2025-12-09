@@ -4796,6 +4796,12 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
           return;
         }
         
+        // Se já fez ação neste turno, não permitir nova ação
+        if (battle.playerActionDone) {
+          console.log('[PVP] Player already made action this turn, waiting for opponent');
+          return;
+        }
+        
         console.log('[PVP] Player action:', action);
         
         const result = executePlayerAction(battle, action);
@@ -4804,6 +4810,9 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
           console.error('[PVP] executePlayerAction returned null');
           return;
         }
+        
+        // Marcar que player já fez ação
+        battle.playerActionDone = true;
         
         if (battleUI) {
           battleUI.updateBattle(battle);
@@ -4834,6 +4843,19 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
             pvpSocketClient.sendAction(matchId, action, beastState);
           } catch (error) {
             console.error('[PVP] Error sending action via socket:', error);
+          }
+          
+          // Se ambos fizeram ações, resolver turno
+          if (battle.playerActionDone && battle.opponentActionDone) {
+            console.log('[PVP] Both players made actions, resolving turn');
+            console.log('[PVP] Before resolve - playerActionDone:', battle.playerActionDone, 'opponentActionDone:', battle.opponentActionDone, 'phase:', battle.phase);
+            resolvePvpTurn(battle);
+            console.log('[PVP] After resolve - playerActionDone:', battle.playerActionDone, 'opponentActionDone:', battle.opponentActionDone, 'phase:', battle.phase);
+            battleUI.updateBattle(battle);
+            // Forçar redraw para garantir que menu apareça
+            battleUI.draw();
+            // Reiniciar timer para próximo turno
+            startPvpTurnTimeout(battle, matchId);
           }
         }
       };
