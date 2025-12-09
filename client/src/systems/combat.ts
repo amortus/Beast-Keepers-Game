@@ -49,6 +49,10 @@ export function initiateBattle(
     isPvp,
     matchId,
     opponentUserId,
+    // PVP turn tracking
+    playerActionDone: false,
+    opponentActionDone: false,
+    turnStartTime: Date.now(),
   };
 }
 
@@ -436,10 +440,11 @@ export function executePlayerAction(battle: BattleContext, action: CombatAction)
   // Verifica fim de batalha
   checkBattleEnd(battle);
   
-  if (battle.winner === null) {
-    // Passa turno para inimigo
+  if (battle.winner === null && !battle.isPvp) {
+    // Em batalhas normais (não-PVP), passa turno automaticamente
     nextTurn(battle);
   }
+  // Em PVP, NÃO passa turno aqui - espera oponente fazer ação também
   
   return result;
 }
@@ -481,12 +486,35 @@ export function executeOpponentAction(battle: BattleContext, action: CombatActio
   // Verifica fim de batalha
   checkBattleEnd(battle);
   
-  if (battle.winner === null) {
-    // Passa turno para jogador
+  if (battle.winner === null && !battle.isPvp) {
+    // Em batalhas normais (não-PVP), passa turno automaticamente
     nextTurn(battle);
   }
+  // Em PVP, NÃO passa turno aqui - espera ambas ações para resolver turno
   
   return result;
+}
+
+/**
+ * Resolve turno PVP após ambos jogadores fazerem ações
+ */
+export function resolvePvpTurn(battle: BattleContext): void {
+  if (!battle.isPvp) return;
+  
+  // Ambos fizeram ações, avança para próximo turno
+  battle.player.isDefending = false;
+  battle.enemy.isDefending = false;
+  battle.turnCount++;
+  
+  // Reset flags de ações
+  battle.playerActionDone = false;
+  battle.opponentActionDone = false;
+  battle.turnStartTime = Date.now();
+  
+  // Sempre começa com turno do player no próximo round
+  battle.phase = 'player_turn';
+  
+  console.log(`[PVP] Turn resolved, starting turn ${battle.turnCount}`);
 }
 
 /**

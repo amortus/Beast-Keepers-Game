@@ -317,6 +317,10 @@ export interface BattleContext {
   winner: 'player' | 'enemy' | null;
   rewards?: BattleRewards;
   canFlee: boolean;
+  // PVP turn tracking
+  playerActionDone?: boolean;  // Player já fez ação neste turno?
+  opponentActionDone?: boolean; // Oponente já fez ação neste turno?
+  turnStartTime?: number;       // Timestamp do início do turno atual (para timeout)
 }
 
 export interface BattleRewards {

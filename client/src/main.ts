@@ -50,7 +50,7 @@ import {
   getActionName as getRealtimeActionName
 } from './systems/realtime-actions';
 import { formatTime } from './utils/time-format';
-import { initiateBattle, executePlayerAction, executeEnemyTurn, executeOpponentAction, applyBattleRewards } from './systems/combat';
+import { initiateBattle, executePlayerAction, executeEnemyTurn, executeOpponentAction, applyBattleRewards, resolvePvpTurn } from './systems/combat';
 import { generateTournamentOpponent, getTournamentPrize, getTournamentFee, canEnterTournament } from './systems/tournaments';
 import { NPCS, getNPCDialogue, increaseAffinity } from './data/npcs';
 import { processWeeklyEvents } from './systems/events';
@@ -4645,6 +4645,12 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
           return;
         }
         
+        // Se já fez ação neste turno, não permitir nova ação
+        if (battle.playerActionDone) {
+          console.log('[PVP] Player already made action this turn, waiting for opponent');
+          return;
+        }
+        
         console.log('[PVP] Player action:', action);
         
         // Executar ação localmente (isso faz as animações e atualiza UI)
@@ -4654,6 +4660,9 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
           console.error('[PVP] executePlayerAction returned null');
           return;
         }
+        
+        // Marcar que player já fez ação
+        battle.playerActionDone = true;
         
         // Atualizar UI imediatamente para mostrar animações
         if (battleUI) {
@@ -4688,6 +4697,17 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
             pvpSocketClient.sendAction(matchId, action, beastState);
           } catch (error) {
             console.error('[PVP] Error sending action via socket:', error);
+          }
+          
+          // Se ambos fizeram ações, resolver turno
+          if (battle.playerActionDone && battle.opponentActionDone) {
+            console.log('[PVP] Both players made actions, resolving turn');
+            resolvePvpTurn(battle);
+            if (battleUI) {
+              battleUI.updateBattle(battle);
+            }
+            // Reiniciar timer para próximo turno
+            startPvpTurnTimeout(battle, matchId);
           }
         }
       };
@@ -4808,9 +4828,84 @@ async function handlePvpChallengeAccepted(matchId: number) {
 }
 
 /**
+ * Inicia timer de timeout para turno PVP (60 segundos)
+ */
+function startPvpTurnTimeout(battle: BattleContext, matchId: number) {
+  // Limpar timeout anterior se existir
+  if (pvpTurnTimeout) {
+    clearTimeout(pvpTurnTimeout);
+    pvpTurnTimeout = null;
+  }
+  
+  // Resetar tempo de início do turno
+  battle.turnStartTime = Date.now();
+  
+  // Criar novo timeout de 60 segundos
+  pvpTurnTimeout = setTimeout(() => {
+    if (!gameState?.currentBattle || !gameState.currentBattle.isPvp || gameState.currentBattle.matchId !== matchId) {
+      return;
+    }
+    
+    const currentBattle = gameState.currentBattle;
+    
+    // Verificar se é o turno do jogador e ele ainda não fez ação
+    if (currentBattle.phase === 'player_turn' && !currentBattle.playerActionDone) {
+      console.log('[PVP] ⏰ Turn timeout - player did not respond in 60s, skipping turn');
+      
+      // Pular turno do jogador (defender automaticamente)
+      currentBattle.playerActionDone = true;
+      currentBattle.combatLog.push('⏰ Você demorou muito! Turno pulado.');
+      
+      // Enviar ação de defesa como fallback
+      try {
+        const beastState = {
+          id: gameState.activeBeast?.id,
+          currentHp: currentBattle.player.currentHp,
+          maxHp: currentBattle.player.beast.maxHp,
+          currentEssence: currentBattle.player.currentEssence,
+          maxEssence: currentBattle.player.beast.maxEssence,
+          techniques: currentBattle.player.beast.techniques.map((t: any) => t.id),
+        };
+        
+        pvpSocketClient.sendAction(matchId, { type: 'defend' }, beastState);
+      } catch (error) {
+        console.error('[PVP] Error sending timeout action:', error);
+      }
+      
+      // Se oponente já fez ação, resolver turno
+      if (currentBattle.opponentActionDone) {
+        console.log('[PVP] Opponent already made action, resolving turn after timeout');
+        resolvePvpTurn(currentBattle);
+        if (battleUI) {
+          battleUI.updateBattle(currentBattle);
+        }
+        // Reiniciar timer para próximo turno
+        startPvpTurnTimeout(currentBattle, matchId);
+      }
+      
+      if (battleUI) {
+        battleUI.updateBattle(currentBattle);
+      }
+    }
+  }, 60000); // 60 segundos
+}
+
+/**
+ * Para timer de timeout PVP
+ */
+function stopPvpTurnTimeout() {
+  if (pvpTurnTimeout) {
+    clearTimeout(pvpTurnTimeout);
+    pvpTurnTimeout = null;
+  }
+}
+
+/**
  * Finish PVP battle
  */
 async function finishPvpBattle(battle: BattleContext, winnerId: number) {
+  // Parar timer quando batalha termina
+  stopPvpTurnTimeout();
   if (!battle.isPvp || !battle.matchId) return;
   
   try {

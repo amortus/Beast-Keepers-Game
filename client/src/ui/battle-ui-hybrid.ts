@@ -245,18 +245,28 @@ export class BattleUIHybrid {
     // Draw auto-battle controls
     this.drawAutoBattleControls();
 
-    // Draw action menu (only on player turn and NOT in auto mode)
-    if (this.battle.phase === 'player_turn' && !this.isAutoBattle) {
+    // Draw action menu (only on player turn, NOT in auto mode, and player hasn't done action yet in PVP)
+    const isPvp = this.battle.isPvp || false;
+    const canShowMenu = this.battle.phase === 'player_turn' && 
+                        !this.isAutoBattle && 
+                        (!isPvp || !this.battle.playerActionDone);
+    
+    if (canShowMenu) {
       this.drawActionMenu();
     } else if (this.battle.phase === 'player_turn' && this.isAutoBattle) {
       // Auto-battle is active, skipping action menu
       if (this.animationFrame % 120 === 0) { // Log every 2 seconds
         console.log('[BattleUI Hybrid] Auto-battle active, action menu skipped');
       }
+    } else if (this.battle.phase === 'player_turn' && isPvp && this.battle.playerActionDone) {
+      // PVP: Player já fez ação, aguardando oponente
+      if (this.animationFrame % 120 === 0) { // Log every 2 seconds
+        console.log('[BattleUI Hybrid] PVP - Player action done, waiting for opponent. Opponent done:', this.battle.opponentActionDone);
+      }
     } else {
       // Debug: log why action menu is not shown
       if (this.animationFrame % 120 === 0) { // Log every 2 seconds to avoid spam
-        console.log('[BattleUI Hybrid] Action menu not shown - Phase:', this.battle.phase, 'Auto:', this.isAutoBattle, 'Player techniques:', this.battle.player?.beast?.techniques?.length || 0);
+        console.log('[BattleUI Hybrid] Action menu not shown - Phase:', this.battle.phase, 'Auto:', this.isAutoBattle, 'PVP:', isPvp, 'PlayerActionDone:', this.battle.playerActionDone, 'Player techniques:', this.battle.player?.beast?.techniques?.length || 0);
       }
     }
 
