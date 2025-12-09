@@ -238,6 +238,11 @@ export class BattleUIHybrid {
 
     // Draw turn indicator
     this.drawTurnIndicator();
+    
+    // Draw PVP timer if in PVP battle
+    if (this.battle.isPvp && this.battle.phase === 'player_turn' && !this.battle.playerActionDone) {
+      this.drawPvpTimer();
+    }
 
     // Draw combat log
     this.drawCombatLog();

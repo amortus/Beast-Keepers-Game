@@ -4451,6 +4451,9 @@ function setupPvpSocketHandlers() {
               const result = executeOpponentAction(gameState.currentBattle, data.action);
               
               if (result && battleUI) {
+                // Marcar que oponente já fez ação
+                gameState.currentBattle.opponentActionDone = true;
+                
                 // Atualizar UI para mostrar dano do oponente
                 battleUI.updateBattle(gameState.currentBattle);
                 
@@ -4468,14 +4471,24 @@ function setupPvpSocketHandlers() {
                   return;
                 }
                 
-                // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
-                if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
-                  console.log('[PVP] Auto-battle is active, executing action automatically');
-                  setTimeout(() => {
-                    if (battleUI && gameState?.currentBattle) {
-                      battleUI.checkAutoBattle();
-                    }
-                  }, 500);
+                // Se ambos fizeram ações, resolver turno
+                if (gameState.currentBattle.playerActionDone && gameState.currentBattle.opponentActionDone) {
+                  console.log('[PVP] Both players made actions, resolving turn');
+                  resolvePvpTurn(gameState.currentBattle);
+                  battleUI.updateBattle(gameState.currentBattle);
+                  
+                  // Reiniciar timer para próximo turno
+                  startPvpTurnTimeout(gameState.currentBattle, data.matchId);
+                  
+                  // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
+                  if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
+                    console.log('[PVP] Auto-battle is active, executing action automatically');
+                    setTimeout(() => {
+                      if (battleUI && gameState?.currentBattle) {
+                        battleUI.checkAutoBattle();
+                      }
+                    }, 500);
+                  }
                 }
               }
             }, 600); // Aguardar animação terminar
