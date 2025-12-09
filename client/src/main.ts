@@ -63,7 +63,7 @@ import { getItemById } from './data/shop';
 import { getDungeonById, calculateFatigueCost } from './data/dungeons';
 import type { DungeonEnemy, DungeonBoss } from './data/dungeons';
 import type { ExplorationState, ExplorationZone, WildEnemy } from './systems/exploration';
-import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item, BeastAction } from './types';
+import type { GameState, WeeklyAction, CombatAction, TournamentRank, Beast, Item, BeastAction, BattleContext } from './types';
 import { authApi } from './api/authApi';
 import { gameApi } from './api/gameApi';
 import { TECHNIQUES, getStartingTechniques } from './data/techniques';
@@ -196,6 +196,7 @@ let inBattle = false;
 let inPvpBattle = false;
 let currentPvpMatchId: number | null = null;
 let pvpBattleStartTime: number = 0;
+let pvpTurnTimeout: NodeJS.Timeout | null = null;
 let inTemple = false;
 let inDialogue = false;
 let inShop = false;
@@ -4622,10 +4623,18 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
     );
     battle.phase = 'player_turn'; // Definir fase ANTES de criar UI (igual exploração)
     
+    // Inicializar tracking de turno PVP
+    battle.playerActionDone = false;
+    battle.opponentActionDone = false;
+    battle.turnStartTime = Date.now();
+    
     gameState.currentBattle = battle;
     currentPvpMatchId = matchId;
     pvpBattleStartTime = Date.now();
     inPvpBattle = true;
+    
+    // Iniciar timer de timeout para turno (60 segundos)
+    startPvpTurnTimeout(battle, matchId);
     
     // Log de debug (igual exploração)
     console.log('[PVP Battle] Starting battle:');
