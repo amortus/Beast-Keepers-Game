@@ -4474,8 +4474,12 @@ function setupPvpSocketHandlers() {
                 // Se ambos fizeram ações, resolver turno
                 if (gameState.currentBattle.playerActionDone && gameState.currentBattle.opponentActionDone) {
                   console.log('[PVP] Both players made actions, resolving turn');
+                  console.log('[PVP] Before resolve - playerActionDone:', gameState.currentBattle.playerActionDone, 'opponentActionDone:', gameState.currentBattle.opponentActionDone, 'phase:', gameState.currentBattle.phase);
                   resolvePvpTurn(gameState.currentBattle);
+                  console.log('[PVP] After resolve - playerActionDone:', gameState.currentBattle.playerActionDone, 'opponentActionDone:', gameState.currentBattle.opponentActionDone, 'phase:', gameState.currentBattle.phase);
                   battleUI.updateBattle(gameState.currentBattle);
+                  // Forçar redraw para garantir que menu apareça
+                  battleUI.draw();
                   
                   // Reiniciar timer para próximo turno
                   startPvpTurnTimeout(gameState.currentBattle, data.matchId);
