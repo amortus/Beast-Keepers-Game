@@ -4451,14 +4451,20 @@ function setupPvpSocketHandlers() {
               const result = executeOpponentAction(gameState.currentBattle, data.action);
               
               if (result && battleUI) {
-                // Marcar que oponente já fez ação
-                gameState.currentBattle.opponentActionDone = true;
+                // Verificar se batalha terminou ANTES de marcar ação como feita
+                const battleEnded = gameState.currentBattle.winner !== null;
+                
+                // Marcar que oponente já fez ação (só se batalha não terminou)
+                if (!battleEnded) {
+                  gameState.currentBattle.opponentActionDone = true;
+                }
                 
                 // Atualizar UI para mostrar dano do oponente
                 battleUI.updateBattle(gameState.currentBattle);
                 
-                // Se batalha terminou, finalizar
+                // Se batalha terminou, finalizar IMEDIATAMENTE
                 if (gameState.currentBattle.winner) {
+                  console.log('[PVP] Battle ended with winner:', gameState.currentBattle.winner, 'after opponent action');
                   const match = await getMatch(data.matchId).catch(() => null);
                   if (match) {
                     const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
@@ -4471,8 +4477,8 @@ function setupPvpSocketHandlers() {
                   return;
                 }
                 
-                // Se ambos fizeram ações, resolver turno
-                if (gameState.currentBattle.playerActionDone && gameState.currentBattle.opponentActionDone) {
+                // Se ambos fizeram ações, resolver turno (só se batalha não terminou)
+                if (!battleEnded && gameState.currentBattle.playerActionDone && gameState.currentBattle.opponentActionDone) {
                   console.log('[PVP] Both players made actions, resolving turn');
                   console.log('[PVP] Before resolve - playerActionDone:', gameState.currentBattle.playerActionDone, 'opponentActionDone:', gameState.currentBattle.opponentActionDone, 'phase:', gameState.currentBattle.phase);
                   resolvePvpTurn(gameState.currentBattle);
