@@ -1081,6 +1081,54 @@ export class BattleUIHybrid {
       this.enemyViewer3DContainer = null;
     }
   }
+  
+  /**
+   * Draw PVP turn timer (60 seconds countdown)
+   */
+  private drawPvpTimer() {
+    if (!this.battle.turnStartTime) return;
+    
+    const elapsed = Date.now() - this.battle.turnStartTime;
+    const remaining = Math.max(0, 60000 - elapsed); // 60 seconds
+    const seconds = Math.ceil(remaining / 1000);
+    
+    const x = this.canvas.width / 2 - 100;
+    const y = 50;
+    const width = 200;
+    const height = 40;
+    
+    // Background panel
+    drawPanel(this.ctx, x, y, width, height, {
+      bgColor: 'rgba(0, 0, 0, 0.8)',
+      borderColor: seconds <= 10 ? '#ff0000' : seconds <= 20 ? '#ffaa00' : '#00ff00',
+      borderWidth: 2,
+    });
+    
+    // Timer text
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const timeText = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    
+    drawText(this.ctx, `⏱️ Tempo: ${timeText}`, x + width / 2, y + 25, {
+      font: 'bold 18px monospace',
+      color: seconds <= 10 ? '#ff0000' : seconds <= 20 ? '#ffaa00' : '#ffffff',
+      align: 'center',
+    });
+    
+    // Progress bar
+    drawBar(
+      this.ctx,
+      x + 10,
+      y + 30,
+      width - 20,
+      6,
+      remaining,
+      60000,
+      {
+        fillColor: seconds <= 10 ? '#ff0000' : seconds <= 20 ? '#ffaa00' : '#00ff00',
+      }
+    );
+  }
 
   // Callbacks
   public onPlayerAction: (action: CombatAction) => void = () => {};
