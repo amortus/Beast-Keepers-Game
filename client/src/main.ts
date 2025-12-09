@@ -3547,6 +3547,8 @@ function closeBattle() {
   inBattle = false;
   isExplorationBattle = false;
   isDungeonBattle = false;
+  inPvpBattle = false;
+  currentPvpMatchId = null;
   
   console.log('[Battle] ✓ Battle closed');
 }
