@@ -4695,15 +4695,23 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
           return;
         }
         
-        // Marcar que player já fez ação
-        battle.playerActionDone = true;
+        // Verificar se batalha terminou APÓS executar ação (checkBattleEnd foi chamado dentro de executePlayerAction)
+        const battleEnded = battle.winner !== null;
+        
+        console.log('[PVP] After player action - winner:', battle.winner, 'phase:', battle.phase, 'enemy HP:', battle.enemy.currentHp);
+        
+        // Marcar que player já fez ação (só se batalha não terminou)
+        if (!battleEnded) {
+          battle.playerActionDone = true;
+        }
         
         // Atualizar UI imediatamente para mostrar animações
         if (battleUI) {
           battleUI.updateBattle(battle);
           
-          // Se batalha terminou, finalizar
+          // Se batalha terminou, finalizar IMEDIATAMENTE (antes de enviar ação ao oponente)
           if (battle.winner) {
+            console.log('[PVP] ⚔️ Battle ended! Winner:', battle.winner, 'Player HP:', battle.player.currentHp, 'Enemy HP:', battle.enemy.currentHp);
             const match = await getMatch(matchId).catch(() => null);
             if (match) {
               const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
@@ -4711,6 +4719,7 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
               const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
               const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
               
+              console.log('[PVP] Finishing battle - winnerId:', winnerId, 'playerUserId:', playerUserId);
               await finishPvpBattle(battle, winnerId);
             }
             return;
@@ -4817,13 +4826,22 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
           return;
         }
         
-        // Marcar que player já fez ação
-        battle.playerActionDone = true;
+        // Verificar se batalha terminou APÓS executar ação
+        const battleEnded = battle.winner !== null;
+        
+        console.log('[PVP] After player action (2D) - winner:', battle.winner, 'phase:', battle.phase, 'enemy HP:', battle.enemy.currentHp);
+        
+        // Marcar que player já fez ação (só se batalha não terminou)
+        if (!battleEnded) {
+          battle.playerActionDone = true;
+        }
         
         if (battleUI) {
           battleUI.updateBattle(battle);
           
+          // Se batalha terminou, finalizar IMEDIATAMENTE
           if (battle.winner) {
+            console.log('[PVP] ⚔️ Battle ended! Winner:', battle.winner, 'Player HP:', battle.player.currentHp, 'Enemy HP:', battle.enemy.currentHp);
             const match = await getMatch(matchId).catch(() => null);
             if (match) {
               const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
@@ -4831,6 +4849,7 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
               const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
               const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
               
+              console.log('[PVP] Finishing battle (2D) - winnerId:', winnerId, 'playerUserId:', playerUserId);
               await finishPvpBattle(battle, winnerId);
             }
             return;
@@ -4851,8 +4870,8 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
             console.error('[PVP] Error sending action via socket:', error);
           }
           
-          // Se ambos fizeram ações, resolver turno
-          if (battle.playerActionDone && battle.opponentActionDone) {
+          // Se ambos fizeram ações, resolver turno (só se batalha não terminou)
+          if (!battleEnded && battle.playerActionDone && battle.opponentActionDone) {
             console.log('[PVP] Both players made actions, resolving turn');
             console.log('[PVP] Before resolve - playerActionDone:', battle.playerActionDone, 'opponentActionDone:', battle.opponentActionDone, 'phase:', battle.phase);
             resolvePvpTurn(battle);
