@@ -4722,15 +4722,48 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
       };
       
       (battleUI as BattleUIHybrid).onBattleEnd = async () => {
-        if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.winner) {
-          const match = await getMatch(matchId).catch(() => null);
+        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) return;
+
+        const battle = gameState.currentBattle;
+        
+        console.log('[PVP Battle] Battle ended - Phase:', battle.phase, 'Winner:', battle.winner);
+        
+        // PROTEÇÃO: Verificar fase
+        if (battle.phase !== 'victory' && battle.phase !== 'defeat') {
+          console.error('[PVP Battle] ❌ onBattleEnd called but phase is:', battle.phase);
+          return;
+        }
+
+        // Atualizar HP/Essence do beast ANTES de finalizar
+        if (gameState.activeBeast) {
+          gameState.activeBeast.currentHp = battle.player.currentHp;
+          gameState.activeBeast.essence = battle.player.currentEssence;
+          
+          // Atualizar vitórias/derrotas
+          if (battle.winner === 'player') {
+            gameState.victories++;
+            gameState.activeBeast.victories++;
+          } else {
+            gameState.defeats++;
+            gameState.activeBeast.defeats++;
+          }
+          
+          console.log('[PVP Battle] Beast HP after battle:', gameState.activeBeast.currentHp);
+        }
+
+        // Fechar batalha IMEDIATAMENTE
+        closeBattle();
+        
+        // Finalizar partida no servidor e mostrar resultado
+        if (battle.matchId) {
+          const match = await getMatch(battle.matchId).catch(() => null);
           if (match) {
             const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
             const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
             const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-            const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+            const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
             
-            await finishPvpBattle(gameState.currentBattle, winnerId);
+            await finishPvpBattle(battle, winnerId);
           }
         }
       };
@@ -4787,15 +4820,48 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
       };
       
       battleUI.onBattleEnd = async () => {
-        if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.winner) {
-          const match = await getMatch(matchId).catch(() => null);
+        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) return;
+
+        const battle = gameState.currentBattle;
+        
+        console.log('[PVP Battle] Battle ended - Phase:', battle.phase, 'Winner:', battle.winner);
+        
+        // PROTEÇÃO: Verificar fase
+        if (battle.phase !== 'victory' && battle.phase !== 'defeat') {
+          console.error('[PVP Battle] ❌ onBattleEnd called but phase is:', battle.phase);
+          return;
+        }
+
+        // Atualizar HP/Essence do beast ANTES de finalizar
+        if (gameState.activeBeast) {
+          gameState.activeBeast.currentHp = battle.player.currentHp;
+          gameState.activeBeast.essence = battle.player.currentEssence;
+          
+          // Atualizar vitórias/derrotas
+          if (battle.winner === 'player') {
+            gameState.victories++;
+            gameState.activeBeast.victories++;
+          } else {
+            gameState.defeats++;
+            gameState.activeBeast.defeats++;
+          }
+          
+          console.log('[PVP Battle] Beast HP after battle:', gameState.activeBeast.currentHp);
+        }
+
+        // Fechar batalha IMEDIATAMENTE
+        closeBattle();
+        
+        // Finalizar partida no servidor e mostrar resultado
+        if (battle.matchId) {
+          const match = await getMatch(battle.matchId).catch(() => null);
           if (match) {
             const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
             const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
             const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-            const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
+            const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
             
-            await finishPvpBattle(gameState.currentBattle, winnerId);
+            await finishPvpBattle(battle, winnerId);
           }
         }
       };
@@ -4915,7 +4981,7 @@ function stopPvpTurnTimeout() {
 async function finishPvpBattle(battle: BattleContext, winnerId: number) {
   // Parar timer quando batalha termina
   stopPvpTurnTimeout();
-  if (!battle.isPvp || !battle.matchId) return;
+  if (!battle.isPvp || !battle.matchId || !gameState) return;
   
   try {
     const durationSeconds = Math.floor((Date.now() - pvpBattleStartTime) / 1000);
@@ -4924,23 +4990,21 @@ async function finishPvpBattle(battle: BattleContext, winnerId: number) {
     
     // Determinar se o jogador ganhou e qual recompensa usar
     const match = await getMatch(battle.matchId!);
-    const isPlayer1 = match.player1BeastId.toString() === gameState?.activeBeast?.id;
+    const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
     const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
     const won = winnerId === playerUserId;
     
-    // Usar recompensas corretas (player1 ou player2)
-    const playerRewards = isPlayer1 ? result.rewards.player1 : result.rewards.player2;
-    const playerEloChange = isPlayer1 ? result.eloChanges.player1 : result.eloChanges.player2;
+    // Verificar se result.rewards existe antes de acessar
+    let playerRewards = { coronas: 0, experience: 0 };
+    let playerEloChange = 0;
     
-    showMessage(
-      won 
-        ? `Vitória! +${playerRewards.coronas} Coronas, +${playerRewards.experience} XP${playerEloChange ? `, ${playerEloChange > 0 ? '+' : ''}${playerEloChange} ELO` : ''}`
-        : `Derrota... +${playerRewards.coronas} Coronas, +${playerRewards.experience} XP${playerEloChange ? `, ${playerEloChange} ELO` : ''}`,
-      won ? '🎉 Vitória!' : '😔 Derrota'
-    );
+    if (result && result.rewards) {
+      playerRewards = isPlayer1 ? (result.rewards.player1 || { coronas: 0, experience: 0 }) : (result.rewards.player2 || { coronas: 0, experience: 0 });
+      playerEloChange = isPlayer1 ? (result.eloChanges?.player1 || 0) : (result.eloChanges?.player2 || 0);
+    }
     
-    // Aplicar XP (recompensas já foram aplicadas no backend)
-    if (gameState?.activeBeast && typeof addExperience === 'function') {
+    // Aplicar XP se disponível
+    if (gameState.activeBeast && playerRewards.experience > 0 && typeof addExperience === 'function') {
       try {
         addExperience(gameState.activeBeast, playerRewards.experience);
       } catch (error) {
@@ -4948,30 +5012,49 @@ async function finishPvpBattle(battle: BattleContext, winnerId: number) {
       }
     }
     
-    // Limpar estado
+    // Limpar estado PVP
     currentPvpMatchId = null;
     inPvpBattle = false;
-    inBattle = false;
-    if (gameState) {
-      gameState.currentBattle = undefined;
-    }
-    if (battleUI) {
-      battleUI.dispose();
-      battleUI = null;
-    }
     
-    // Salvar
-    if (gameState) {
-      await saveGame(gameState);
-    }
+    // Salvar ANTES de mostrar mensagem
+    await saveGame(gameState);
     
-    // Atualizar UI
-    if (gameUI) {
-      gameUI.updateGameState(gameState);
-    }
+    // Mostrar mensagem e voltar para rancho
+    showMessage(
+      won 
+        ? `🏆 Vitória!\n\n+${playerRewards.coronas}💰 Coronas\n+${playerRewards.experience} XP${playerEloChange ? `\n${playerEloChange > 0 ? '+' : ''}${playerEloChange} ELO` : ''}`
+        : `💀 Derrota...\n\n+${playerRewards.coronas}💰 Coronas\n+${playerRewards.experience} XP${playerEloChange ? `\n${playerEloChange} ELO` : ''}`,
+      won ? '🎉 Vitória PVP!' : '😔 Derrota PVP',
+      async () => {
+        // Voltar para rancho após fechar modal
+        if (gameUI) {
+          gameUI.show3DViewer();
+        }
+        if (gameUI && gameState) {
+          gameUI.updateGameState(gameState);
+        }
+      }
+    );
   } catch (error: any) {
     console.error('[PVP] Error finishing battle:', error);
-    showMessage('Erro ao finalizar partida: ' + (error.message || 'Erro desconhecido'), '❌ Erro');
+    
+    // Mesmo com erro, garantir que volte para rancho
+    if (gameUI) {
+      gameUI.show3DViewer();
+    }
+    
+    showMessage(
+      'Erro ao finalizar partida: ' + (error.message || 'Erro desconhecido') + '\n\nVocê será retornado ao rancho.',
+      '❌ Erro',
+      async () => {
+        if (gameState) {
+          await saveGame(gameState);
+        }
+        if (gameUI && gameState) {
+          gameUI.updateGameState(gameState);
+        }
+      }
+    );
   }
 }
 
