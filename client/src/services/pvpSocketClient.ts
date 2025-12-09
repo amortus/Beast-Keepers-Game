@@ -76,10 +76,14 @@ class PvpSocketClient {
       transports: ['websocket', 'polling'],
     });
 
+    // Registrar listeners imediatamente (mesmo antes de conectar)
+    // Isso garante que eventos não sejam perdidos
+    this.reregisterListeners();
+
     this.socket.on('connect', () => {
       this.connected = true;
       console.log('[PVP Socket] Connected');
-      // Re-registrar listeners que podem ter sido perdidos
+      // Re-registrar listeners após conexão (caso algum tenha sido perdido)
       this.reregisterListeners();
     });
 
@@ -313,6 +317,42 @@ class PvpSocketClient {
   private reregisterListeners(): void {
     if (!this.socket) return;
     
+    // Remover listeners antigos para evitar duplicatas
+    this.matchFoundCallbacks.forEach(() => {
+      this.socket!.off('pvp:matchmaking:found');
+    });
+    this.matchStartCallbacks.forEach(() => {
+      this.socket!.off('pvp:match:start');
+    });
+    this.matchActionCallbacks.forEach(() => {
+      this.socket!.off('pvp:match:action');
+    });
+    this.matchStateCallbacks.forEach(() => {
+      this.socket!.off('pvp:match:state');
+    });
+    this.matchEndCallbacks.forEach(() => {
+      this.socket!.off('pvp:match:end');
+    });
+    this.matchmakingJoinedCallbacks.forEach(() => {
+      this.socket!.off('pvp:matchmaking:joined');
+    });
+    this.matchmakingLeftCallbacks.forEach(() => {
+      this.socket!.off('pvp:matchmaking:left');
+    });
+    this.challengeReceivedCallbacks.forEach(() => {
+      this.socket!.off('pvp:challenge:received');
+    });
+    this.challengeAcceptedCallbacks.forEach(() => {
+      this.socket!.off('pvp:challenge:accepted');
+    });
+    this.challengeDeclinedCallbacks.forEach(() => {
+      this.socket!.off('pvp:challenge:declined');
+    });
+    this.errorCallbacks.forEach(() => {
+      this.socket!.off('pvp:error');
+    });
+    
+    // Registrar todos os callbacks
     this.matchFoundCallbacks.forEach(cb => {
       this.socket!.on('pvp:matchmaking:found', cb);
     });
@@ -347,7 +387,12 @@ class PvpSocketClient {
       this.socket!.on('pvp:error', cb);
     });
     
-    console.log('[PVP Socket] Re-registered all listeners');
+    console.log('[PVP Socket] Re-registered all listeners:', {
+      matchFound: this.matchFoundCallbacks.length,
+      matchStart: this.matchStartCallbacks.length,
+      matchAction: this.matchActionCallbacks.length,
+      error: this.errorCallbacks.length,
+    });
   }
 }
 
