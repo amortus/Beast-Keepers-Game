@@ -79,6 +79,8 @@ class PvpSocketClient {
     this.socket.on('connect', () => {
       this.connected = true;
       console.log('[PVP Socket] Connected');
+      // Re-registrar listeners que podem ter sido perdidos
+      this.reregisterListeners();
     });
 
     this.socket.on('disconnect', () => {
@@ -290,6 +292,62 @@ class PvpSocketClient {
   removeAllListeners(): void {
     if (!this.socket) return;
     this.socket.removeAllListeners();
+  }
+
+  // Armazenar callbacks para re-registrar após reconexão
+  private matchFoundCallbacks: Array<(data: MatchFoundData) => void> = [];
+  private matchStartCallbacks: Array<(data: MatchStartData) => void> = [];
+  private matchActionCallbacks: Array<(data: MatchActionData) => void> = [];
+  private matchStateCallbacks: Array<(data: MatchStateData) => void> = [];
+  private matchEndCallbacks: Array<(data: any) => void> = [];
+  private matchmakingJoinedCallbacks: Array<(data: { matchType: MatchType }) => void> = [];
+  private matchmakingLeftCallbacks: Array<() => void> = [];
+  private challengeReceivedCallbacks: Array<(data: ChallengeReceivedData) => void> = [];
+  private challengeAcceptedCallbacks: Array<(data: any) => void> = [];
+  private challengeDeclinedCallbacks: Array<(data: any) => void> = [];
+  private errorCallbacks: Array<(data: { message: string }) => void> = [];
+
+  /**
+   * Re-registrar todos os listeners após reconexão
+   */
+  private reregisterListeners(): void {
+    if (!this.socket) return;
+    
+    this.matchFoundCallbacks.forEach(cb => {
+      this.socket!.on('pvp:matchmaking:found', cb);
+    });
+    this.matchStartCallbacks.forEach(cb => {
+      this.socket!.on('pvp:match:start', cb);
+    });
+    this.matchActionCallbacks.forEach(cb => {
+      this.socket!.on('pvp:match:action', cb);
+    });
+    this.matchStateCallbacks.forEach(cb => {
+      this.socket!.on('pvp:match:state', cb);
+    });
+    this.matchEndCallbacks.forEach(cb => {
+      this.socket!.on('pvp:match:end', cb);
+    });
+    this.matchmakingJoinedCallbacks.forEach(cb => {
+      this.socket!.on('pvp:matchmaking:joined', cb);
+    });
+    this.matchmakingLeftCallbacks.forEach(cb => {
+      this.socket!.on('pvp:matchmaking:left', cb);
+    });
+    this.challengeReceivedCallbacks.forEach(cb => {
+      this.socket!.on('pvp:challenge:received', cb);
+    });
+    this.challengeAcceptedCallbacks.forEach(cb => {
+      this.socket!.on('pvp:challenge:accepted', cb);
+    });
+    this.challengeDeclinedCallbacks.forEach(cb => {
+      this.socket!.on('pvp:challenge:declined', cb);
+    });
+    this.errorCallbacks.forEach(cb => {
+      this.socket!.on('pvp:error', cb);
+    });
+    
+    console.log('[PVP Socket] Re-registered all listeners');
   }
 }
 
