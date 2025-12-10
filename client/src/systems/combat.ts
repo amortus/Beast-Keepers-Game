@@ -33,10 +33,7 @@ export function createCombatEntity(beast: Beast): CombatEntity {
 export function initiateBattle(
   playerBeast: Beast,
   enemyBeast: Beast,
-  canFlee: boolean = true,
-  isPvp: boolean = false,
-  matchId?: number,
-  opponentUserId?: number
+  canFlee: boolean = true
 ): BattleContext {
   return {
     phase: 'intro',
@@ -45,14 +42,7 @@ export function initiateBattle(
     turnCount: 0,
     combatLog: ['A batalha começou!'],
     winner: null,
-    canFlee: isPvp ? false : canFlee, // PVP não permite fugir
-    isPvp,
-    matchId,
-    opponentUserId,
-    // PVP turn tracking
-    playerActionDone: false,
-    opponentActionDone: false,
-    turnStartTime: Date.now(),
+    canFlee,
   };
 }
 
@@ -440,82 +430,14 @@ export function executePlayerAction(battle: BattleContext, action: CombatAction)
   // Verifica fim de batalha
   checkBattleEnd(battle);
   
-  if (battle.winner === null && !battle.isPvp) {
-    // Em batalhas normais (não-PVP), passa turno automaticamente
+  if (battle.winner === null) {
+    // Passa turno automaticamente
     nextTurn(battle);
   }
-  // Em PVP, NÃO passa turno aqui - espera oponente fazer ação também
   
   return result;
 }
 
-/**
- * Executa ação do oponente (para PVP - ação real do outro jogador)
- */
-export function executeOpponentAction(battle: BattleContext, action: CombatAction): CombatResult | null {
-  // Em PVP, oponente é o "enemy" na estrutura da batalha
-  // Mas estamos recebendo a ação real dele, não usando IA
-  if (battle.phase !== 'enemy_turn' && battle.phase !== 'player_turn') {
-    return null;
-  }
-  
-  let result: CombatResult;
-  
-  if (action.type === 'technique') {
-    const technique = battle.enemy.beast.techniques.find(t => t.id === action.techniqueId);
-    if (!technique) return null;
-    
-    if (!canUseTechnique(technique, battle.enemy.currentEssence)) {
-      return null;
-    }
-    
-    result = executeTechnique(battle.enemy, battle.player, technique);
-  } else if (action.type === 'defend') {
-    result = executeDefend(battle.enemy);
-  } else {
-    return null;
-  }
-  
-  // Adiciona mensagens ao log
-  battle.combatLog.push(...result.messages);
-  
-  // Processa efeitos
-  const effectMessages = processActiveEffects(battle.player);
-  battle.combatLog.push(...effectMessages);
-  
-  // Verifica fim de batalha
-  checkBattleEnd(battle);
-  
-  if (battle.winner === null && !battle.isPvp) {
-    // Em batalhas normais (não-PVP), passa turno automaticamente
-    nextTurn(battle);
-  }
-  // Em PVP, NÃO passa turno aqui - espera ambas ações para resolver turno
-  
-  return result;
-}
-
-/**
- * Resolve turno PVP após ambos jogadores fazerem ações
- */
-export function resolvePvpTurn(battle: BattleContext): void {
-  if (!battle.isPvp) return;
-  
-  // Ambos fizeram ações, avança para próximo turno
-  battle.player.isDefending = false;
-  battle.enemy.isDefending = false;
-  battle.turnCount++;
-  
-  // Reset flags de ações
-  battle.playerActionDone = false;
-  battle.opponentActionDone = false;
-  battle.turnStartTime = Date.now();
-  
-  // Sempre começa com turno do player no próximo round
-  battle.phase = 'player_turn';
-  
-  console.log(`[PVP] Turn resolved, starting turn ${battle.turnCount}`);
-}
 
 /**
  * Executa turno do inimigo

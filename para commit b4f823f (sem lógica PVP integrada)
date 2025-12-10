@@ -1,0 +1,30 @@
+[33m78640de[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix: Registrar listeners imediatamente ao criar socket e evitar duplicatas
+[33m5e3c05a[m fix: Adicionar arrays de callbacks e função reregisterListeners para garantir listeners após reconexão
+[33mc504f12[m fix: Garantir que listeners de socket PVP sejam registrados mesmo se socket não estiver conectado ainda
+[33m44e1d3f[m fix: Detectar vitória/derrota imediatamente após ações com logs detalhados
+[33mfaf650d[m fix: Detectar vitória/derrota imediatamente após ações PVP e finalizar batalha
+[33m453d422[m fix: Corrigir callback 2D PVP para incluir tracking de ações e resolução de turno
+[33m129cc93[m fix: Forçar redraw após resolver turno PVP e adicionar logs de debug
+[33m2ce87a0[m fix: Adicionar função drawPvpTimer completa para timer visual de 60s
+[33mc56610e[m fix: Corrigir tracking de ações PVP e adicionar timer visual de 60s
+[33maea8946[m fix: Limpar flags PVP em closeBattle
+[33mfca14d8[m fix: Corrigir finalização de batalha PVP - atualizar HP/XP, vitórias/derrotas e voltar para rancho
+[33medb22eb[m fix: Completar sistema de turnos PVP com timeout e tracking de ações
+[33m25f1e61[m fix: Implementar sistema de turnos PVP com espera de ambas ações e timeout de 60s
+[33m67f3ac7[m fix: Remover função setupPvpBattleCallbacks não utilizada
+[33m998399e[m fix: Padronizar inicialização de batalha PVP igual às batalhas de exploração
+[33mbb43f63[m fix: Garantir renderização inicial da UI de batalha PVP e adicionar logs de debug
+[33mf0a0546[m fix: Adicionar animações de golpes e correção de IA automática em PVP
+[33m4bf3a0d[m fix: Corrigir handler onMatchAction para ser async
+[33maa266c7[m feat: Implementar sistema de ações PVP com processamento real de ações e suporte a IA automática
+[33me34911f[m feat: Adicionar logs quando matches são encontrados e processados
+[33m57b5f6b[m feat: Adicionar logs detalhados no processamento de matches PVP
+[33m5b11820[m fix: Corrigir handlePvpMatchFound para usar opponent.beastId do socket em vez de fazer requisição HTTP
+[33me63b81c[m fix: Corrigir parsing de resposta do getMatch no frontend
+[33m7522ea8[m feat: Adicionar logs detalhados na criação de matches PVP
+[33m5c8b24c[m fix: Adicionar client.release() em todas as funções do pvpMatchService
+[33mf0aaa44[m feat: Criar tabela pvp_matches automaticamente se não existir
+[33m462d91e[m feat: Adicionar logs detalhados na busca de match casual
+[33m4c0b13e[m feat: Adicionar logs no middleware de auth e corrigir removeFromQueue
+[33md3f7326[m feat: Adicionar logs detalhados no frontend para debug do matchmaking
+[33mfa44bd0[m feat: Adicionar logs detalhados em controller e socket handler para debug

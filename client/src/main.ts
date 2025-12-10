@@ -50,7 +50,14 @@ import {
   getActionName as getRealtimeActionName
 } from './systems/realtime-actions';
 import { formatTime } from './utils/time-format';
-import { initiateBattle, executePlayerAction, executeEnemyTurn, executeOpponentAction, applyBattleRewards, resolvePvpTurn } from './systems/combat';
+import { initiateBattle, executePlayerAction, executeEnemyTurn, applyBattleRewards } from './systems/combat';
+import { initiatePvpBattle } from './systems/pvp-combat';
+import { startPvpTurnTimeout, stopPvpTurnTimeout } from './systems/pvp-battle-manager';
+import { 
+  setupPvpSocketHandlersIntegration, 
+  createPvpPlayerActionHandler, 
+  createPvpBattleEndHandler 
+} from './integrations/pvp-integration';
 import { generateTournamentOpponent, getTournamentPrize, getTournamentFee, canEnterTournament } from './systems/tournaments';
 import { NPCS, getNPCDialogue, increaseAffinity } from './data/npcs';
 import { processWeeklyEvents } from './systems/events';
@@ -196,7 +203,6 @@ let inBattle = false;
 let inPvpBattle = false;
 let currentPvpMatchId: number | null = null;
 let pvpBattleStartTime: number = 0;
-let pvpTurnTimeout: NodeJS.Timeout | null = null;
 let inTemple = false;
 let inDialogue = false;
 let inShop = false;
@@ -3554,6 +3560,9 @@ function closeBattle() {
   inPvpBattle = false;
   currentPvpMatchId = null;
   
+  // Parar timer PVP se existir
+  stopPvpTurnTimeout();
+  
   console.log('[Battle] ✓ Battle closed');
 }
 
@@ -4422,6 +4431,7 @@ function resizeCanvas() {
 
 /**
  * Setup PVP Socket Handlers
+ * Usa módulo isolado de integração PVP
  */
 function setupPvpSocketHandlers() {
   // Match found handler
@@ -4429,128 +4439,19 @@ function setupPvpSocketHandlers() {
     await handlePvpMatchFound(data.matchId, data.opponent, data.matchType);
   });
   
-  // Match start handler
-  pvpSocketClient.onMatchStart((data) => {
-    console.log('[PVP] Match started:', data);
-  });
-  
-  // Match action handler (receber ações do oponente)
-  pvpSocketClient.onMatchAction(async (data) => {
-    if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.matchId === data.matchId) {
-      // Executar ação real do oponente (não usar IA)
-      if (data.fromPlayer === gameState.currentBattle.opponentUserId) {
-        console.log('[PVP] Received action from opponent:', data.action);
-        
-        // Tocar animação de ataque do oponente ANTES de processar a ação
-        if (battleUI && (battleUI as any).arenaScene3D) {
-          const arenaScene3D = (battleUI as any).arenaScene3D;
-          if (arenaScene3D && typeof arenaScene3D.playAttackAnimation === 'function') {
-            console.log('[PVP] Playing attack animation for opponent');
-            arenaScene3D.playAttackAnimation('enemy', 'player');
-            
-            // Processar ação após animação
-            setTimeout(async () => {
-              if (!gameState?.currentBattle) return;
-              
-              const result = executeOpponentAction(gameState.currentBattle, data.action);
-              
-              if (result && battleUI) {
-                // Verificar se batalha terminou ANTES de marcar ação como feita
-                const battleEnded = gameState.currentBattle.winner !== null;
-                
-                // Marcar que oponente já fez ação (só se batalha não terminou)
-                if (!battleEnded) {
-                  gameState.currentBattle.opponentActionDone = true;
-                }
-                
-                // Atualizar UI para mostrar dano do oponente
-                battleUI.updateBattle(gameState.currentBattle);
-                
-                // Se batalha terminou, finalizar IMEDIATAMENTE
-                if (gameState.currentBattle.winner) {
-                  console.log('[PVP] Battle ended with winner:', gameState.currentBattle.winner, 'after opponent action');
-                  const match = await getMatch(data.matchId).catch(() => null);
-                  if (match) {
-                    const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-                    const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-                    const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-                    const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
-                    
-                    finishPvpBattle(gameState.currentBattle, winnerId).catch(console.error);
-                  }
-                  return;
-                }
-                
-                // Se ambos fizeram ações, resolver turno (só se batalha não terminou)
-                if (!battleEnded && gameState.currentBattle.playerActionDone && gameState.currentBattle.opponentActionDone) {
-                  console.log('[PVP] Both players made actions, resolving turn');
-                  console.log('[PVP] Before resolve - playerActionDone:', gameState.currentBattle.playerActionDone, 'opponentActionDone:', gameState.currentBattle.opponentActionDone, 'phase:', gameState.currentBattle.phase);
-                  resolvePvpTurn(gameState.currentBattle);
-                  console.log('[PVP] After resolve - playerActionDone:', gameState.currentBattle.playerActionDone, 'opponentActionDone:', gameState.currentBattle.opponentActionDone, 'phase:', gameState.currentBattle.phase);
-                  battleUI.updateBattle(gameState.currentBattle);
-                  // Forçar redraw para garantir que menu apareça
-                  battleUI.draw();
-                  
-                  // Reiniciar timer para próximo turno
-                  startPvpTurnTimeout(gameState.currentBattle, data.matchId);
-                  
-                  // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
-                  if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
-                    console.log('[PVP] Auto-battle is active, executing action automatically');
-                    setTimeout(() => {
-                      if (battleUI && gameState?.currentBattle) {
-                        battleUI.checkAutoBattle();
-                      }
-                    }, 500);
-                  }
-                }
-              }
-            }, 600); // Aguardar animação terminar
-            return; // Early return - ação será processada após animação
-          }
-        }
-        
-        // Fallback: processar ação imediatamente se não houver 3D scene
-        const result = executeOpponentAction(gameState.currentBattle, data.action);
-        
-        if (result && battleUI) {
-          battleUI.updateBattle(gameState.currentBattle);
-          
-          // Se batalha terminou, finalizar
-          if (gameState.currentBattle.winner) {
-            const match = await getMatch(data.matchId).catch(() => null);
-            if (match) {
-              const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-              const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-              const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-              const winnerId = gameState.currentBattle.winner === 'player' ? playerUserId : opponentUserId;
-              
-              finishPvpBattle(gameState.currentBattle, winnerId).catch(console.error);
-            }
-            return;
-          }
-          
-          // Se agora é turno do jogador e auto-battle está ativo, executar ação automática
-          if (gameState.currentBattle.phase === 'player_turn' && battleUI.isAutoBattleActive()) {
-            console.log('[PVP] Auto-battle is active, executing action automatically');
-            setTimeout(() => {
-              if (battleUI && gameState?.currentBattle) {
-                battleUI.checkAutoBattle();
-              }
-            }, 500);
-          }
-        }
+  // Configurar handlers usando módulo isolado
+  setupPvpSocketHandlersIntegration(
+    gameState,
+    battleUI,
+    (battle) => {
+      if (battleUI) {
+        battleUI.updateBattle(battle);
       }
+    },
+    async (battle, winnerId) => {
+      await finishPvpBattle(battle, winnerId);
     }
-  });
-  
-  // Match state handler
-  pvpSocketClient.onMatchState((data) => {
-    if (gameState?.currentBattle && gameState.currentBattle.isPvp && gameState.currentBattle.matchId === data.matchId) {
-      // Atualizar estado da batalha
-      // Implementar sincronização de estado se necessário
-    }
-  });
+  );
   
   // Challenge received handler
   pvpSocketClient.onChallengeReceived((data) => {
@@ -4641,21 +4542,14 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
       mood: 'neutral',
     };
     
-    // Iniciar batalha PVP
-    const battle = initiateBattle(
+    // Iniciar batalha PVP usando módulo isolado
+    const battle = initiatePvpBattle(
       gameState.activeBeast,
       opponentBeast,
-      false, // não pode fugir em PVP
-      true,  // isPvp
       matchId,
       opponent.userId
     );
     battle.phase = 'player_turn'; // Definir fase ANTES de criar UI (igual exploração)
-    
-    // Inicializar tracking de turno PVP
-    battle.playerActionDone = false;
-    battle.opponentActionDone = false;
-    battle.turnStartTime = Date.now();
     
     gameState.currentBattle = battle;
     currentPvpMatchId = matchId;
@@ -4663,7 +4557,14 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
     inPvpBattle = true;
     
     // Iniciar timer de timeout para turno (60 segundos)
-    startPvpTurnTimeout(battle, matchId);
+    startPvpTurnTimeout(
+      battle,
+      matchId,
+      () => {
+        // Handler de timeout será gerenciado pelo pvp-integration
+        console.log('[PVP] Turn timeout triggered');
+      }
+    );
     
     // Log de debug (igual exploração)
     console.log('[PVP Battle] Starting battle:');
@@ -4677,264 +4578,57 @@ async function handlePvpMatchFound(matchId: number, opponent: { userId: number; 
       console.log('[PVP Battle] 🎨 Using HYBRID Battle System (2D UI + 3D Arena)');
       battleUI = new BattleUIHybrid(canvas, battle);
       
-      // Setup HYBRID callbacks (mesma interface do 2D) - INLINE como na exploração
-      (battleUI as BattleUIHybrid).onPlayerAction = async (action: CombatAction) => {
-        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) {
-          return;
-        }
-        
-        // Se já fez ação neste turno, não permitir nova ação
-        if (battle.playerActionDone) {
-          console.log('[PVP] Player already made action this turn, waiting for opponent');
-          return;
-        }
-        
-        console.log('[PVP] Player action:', action);
-        
-        // Executar ação localmente (isso faz as animações e atualiza UI)
-        const result = executePlayerAction(battle, action);
-        
-        if (!result) {
-          console.error('[PVP] executePlayerAction returned null');
-          return;
-        }
-        
-        // Verificar se batalha terminou APÓS executar ação (checkBattleEnd foi chamado dentro de executePlayerAction)
-        const battleEnded = battle.winner !== null;
-        
-        console.log('[PVP] After player action - winner:', battle.winner, 'phase:', battle.phase, 'enemy HP:', battle.enemy.currentHp);
-        
-        // Marcar que player já fez ação (só se batalha não terminou)
-        if (!battleEnded) {
-          battle.playerActionDone = true;
-        }
-        
-        // Atualizar UI imediatamente para mostrar animações
-        if (battleUI) {
-          battleUI.updateBattle(battle);
-          
-          // Se batalha terminou, finalizar IMEDIATAMENTE (antes de enviar ação ao oponente)
-          if (battle.winner) {
-            console.log('[PVP] ⚔️ Battle ended! Winner:', battle.winner, 'Player HP:', battle.player.currentHp, 'Enemy HP:', battle.enemy.currentHp);
-            const match = await getMatch(matchId).catch(() => null);
-            if (match) {
-              const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-              const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-              const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-              const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
-              
-              console.log('[PVP] Finishing battle - winnerId:', winnerId, 'playerUserId:', playerUserId);
-              await finishPvpBattle(battle, winnerId);
-            }
-            return;
+      // Setup HYBRID callbacks usando módulo isolado PVP
+      (battleUI as BattleUIHybrid).onPlayerAction = createPvpPlayerActionHandler(
+        battle,
+        matchId,
+        gameState,
+        (updatedBattle) => {
+          if (battleUI) {
+            battleUI.updateBattle(updatedBattle);
           }
-          
-          // Enviar ação via WebSocket para sincronizar com oponente
-          try {
-            const beastState = {
-              id: gameState.activeBeast?.id,
-              currentHp: battle.player.currentHp,
-              maxHp: battle.player.beast.maxHp,
-              currentEssence: battle.player.currentEssence,
-              maxEssence: battle.player.beast.maxEssence,
-              techniques: battle.player.beast.techniques.map((t: any) => t.id),
-            };
-            
-            console.log('[PVP] Sending action to opponent via socket:', action);
-            pvpSocketClient.sendAction(matchId, action, beastState);
-          } catch (error) {
-            console.error('[PVP] Error sending action via socket:', error);
-          }
-          
-          // Se ambos fizeram ações, resolver turno
-          if (battle.playerActionDone && battle.opponentActionDone) {
-            console.log('[PVP] Both players made actions, resolving turn');
-            resolvePvpTurn(battle);
-            if (battleUI) {
-              battleUI.updateBattle(battle);
-            }
-            // Reiniciar timer para próximo turno
-            startPvpTurnTimeout(battle, matchId);
-          }
+        },
+        async (endedBattle, winnerId) => {
+          await finishPvpBattle(endedBattle, winnerId);
         }
-      };
+      );
       
-      (battleUI as BattleUIHybrid).onBattleEnd = async () => {
-        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) return;
-
-        const battle = gameState.currentBattle;
-        
-        console.log('[PVP Battle] Battle ended - Phase:', battle.phase, 'Winner:', battle.winner);
-        
-        // PROTEÇÃO: Verificar fase
-        if (battle.phase !== 'victory' && battle.phase !== 'defeat') {
-          console.error('[PVP Battle] ❌ onBattleEnd called but phase is:', battle.phase);
-          return;
+      (battleUI as BattleUIHybrid).onBattleEnd = createPvpBattleEndHandler(
+        battle,
+        gameState,
+        () => closeBattle(),
+        async (endedBattle, winnerId) => {
+          await finishPvpBattle(endedBattle, winnerId);
         }
-
-        // Atualizar HP/Essence do beast ANTES de finalizar
-        if (gameState.activeBeast) {
-          gameState.activeBeast.currentHp = battle.player.currentHp;
-          gameState.activeBeast.essence = battle.player.currentEssence;
-          
-          // Atualizar vitórias/derrotas
-          if (battle.winner === 'player') {
-            gameState.victories++;
-            gameState.activeBeast.victories++;
-          } else {
-            gameState.defeats++;
-            gameState.activeBeast.defeats++;
-          }
-          
-          console.log('[PVP Battle] Beast HP after battle:', gameState.activeBeast.currentHp);
-        }
-
-        // Fechar batalha IMEDIATAMENTE
-        closeBattle();
-        
-        // Finalizar partida no servidor e mostrar resultado
-        if (battle.matchId) {
-          const match = await getMatch(battle.matchId).catch(() => null);
-          if (match) {
-            const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-            const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-            const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-            const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
-            
-            await finishPvpBattle(battle, winnerId);
-          }
-        }
-      };
+      );
     } else {
       console.log('[PVP Battle] Using 2D Battle System');
       battleUI = new BattleUI(canvas, battle);
       
-      // Setup 2D callbacks (original) - INLINE como na exploração
-      battleUI.onPlayerAction = async (action: CombatAction) => {
-        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) {
-          return;
-        }
-        
-        // Se já fez ação neste turno, não permitir nova ação
-        if (battle.playerActionDone) {
-          console.log('[PVP] Player already made action this turn, waiting for opponent');
-          return;
-        }
-        
-        console.log('[PVP] Player action:', action);
-        
-        const result = executePlayerAction(battle, action);
-        
-        if (!result) {
-          console.error('[PVP] executePlayerAction returned null');
-          return;
-        }
-        
-        // Verificar se batalha terminou APÓS executar ação
-        const battleEnded = battle.winner !== null;
-        
-        console.log('[PVP] After player action (2D) - winner:', battle.winner, 'phase:', battle.phase, 'enemy HP:', battle.enemy.currentHp);
-        
-        // Marcar que player já fez ação (só se batalha não terminou)
-        if (!battleEnded) {
-          battle.playerActionDone = true;
-        }
-        
-        if (battleUI) {
-          battleUI.updateBattle(battle);
-          
-          // Se batalha terminou, finalizar IMEDIATAMENTE
-          if (battle.winner) {
-            console.log('[PVP] ⚔️ Battle ended! Winner:', battle.winner, 'Player HP:', battle.player.currentHp, 'Enemy HP:', battle.enemy.currentHp);
-            const match = await getMatch(matchId).catch(() => null);
-            if (match) {
-              const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-              const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-              const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-              const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
-              
-              console.log('[PVP] Finishing battle (2D) - winnerId:', winnerId, 'playerUserId:', playerUserId);
-              await finishPvpBattle(battle, winnerId);
-            }
-            return;
-          }
-          
-          try {
-            const beastState = {
-              id: gameState.activeBeast?.id,
-              currentHp: battle.player.currentHp,
-              maxHp: battle.player.beast.maxHp,
-              currentEssence: battle.player.currentEssence,
-              maxEssence: battle.player.beast.maxEssence,
-              techniques: battle.player.beast.techniques.map((t: any) => t.id),
-            };
-            
-            pvpSocketClient.sendAction(matchId, action, beastState);
-          } catch (error) {
-            console.error('[PVP] Error sending action via socket:', error);
-          }
-          
-          // Se ambos fizeram ações, resolver turno (só se batalha não terminou)
-          if (!battleEnded && battle.playerActionDone && battle.opponentActionDone) {
-            console.log('[PVP] Both players made actions, resolving turn');
-            console.log('[PVP] Before resolve - playerActionDone:', battle.playerActionDone, 'opponentActionDone:', battle.opponentActionDone, 'phase:', battle.phase);
-            resolvePvpTurn(battle);
-            console.log('[PVP] After resolve - playerActionDone:', battle.playerActionDone, 'opponentActionDone:', battle.opponentActionDone, 'phase:', battle.phase);
-            battleUI.updateBattle(battle);
-            // Forçar redraw para garantir que menu apareça
+      // Setup 2D callbacks usando módulo isolado PVP
+      battleUI.onPlayerAction = createPvpPlayerActionHandler(
+        battle,
+        matchId,
+        gameState,
+        (updatedBattle) => {
+          if (battleUI) {
+            battleUI.updateBattle(updatedBattle);
             battleUI.draw();
-            // Reiniciar timer para próximo turno
-            startPvpTurnTimeout(battle, matchId);
           }
+        },
+        async (endedBattle, winnerId) => {
+          await finishPvpBattle(endedBattle, winnerId);
         }
-      };
+      );
       
-      battleUI.onBattleEnd = async () => {
-        if (!gameState?.currentBattle || !gameState.currentBattle.isPvp) return;
-
-        const battle = gameState.currentBattle;
-        
-        console.log('[PVP Battle] Battle ended - Phase:', battle.phase, 'Winner:', battle.winner);
-        
-        // PROTEÇÃO: Verificar fase
-        if (battle.phase !== 'victory' && battle.phase !== 'defeat') {
-          console.error('[PVP Battle] ❌ onBattleEnd called but phase is:', battle.phase);
-          return;
+      battleUI.onBattleEnd = createPvpBattleEndHandler(
+        battle,
+        gameState,
+        () => closeBattle(),
+        async (endedBattle, winnerId) => {
+          await finishPvpBattle(endedBattle, winnerId);
         }
-
-        // Atualizar HP/Essence do beast ANTES de finalizar
-        if (gameState.activeBeast) {
-          gameState.activeBeast.currentHp = battle.player.currentHp;
-          gameState.activeBeast.essence = battle.player.currentEssence;
-          
-          // Atualizar vitórias/derrotas
-          if (battle.winner === 'player') {
-            gameState.victories++;
-            gameState.activeBeast.victories++;
-          } else {
-            gameState.defeats++;
-            gameState.activeBeast.defeats++;
-          }
-          
-          console.log('[PVP Battle] Beast HP after battle:', gameState.activeBeast.currentHp);
-        }
-
-        // Fechar batalha IMEDIATAMENTE
-        closeBattle();
-        
-        // Finalizar partida no servidor e mostrar resultado
-        if (battle.matchId) {
-          const match = await getMatch(battle.matchId).catch(() => null);
-          if (match) {
-            const isPlayer1 = match.player1BeastId.toString() === gameState.activeBeast?.id;
-            const playerUserId = isPlayer1 ? match.player1Id : match.player2Id;
-            const opponentUserId = isPlayer1 ? match.player2Id : match.player1Id;
-            const winnerId = battle.winner === 'player' ? playerUserId : opponentUserId;
-            
-            await finishPvpBattle(battle, winnerId);
-          }
-        }
-      };
+      );
     }
     
     inBattle = true;
@@ -4972,78 +4666,6 @@ async function handlePvpChallengeAccepted(matchId: number) {
   }
 }
 
-/**
- * Inicia timer de timeout para turno PVP (60 segundos)
- */
-function startPvpTurnTimeout(battle: BattleContext, matchId: number) {
-  // Limpar timeout anterior se existir
-  if (pvpTurnTimeout) {
-    clearTimeout(pvpTurnTimeout);
-    pvpTurnTimeout = null;
-  }
-  
-  // Resetar tempo de início do turno
-  battle.turnStartTime = Date.now();
-  
-  // Criar novo timeout de 60 segundos
-  pvpTurnTimeout = setTimeout(() => {
-    if (!gameState?.currentBattle || !gameState.currentBattle.isPvp || gameState.currentBattle.matchId !== matchId) {
-      return;
-    }
-    
-    const currentBattle = gameState.currentBattle;
-    
-    // Verificar se é o turno do jogador e ele ainda não fez ação
-    if (currentBattle.phase === 'player_turn' && !currentBattle.playerActionDone) {
-      console.log('[PVP] ⏰ Turn timeout - player did not respond in 60s, skipping turn');
-      
-      // Pular turno do jogador (defender automaticamente)
-      currentBattle.playerActionDone = true;
-      currentBattle.combatLog.push('⏰ Você demorou muito! Turno pulado.');
-      
-      // Enviar ação de defesa como fallback
-      try {
-        const beastState = {
-          id: gameState.activeBeast?.id,
-          currentHp: currentBattle.player.currentHp,
-          maxHp: currentBattle.player.beast.maxHp,
-          currentEssence: currentBattle.player.currentEssence,
-          maxEssence: currentBattle.player.beast.maxEssence,
-          techniques: currentBattle.player.beast.techniques.map((t: any) => t.id),
-        };
-        
-        pvpSocketClient.sendAction(matchId, { type: 'defend' }, beastState);
-      } catch (error) {
-        console.error('[PVP] Error sending timeout action:', error);
-      }
-      
-      // Se oponente já fez ação, resolver turno
-      if (currentBattle.opponentActionDone) {
-        console.log('[PVP] Opponent already made action, resolving turn after timeout');
-        resolvePvpTurn(currentBattle);
-        if (battleUI) {
-          battleUI.updateBattle(currentBattle);
-        }
-        // Reiniciar timer para próximo turno
-        startPvpTurnTimeout(currentBattle, matchId);
-      }
-      
-      if (battleUI) {
-        battleUI.updateBattle(currentBattle);
-      }
-    }
-  }, 60000); // 60 segundos
-}
-
-/**
- * Para timer de timeout PVP
- */
-function stopPvpTurnTimeout() {
-  if (pvpTurnTimeout) {
-    clearTimeout(pvpTurnTimeout);
-    pvpTurnTimeout = null;
-  }
-}
 
 /**
  * Finish PVP battle
