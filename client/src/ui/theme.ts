@@ -25,6 +25,7 @@ export const GLASS_THEME = {
     },
     text: {
       primary: '#DDEBFA',
+      primaryDim: 'rgba(221, 235, 250, 0.75)',
       secondary: 'rgba(168, 198, 226, 0.85)',
       muted: 'rgba(128, 154, 190, 0.68)',
       highlight: '#FFFFFF',

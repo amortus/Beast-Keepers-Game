@@ -406,7 +406,7 @@ export class GameUI {
     // Hora
     drawText(this.ctx, clockText, leftX, clockY, {
       font: 'bold 16px monospace',
-      color: gameTime.timeOfDay.isNight ? GLASS_THEME.palette.accent.blue : GLASS_THEME.palette.accent.amber,
+      color: gameTime.timeOfDay.isNight ? GLASS_THEME.palette.accent.cyan : GLASS_THEME.palette.accent.amber,
       shadow: false,
     });
     
