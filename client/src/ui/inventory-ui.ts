@@ -148,7 +148,7 @@ export class InventoryUI {
 
   private drawItemList(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      variant: 'panel',
+      variant: 'card',
       borderWidth: 1.5,
     });
 
@@ -244,7 +244,7 @@ export class InventoryUI {
 
   private drawItemDetails(x: number, y: number, width: number, height: number, gameState: GameState) {
     drawPanel(this.ctx, x, y, width, height, {
-      variant: 'panel',
+      variant: 'card',
       borderWidth: 1.5,
     });
 
