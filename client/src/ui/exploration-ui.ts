@@ -6,6 +6,7 @@
 import type { ExplorationState, ExplorationZone, Encounter, WildEnemy } from '../systems/exploration';
 import type { Item } from '../types';
 import { GLASS_THEME } from './theme';
+import { COLORS } from './colors';
 import { drawPanel, drawText, drawButton, isMouseOver, drawBar } from './ui-helper';
 import { EXPLORATION_ZONES } from '../systems/exploration';
 
